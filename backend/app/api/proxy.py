@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.app.detection.injection_detector import detect_injection
 from backend.app.detection.models import DetectionResult, PolicyAction
@@ -29,11 +29,11 @@ class ProxyResponse(BaseModel):
     request_id: str
     action: str
     reason_code: str | None
-    reasons: list[str] = []
+    reasons: list[str] = Field(default_factory=list)
     input_action: str
     output_action: str | None = None
     content: str | None
-    audit_summary: dict[str, Any] = {}
+    audit_summary: dict[str, Any] = Field(default_factory=dict)
 
 
 def _merge_detections(text: str) -> list[DetectionResult]:

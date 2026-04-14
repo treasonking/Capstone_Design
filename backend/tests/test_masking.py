@@ -1,0 +1,32 @@
+from backend.app.detection.models import DetectionResult, DetectorType
+from backend.app.detection.reason_codes import ReasonCode
+from backend.app.engine.masking import apply_masking
+
+
+def test_apply_masking_for_email_and_phone() -> None:
+    text = "문의: abcd@gmail.com / 010-1234-5678"
+    detections = [
+        DetectionResult(
+            detector_type=DetectorType.PII,
+            category="EMAIL",
+            reason_code=ReasonCode.PII_EMAIL_DETECTED.value,
+            start=text.index("abcd@gmail.com"),
+            end=text.index("abcd@gmail.com") + len("abcd@gmail.com"),
+            matched_text="abcd@gmail.com",
+            score=0.95,
+        ),
+        DetectionResult(
+            detector_type=DetectorType.PII,
+            category="PHONE",
+            reason_code=ReasonCode.PII_PHONE_DETECTED.value,
+            start=text.index("010-1234-5678"),
+            end=text.index("010-1234-5678") + len("010-1234-5678"),
+            matched_text="010-1234-5678",
+            score=0.9,
+        ),
+    ]
+
+    masked = apply_masking(text, detections)
+    assert "ab***@gmail.com" in masked
+    assert "010-12**-****" in masked
+

@@ -1,0 +1,43 @@
+default_action: ALLOW
+rules:
+  PII_EMAIL_DETECTED:
+    action: MASK
+    priority: 60
+    threshold: 0.7
+    description: "Mask email address before forwarding to model."
+  PII_PHONE_DETECTED:
+    action: MASK
+    priority: 70
+    threshold: 0.7
+    description: "Mask phone number for privacy."
+  PII_RRN_DETECTED:
+    action: BLOCK
+    priority: 100
+    threshold: 0.8
+    description: "Block resident registration number exposure."
+  PII_ACCOUNT_DETECTED:
+    action: WARN
+    priority: 50
+    threshold: 0.6
+    description: "Warn on account-like pattern and log event."
+  INJ_IGNORE_PREVIOUS_INSTRUCTIONS:
+    action: BLOCK
+    priority: 95
+    threshold: 0.8
+    description: "Block common override instructions."
+  INJ_REVEAL_SYSTEM_PROMPT:
+    action: BLOCK
+    priority: 98
+    threshold: 0.8
+    description: "Block attempts to reveal system prompt."
+  INJ_POLICY_BYPASS_ATTEMPT:
+    action: BLOCK
+    priority: 90
+    threshold: 0.8
+    description: "Block policy bypass attempts."
+  SAFE_INPUT:
+    action: ALLOW
+    priority: 0
+    threshold: 0.0
+    description: "No risky signal found."
+

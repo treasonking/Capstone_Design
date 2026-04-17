@@ -2,3 +2,6 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 evaluation/evaluation_report.md
+.venv/
+venv/
+.env

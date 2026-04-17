@@ -3,6 +3,13 @@
 공공기관/사내망 환경에서 LLM 사용 시 개인정보 유출과 프롬프트 인젝션을 줄이기 위한
 정책/탐지 중심 MVP 코드베이스입니다.
 
+## 실행 환경
+
+- Python: **3.10.x 권장** (프로젝트 기준: `>=3.10,<3.12`)
+- 설치:
+  - `pip install .`
+  - 개발/테스트 포함: `pip install ".[dev]"`
+
 ## 벤치마크 요약 (예시)
 
 > `evaluation/sample_dataset.json` 기준 샘플 결과
@@ -80,13 +87,13 @@ evaluation/
 1. 의존성 설치
 
 ```bash
-pip install fastapi httpx pyyaml pytest
+pip install ".[dev]"
 ```
 
 2. 테스트 실행
 
 ```bash
-pytest -q
+python -m pytest -q
 ```
 
 3. 평가 실행
@@ -95,6 +102,12 @@ pytest -q
 python -m evaluation.evaluate \
   --dataset evaluation/sample_dataset.json \
   --report evaluation/evaluation_report.md
+```
+
+4. FastAPI 프록시 실행
+
+```bash
+python -m uvicorn backend.app.api.proxy:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 ## 확장 아이디어

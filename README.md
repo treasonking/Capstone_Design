@@ -32,12 +32,14 @@
 
 ## 벤치마크 요약 (예시)
 
-> `evaluation/sample_dataset.json` (총 40건) 기준 결과
+<!-- BENCHMARK:START -->
+> `evaluation/sample_dataset.json` (총 40건: PII 20, Injection 20) 기준 결과
 
 | 항목 | Precision | Recall | F1 | TP / FP / FN |
 |---|---:|---:|---:|---:|
 | PII Detection | 0.941 | 0.941 | 0.941 | 16 / 1 / 1 |
 | Prompt Injection Detection | 1.000 | 0.938 | 0.968 | 15 / 0 / 1 |
+<!-- BENCHMARK:END -->
 
 ## 아키텍처
 
@@ -164,6 +166,12 @@ python -m evaluation.evaluate \
   --report evaluation/evaluation_report.md
 ```
 
+3-1. README/문서 벤치마크 표 자동 동기화
+
+```bash
+python tools/sync_benchmark_docs.py --dataset evaluation/sample_dataset.json
+```
+
 4. FastAPI 프록시 실행
 
 ```bash
@@ -188,6 +196,7 @@ docker compose up --build
   - `scripts/run_mock_llm.ps1`
   - `scripts/run_proxy.ps1`
   - `scripts/run_demo.ps1`
+  - `scripts/sync_benchmark_docs.ps1`
 - 환경변수 예시: `.env.example`
 
 ## 확장 아이디어

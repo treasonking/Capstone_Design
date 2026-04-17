@@ -45,9 +45,25 @@ python -m evaluation.evaluate \
   --report evaluation/evaluation_report.md
 ```
 
+## 최신 벤치마크 스냅샷
+
+<!-- BENCHMARK:START -->
+> `evaluation/sample_dataset.json` (총 40건: PII 20, Injection 20) 기준 결과
+
+| 항목 | Precision | Recall | F1 | TP / FP / FN |
+|---|---:|---:|---:|---:|
+| PII Detection | 0.941 | 0.941 | 0.941 | 16 / 1 / 1 |
+| Prompt Injection Detection | 1.000 | 0.938 | 0.968 | 15 / 0 / 1 |
+<!-- BENCHMARK:END -->
+
+자동 갱신:
+
+```bash
+python tools/sync_benchmark_docs.py --dataset evaluation/sample_dataset.json
+```
+
 ## 결과 해석 팁
 
 - PII는 오탐/미탐 모두 중요하므로 Precision/Recall 균형(F1)을 함께 본다.
 - Injection은 보안 특성상 미탐(FN) 억제가 중요하므로 Recall을 우선 점검한다.
 - FP/FN 샘플 id를 기반으로 룰을 보정한다.
-

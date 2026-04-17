@@ -5,3 +5,4 @@ evaluation/evaluation_report.md
 .venv/
 venv/
 .env
+*.egg-info/

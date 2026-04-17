@@ -3,6 +3,26 @@
 공공기관/사내망 환경에서 LLM 사용 시 개인정보 유출과 프롬프트 인젝션을 줄이기 위한
 정책/탐지 중심 MVP 코드베이스입니다.
 
+## 프로젝트 배경
+
+- 내부 업무에서 생성형 AI 활용 수요는 빠르게 늘고 있음
+- 동시에 PII 유출, 시스템 프롬프트 노출, 정책 우회 시도 위험이 존재
+- 본 프로젝트는 사용자와 LLM 사이에 보안 프록시를 두어 위험을 통제하는 것을 목표로 함
+
+## 문제 정의
+
+- 입력/출력 양방향에서 민감정보 및 인젝션 시도를 탐지해야 함
+- 정책 기준에 따라 일관된 액션(`ALLOW/WARN/MASK/BLOCK`)이 필요함
+- 결과는 시연/보고서에 설명 가능한 구조여야 하며 테스트로 재현 가능해야 함
+
+## 담당 역할 (정책/탐지 리드)
+
+- reason_code 체계 설계
+- PII/Injection 룰 탐지기 설계 및 구현
+- YAML 정책 포맷/우선순위/threshold 설계
+- 마스킹 규칙 통일
+- 정량 평가/테스트 코드 작성
+
 ## 실행 환경
 
 - Python: **3.10.x 권장** (프로젝트 기준: `>=3.10,<3.12`)
@@ -83,6 +103,45 @@ evaluation/
 6. 응답에 `action`, `input_action`, `output_action`, `reasons`, `audit_summary` 포함
    (`audit_summary`에는 `timestamp_utc`, `latency_ms`, `pii_detected`, `injection_detected` 요약 포함)
 
+## API 예시
+
+### 요청 예시
+
+```bash
+curl -X POST "http://127.0.0.1:8000/proxy/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"내 번호는 010-1234-5678 입니다. 요약해줘."}'
+```
+
+### 응답 예시 (축약)
+
+```json
+{
+  "request_id": "6d1f...",
+  "action": "MASK",
+  "reason_code": "PII_PHONE_DETECTED",
+  "reasons": ["PII_PHONE_DETECTED"],
+  "input_action": "MASK",
+  "output_action": "ALLOW",
+  "content": "[Mock 응답] 입력 받음: 내 번호는 010-12**-**** ...",
+  "audit_summary": {
+    "timestamp_utc": "2026-04-17T...",
+    "latency_ms": 12.34,
+    "input": { "pii_detected": true, "injection_detected": false },
+    "output": { "pii_detected": false, "injection_detected": false }
+  }
+}
+```
+
+## 정책 예시
+
+```yaml
+PII_RRN_DETECTED:
+  action: BLOCK
+  priority: 100
+  threshold: 0.8
+```
+
 ## 실행 방법
 
 1. 의존성 설치
@@ -111,6 +170,26 @@ python -m evaluation.evaluate \
 python -m uvicorn backend.app.api.proxy:app --host 127.0.0.1 --port 8000 --reload
 ```
 
+5. Mock LLM 실행
+
+```bash
+python tools/mock_llm.py
+```
+
+## 배포/시연 편의
+
+- Docker 실행
+
+```bash
+docker compose up --build
+```
+
+- Windows PowerShell 실행 스크립트
+  - `scripts/run_mock_llm.ps1`
+  - `scripts/run_proxy.ps1`
+  - `scripts/run_demo.ps1`
+- 환경변수 예시: `.env.example`
+
 ## 확장 아이디어
 
 - Presidio 어댑터 추가
@@ -123,3 +202,11 @@ python -m uvicorn backend.app.api.proxy:app --host 127.0.0.1 --port 8000 --reloa
 - 정책/threshold/reason code 가이드: `docs/policy_guide.md`
 - 발표 시연 시나리오: `docs/demo_scenario.md`
 - 로그 저장/미저장 정책: `docs/logging_policy.md`
+- 평가 방법/지표 정의: `docs/evaluation_method.md`
+- 팀 역할/산출물 정리: `docs/team_roles.md`
+
+## 한계와 향후 개선
+
+- 현재 탐지는 룰 기반 MVP로, 복잡한 문맥형 우회 공격에는 한계가 있음
+- 데이터셋을 더 확대하고 도메인별 정책 프로파일링이 필요함
+- 운영 단계에서는 로그 저장소, 인증/인가, 대시보드 통합이 추가로 필요함

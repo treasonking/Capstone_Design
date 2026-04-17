@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import os
 import time
 import uuid
 from pathlib import Path
@@ -17,8 +18,8 @@ from backend.app.engine.policy_engine import evaluate_policy
 
 app = FastAPI()
 
-MOCK_LLM_URL = "http://localhost:8001/v1/chat/completions"
-TIMEOUT_SECONDS = 10
+MOCK_LLM_URL = os.getenv("MOCK_LLM_URL", "http://localhost:8001/v1/chat/completions")
+TIMEOUT_SECONDS = float(os.getenv("UPSTREAM_TIMEOUT_SECONDS", "10"))
 POLICY_PATH = Path(__file__).resolve().parents[3] / "policies" / "policy.yaml"
 
 

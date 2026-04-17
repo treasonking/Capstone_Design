@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+import uvicorn
 
 app = FastAPI()
 
@@ -19,3 +20,7 @@ async def mock_chat(req: ChatRequest):
             }
         }]
     }
+
+
+if __name__ == "__main__":
+    uvicorn.run("tools.mock_llm:app", host="0.0.0.0", port=8001, reload=False)

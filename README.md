@@ -116,3 +116,7 @@ python -m uvicorn backend.app.api.proxy:app --host 127.0.0.1 --port 8000 --reloa
 - 정책 버전/테넌트별 정책 파일 분리
 - 감사 로그 저장소 연계 (원문 미저장 원칙 유지)
 - FastAPI 실제 라우터 + 인증 미들웨어 통합
+
+## 문서
+
+- 정책/threshold/reason code 가이드: `docs/policy_guide.md`

@@ -30,3 +30,21 @@ def test_apply_masking_for_email_and_phone() -> None:
     assert "ab***@gmail.com" in masked
     assert "010-12**-****" in masked
 
+
+def test_apply_masking_for_country_code_phone() -> None:
+    text = "국가코드 번호는 +82 10 1234 5678 입니다."
+    raw = "+82 10 1234 5678"
+    detections = [
+        DetectionResult(
+            detector_type=DetectorType.PII,
+            category="PHONE",
+            reason_code=ReasonCode.PII_PHONE_DETECTED.value,
+            start=text.index(raw),
+            end=text.index(raw) + len(raw),
+            matched_text=raw,
+            score=0.9,
+        )
+    ]
+
+    masked = apply_masking(text, detections)
+    assert "010-12**-****" in masked

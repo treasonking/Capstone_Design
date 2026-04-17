@@ -15,3 +15,15 @@ def test_detect_pii_multiple_categories() -> None:
 def test_detect_pii_safe_text() -> None:
     assert detect_pii("오늘은 보안 정책 회의가 있습니다.") == []
 
+
+def test_detect_pii_phone_variants() -> None:
+    text = "연락처는 +82 10 1234 5678 또는 01012345678 입니다."
+    results = detect_pii(text)
+    phones = [item for item in results if item.reason_code == ReasonCode.PII_PHONE_DETECTED.value]
+    assert len(phones) >= 2
+
+
+def test_detect_pii_rrn_space_variant() -> None:
+    text = "주민번호 형식 테스트: 900101 1234567"
+    results = detect_pii(text)
+    assert any(item.reason_code == ReasonCode.PII_RRN_DETECTED.value for item in results)

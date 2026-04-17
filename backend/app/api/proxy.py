@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -9,7 +11,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
 from backend.app.detection.injection_detector import detect_injection
-from backend.app.detection.models import DetectionResult, PolicyAction
+from backend.app.detection.models import DetectionResult, DetectorType, PolicyAction
 from backend.app.detection.pii_detector import detect_pii
 from backend.app.engine.policy_engine import evaluate_policy
 
@@ -61,12 +63,29 @@ def _final_action(input_action: str, output_action: str) -> str:
     return input_action if _severity(input_action) >= _severity(output_action) else output_action
 
 
+def _audit_from_detections(
+    action: str,
+    reasons: list[str],
+    detections: list[DetectionResult],
+) -> dict[str, Any]:
+    return {
+        "action": action,
+        "reasons": reasons,
+        "pii_detected": any(item.detector_type == DetectorType.PII for item in detections),
+        "injection_detected": any(item.detector_type == DetectorType.INJECTION for item in detections),
+        "total_detections": len(detections),
+    }
+
+
 @app.post("/proxy/chat")
 async def proxy_chat(req: ProxyRequest):
+    started = time.perf_counter()
+    timestamp_utc = datetime.now(timezone.utc).isoformat()
     request_id = str(uuid.uuid4())
     input_detections = _merge_detections(req.message)
     input_decision = evaluate_policy(req.message, input_detections, POLICY_PATH)
     input_action = input_decision.final_action.value
+    input_audit = _audit_from_detections(input_action, input_decision.reasons, input_detections)
 
     if input_action == PolicyAction.BLOCK.value:
         return ProxyResponse(
@@ -77,7 +96,12 @@ async def proxy_chat(req: ProxyRequest):
             input_action=input_action,
             output_action=None,
             content=None,
-            audit_summary={"input": input_decision.audit_summary, "output": None},
+            audit_summary={
+                "timestamp_utc": timestamp_utc,
+                "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+                "input": {**input_decision.audit_summary, **input_audit},
+                "output": None,
+            },
         )
 
     processed_message = input_decision.masked_text or req.message
@@ -100,7 +124,12 @@ async def proxy_chat(req: ProxyRequest):
             input_action=input_action,
             output_action=None,
             content=None,
-            audit_summary={"input": input_decision.audit_summary, "output": None},
+            audit_summary={
+                "timestamp_utc": timestamp_utc,
+                "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+                "input": {**input_decision.audit_summary, **input_audit},
+                "output": None,
+            },
         )
     except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError):
         return ProxyResponse(
@@ -111,12 +140,18 @@ async def proxy_chat(req: ProxyRequest):
             input_action=input_action,
             output_action=None,
             content=None,
-            audit_summary={"input": input_decision.audit_summary, "output": None},
+            audit_summary={
+                "timestamp_utc": timestamp_utc,
+                "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+                "input": {**input_decision.audit_summary, **input_audit},
+                "output": None,
+            },
         )
 
     output_detections = _merge_detections(llm_content)
     output_decision = evaluate_policy(llm_content, output_detections, POLICY_PATH)
     output_action = output_decision.final_action.value
+    output_audit = _audit_from_detections(output_action, output_decision.reasons, output_detections)
 
     if output_action == PolicyAction.BLOCK.value:
         return ProxyResponse(
@@ -128,8 +163,10 @@ async def proxy_chat(req: ProxyRequest):
             output_action=output_action,
             content=None,
             audit_summary={
-                "input": input_decision.audit_summary,
-                "output": output_decision.audit_summary,
+                "timestamp_utc": timestamp_utc,
+                "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+                "input": {**input_decision.audit_summary, **input_audit},
+                "output": {**output_decision.audit_summary, **output_audit},
             },
         )
 
@@ -146,7 +183,9 @@ async def proxy_chat(req: ProxyRequest):
         output_action=output_action,
         content=safe_content,
         audit_summary={
-            "input": input_decision.audit_summary,
-            "output": output_decision.audit_summary,
+            "timestamp_utc": timestamp_utc,
+            "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+            "input": {**input_decision.audit_summary, **input_audit},
+            "output": {**output_decision.audit_summary, **output_audit},
         },
     )

@@ -12,12 +12,12 @@
 
 ## 벤치마크 요약 (예시)
 
-> `evaluation/sample_dataset.json` 기준 샘플 결과
+> `evaluation/sample_dataset.json` (총 40건) 기준 결과
 
 | 항목 | Precision | Recall | F1 | TP / FP / FN |
 |---|---:|---:|---:|---:|
-| PII Detection | 1.000 | 0.667 | 0.800 | 2 / 0 / 1 |
-| Prompt Injection Detection | 1.000 | 1.000 | 1.000 | 3 / 0 / 0 |
+| PII Detection | 0.941 | 0.941 | 0.941 | 16 / 1 / 1 |
+| Prompt Injection Detection | 1.000 | 0.938 | 0.968 | 15 / 0 / 1 |
 
 ## 아키텍처
 
@@ -81,6 +81,7 @@ evaluation/
 4. LLM 응답을 다시 탐지/정책 평가
 5. 출력이 `BLOCK`이면 차단, `MASK`면 마스킹 후 반환
 6. 응답에 `action`, `input_action`, `output_action`, `reasons`, `audit_summary` 포함
+   (`audit_summary`에는 `timestamp_utc`, `latency_ms`, `pii_detected`, `injection_detected` 요약 포함)
 
 ## 실행 방법
 
@@ -120,3 +121,5 @@ python -m uvicorn backend.app.api.proxy:app --host 127.0.0.1 --port 8000 --reloa
 ## 문서
 
 - 정책/threshold/reason code 가이드: `docs/policy_guide.md`
+- 발표 시연 시나리오: `docs/demo_scenario.md`
+- 로그 저장/미저장 정책: `docs/logging_policy.md`

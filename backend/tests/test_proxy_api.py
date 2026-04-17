@@ -49,6 +49,9 @@ def test_proxy_blocks_on_input_injection() -> None:
     assert result.input_action == "BLOCK"
     assert result.output_action is None
     assert result.content is None
+    assert "latency_ms" in result.audit_summary
+    assert "timestamp_utc" in result.audit_summary
+    assert result.audit_summary["input"]["injection_detected"] is True
 
 
 def test_proxy_masks_input_then_returns_output(monkeypatch) -> None:
@@ -62,6 +65,8 @@ def test_proxy_masks_input_then_returns_output(monkeypatch) -> None:
     assert result.input_action == "MASK"
     assert result.output_action == "ALLOW"
     assert result.content == "정상 응답입니다."
+    assert result.audit_summary["input"]["pii_detected"] is True
+    assert result.audit_summary["output"]["pii_detected"] is False
 
 
 def test_proxy_blocks_on_output_injection(monkeypatch) -> None:
@@ -75,3 +80,4 @@ def test_proxy_blocks_on_output_injection(monkeypatch) -> None:
     assert result.input_action == "ALLOW"
     assert result.output_action == "BLOCK"
     assert result.content is None
+    assert result.audit_summary["output"]["injection_detected"] is True

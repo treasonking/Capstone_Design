@@ -3,6 +3,30 @@
 공공기관/사내망 환경에서 LLM 사용 시 개인정보 유출과 프롬프트 인젝션을 줄이기 위한
 정책/탐지 중심 MVP 코드베이스입니다.
 
+## 벤치마크 요약 (예시)
+
+> `evaluation/sample_dataset.json` 기준 샘플 결과
+
+| 항목 | Precision | Recall | F1 | TP / FP / FN |
+|---|---:|---:|---:|---:|
+| PII Detection | 1.000 | 0.667 | 0.800 | 2 / 0 / 1 |
+| Prompt Injection Detection | 1.000 | 1.000 | 1.000 | 3 / 0 / 0 |
+
+## 아키텍처
+
+```mermaid
+flowchart LR
+    U["User UI"] --> P["Security Proxy API"]
+    P --> D["Detection Layer<br/>PII + Prompt Injection"]
+    D --> E["Policy Engine<br/>ALLOW/WARN/MASK/BLOCK"]
+    E -->|ALLOW/WARN/MASK| L["LLM Upstream"]
+    E -->|BLOCK| X["Blocked Response"]
+    L --> O["Output Re-Scan"]
+    O --> E2["Policy Engine (Output)"]
+    E2 --> R["Client Response"]
+    P --> A["Audit Summary / Safe Logs"]
+```
+
 ## 핵심 범위
 
 - YAML 정책 기반 판정 (`ALLOW`, `WARN`, `MASK`, `BLOCK`)

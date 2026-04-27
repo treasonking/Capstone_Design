@@ -7,7 +7,7 @@ import sys
 from typing import Any
 
 if __package__ is None or __package__ == "":
-    sys.path.append(str(Path(__file__).resolve().parents[1]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.dataset_common import VALID_LABELS, VALID_TASKS, counter_to_dict, labels_for_task, load_dataset
 

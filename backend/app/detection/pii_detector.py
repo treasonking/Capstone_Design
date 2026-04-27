@@ -33,10 +33,53 @@ _PII_PATTERNS: list[tuple[str, str, re.Pattern[str], float]] = [
     (
         "ACCOUNT",
         ReasonCode.PII_ACCOUNT_DETECTED.value,
-        re.compile(r"(?<!\d)(?!01[016789][-.\s]?)\d{2,4}[-\s]\d{2,6}[-\s]\d{2,6}(?!\d)"),
-        0.7,
+        re.compile(r"(?<!\d)(?!01[016789][-.\s]?)\d{2,6}[-\s]\d{2,6}[-\s]\d{2,7}(?!\d)"),
+        0.75,
     ),
 ]
+
+_ACCOUNT_CONTEXT_TERMS = (
+    "계좌",
+    "계좌번호",
+    "입금",
+    "송금",
+    "예금주",
+    "은행",
+    "국민은행",
+    "신한은행",
+    "우리은행",
+    "하나은행",
+    "농협",
+    "카카오뱅크",
+    "토스뱅크",
+    "케이뱅크",
+    "ibk",
+    "기업은행",
+    "환불",
+    "환급",
+    "가상계좌",
+    "가상 계좌",
+)
+_NON_ACCOUNT_CONTEXT_TERMS = (
+    "승인번호",
+    "승인 번호",
+    "주문번호",
+    "주문 번호",
+    "결제번호",
+    "거래번호",
+    "접수번호",
+    "예약번호",
+    "상품코드",
+    "인증번호",
+    "쿠폰번호",
+    "문서번호",
+    "문서 코드",
+    "티켓 번호",
+    "티켓번호",
+    "송장번호",
+)
+_MATH_CONTEXT_TERMS = ("계산", "수식", "예제", "더하기", "빼기", "곱하기", "나누기")
+_PHONE_EXCLUSION_CONTEXT_TERMS = ("버전", "version", "장비번호", "장비 번호")
 
 
 def _overlaps(existing: list[DetectionResult], start: int, end: int) -> bool:
@@ -46,9 +89,49 @@ def _overlaps(existing: list[DetectionResult], start: int, end: int) -> bool:
     return False
 
 
-def _valid_account_candidate(raw: str) -> bool:
+def _context(text: str, start: int, end: int, window: int = 24) -> str:
+    return text[max(0, start - window) : min(len(text), end + window)].lower()
+
+
+def _has_any(context: str, terms: tuple[str, ...]) -> bool:
+    return any(term.lower() in context for term in terms)
+
+
+def _looks_like_math_expression(candidate: str, context: str) -> bool:
+    if _has_any(context, _MATH_CONTEXT_TERMS):
+        return True
+    groups = re.split(r"[-\s]+", candidate)
+    return len(groups) >= 3 and groups[-1] in {"90", "00"} and not _has_any(context, _ACCOUNT_CONTEXT_TERMS)
+
+
+def _looks_like_non_account_identifier(context: str) -> bool:
+    return _has_any(context, _NON_ACCOUNT_CONTEXT_TERMS)
+
+
+def _valid_account_candidate(raw: str, context: str) -> bool:
     digits = "".join(ch for ch in raw if ch.isdigit())
-    return 10 <= len(digits) <= 14
+    if not 10 <= len(digits) <= 14:
+        return False
+    if "." in raw and not _has_any(context, _ACCOUNT_CONTEXT_TERMS):
+        return False
+    if _looks_like_non_account_identifier(context):
+        return False
+    if _looks_like_math_expression(raw, context):
+        return False
+
+    groups = re.split(r"[-\s]+", raw)
+    has_account_context = _has_any(context, _ACCOUNT_CONTEXT_TERMS)
+    bank_like_shape = (
+        len(groups) == 3
+        and 2 <= len(groups[0]) <= 6
+        and 2 <= len(groups[1]) <= 6
+        and 5 <= len(groups[2]) <= 7
+    )
+    return has_account_context or bank_like_shape
+
+
+def _valid_phone_candidate(context: str) -> bool:
+    return not _has_any(context, _PHONE_EXCLUSION_CONTEXT_TERMS)
 
 
 def detect_pii(text: str) -> list[DetectionResult]:
@@ -61,10 +144,14 @@ def detect_pii(text: str) -> list[DetectionResult]:
         for match in pattern.finditer(text):
             matched_text = match.group(0)
 
+            match_context = _context(text, match.start(), match.end())
+            if category == "PHONE" and not _valid_phone_candidate(match_context):
+                continue
+
             if category == "ACCOUNT":
                 if _overlaps(results, match.start(), match.end()):
                     continue
-                if not _valid_account_candidate(matched_text):
+                if not _valid_account_candidate(matched_text, match_context):
                     continue
 
             results.append(

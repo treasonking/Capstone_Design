@@ -18,13 +18,13 @@ rules:
   PII_ACCOUNT_DETECTED:
     action: WARN
     priority: 50
-    threshold: 0.6
-    description: "Warn on account-like pattern and log event."
+    threshold: 0.75
+    description: "Account-number candidate. Context validation is applied because false positives are possible."
   INJ_IGNORE_PREVIOUS_INSTRUCTIONS:
     action: BLOCK
-    priority: 95
+    priority: 90
     threshold: 5.0
-    description: "Block common override instructions."
+    description: "Legacy alias for INJ_DIRECT_OVERRIDE_ATTEMPT. Kept for backward compatibility."
   INJ_REVEAL_SYSTEM_PROMPT:
     action: BLOCK
     priority: 98
@@ -66,10 +66,10 @@ rules:
     threshold: 3.0
     description: "Warn on multi-step attempts to elicit hidden rules or criteria."
   INJ_OBFUSCATED_INJECTION_ATTEMPT:
-    action: WARN
-    priority: 70
+    action: BLOCK
+    priority: 99
     threshold: 3.0
-    description: "Warn on obfuscated prompt injection terminology."
+    description: "Block obfuscated prompt injection attempts, including leetspeak or spaced system/hidden instruction terms."
   SAFE_INPUT:
     action: ALLOW
     priority: 0

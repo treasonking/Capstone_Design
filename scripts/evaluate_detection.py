@@ -9,7 +9,7 @@ import sys
 from typing import Any
 
 if __package__ is None or __package__ == "":
-    sys.path.append(str(Path(__file__).resolve().parents[1]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from backend.app.detection.injection_detector import detect_injection
 from backend.app.detection.pii_detector import detect_pii

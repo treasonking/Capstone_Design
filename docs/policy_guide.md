@@ -3,6 +3,7 @@
 ## 목적
 
 이 문서는 `policies/policy.yaml` 기준으로 reason code, 우선순위, threshold, 마스킹 규칙을 빠르게 확인하기 위한 운영 가이드다.
+각 reason_code의 세부 정의와 legacy alias 관계는 `docs/reason_codes.md`를 참고한다.
 
 ## Reason Codes
 
@@ -18,6 +19,13 @@
 - `INJ_IGNORE_PREVIOUS_INSTRUCTIONS`: 이전 지시 무시 유도
 - `INJ_REVEAL_SYSTEM_PROMPT`: 시스템 프롬프트/시스템 지시문 공개 요구
 - `INJ_POLICY_BYPASS_ATTEMPT`: 정책 우회, jailbreak, developer mode 유도
+- `INJ_DIRECT_OVERRIDE_ATTEMPT`: 이전/상위 지시 또는 정책 무시 요구
+- `INJ_SYSTEM_PROMPT_EXTRACTION_ATTEMPT`: hidden instruction/system prompt 추출 시도
+- `INJ_RULE_DISCLOSURE_ATTEMPT`: 내부 규칙, 응답 기준, 정책 목록 공개 요구
+- `INJ_ROLE_OVERRIDE_ATTEMPT`: 역할 재정의로 우회 유도
+- `INJ_DEBUG_MODE_ATTEMPT`: 디버그/개발자/관리자 모드 전환 유도
+- `INJ_MULTI_STEP_EXTRACTION_ATTEMPT`: 단계적 내부 기준 추출 시도
+- `INJ_OBFUSCATED_INJECTION_ATTEMPT`: 난독화된 prompt injection 시도
 - `SAFE_INPUT`: 위험 신호 미탐지
 
 ## 정책 우선순위 / Threshold
@@ -44,4 +52,3 @@
 
 - 감사 로그에는 `reason_code`, `action`, `request_id`, 요약 정보만 저장한다.
 - 원문 prompt/response 및 민감정보 원문은 저장하지 않는다.
-

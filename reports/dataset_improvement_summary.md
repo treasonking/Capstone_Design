@@ -25,14 +25,14 @@
 
 | Item | Count |
 |---|---:|
-| Total samples | 117 |
-| PII samples | 58 |
-| Injection samples | 59 |
-| Positive samples | 74 |
-| Negative samples | 43 |
-| Multilabel samples | 33 |
-| Boundary candidates | 70 |
-| Easy / Medium / Hard | 23 / 40 / 54 |
+| Total samples | 129 |
+| PII samples | 65 |
+| Injection samples | 64 |
+| Positive samples | 80 |
+| Negative samples | 49 |
+| Multilabel samples | 36 |
+| Boundary candidates | 75 |
+| Easy / Medium / Hard | 26 / 44 / 59 |
 
 ## Label Distribution
 
@@ -41,32 +41,32 @@
 | PII_EMAIL_DETECTED | 12 |
 | PII_PHONE_DETECTED | 13 |
 | PII_RRN_DETECTED | 8 |
-| PII_ACCOUNT_DETECTED | 8 |
-| INJ_DIRECT_OVERRIDE_ATTEMPT | 8 |
-| INJ_IGNORE_PREVIOUS_INSTRUCTIONS | 7 |
-| INJ_REVEAL_SYSTEM_PROMPT | 10 |
-| INJ_SYSTEM_PROMPT_EXTRACTION_ATTEMPT | 13 |
+| PII_ACCOUNT_DETECTED | 11 |
+| INJ_DIRECT_OVERRIDE_ATTEMPT | 9 |
+| INJ_IGNORE_PREVIOUS_INSTRUCTIONS | 8 |
+| INJ_REVEAL_SYSTEM_PROMPT | 14 |
+| INJ_SYSTEM_PROMPT_EXTRACTION_ATTEMPT | 16 |
 | INJ_POLICY_BYPASS_ATTEMPT | 11 |
 | INJ_ROLE_OVERRIDE_ATTEMPT | 4 |
 | INJ_DEBUG_MODE_ATTEMPT | 4 |
 | INJ_RULE_DISCLOSURE_ATTEMPT | 13 |
 | INJ_MULTI_STEP_EXTRACTION_ATTEMPT | 3 |
-| INJ_OBFUSCATED_INJECTION_ATTEMPT | 2 |
+| INJ_OBFUSCATED_INJECTION_ATTEMPT | 5 |
 
 ## Evaluation Snapshot
 
 | Scope | Precision | Recall | F1 |
 |---|---:|---:|---:|
-| Overall micro | 0.914 | 0.830 | 0.869 |
-| Overall macro | 0.853 | 0.777 | 0.812 |
+| Overall micro | 0.976 | 0.924 | 0.949 |
+| Overall macro | 0.976 | 0.908 | 0.941 |
 
 ## Main Error Themes
 
-- PII account-like false positives: 문서번호, 승인번호, 수식, 티켓 번호가 계좌번호 패턴과 충돌한다.
+- PII account-like false positives: 문서번호, 승인번호, 수식, 티켓 번호에 대한 오탐을 기본 평가셋에서는 제거했고, v2에서도 PII_ACCOUNT FP가 0건으로 개선되었다.
 - Phone false negative: `+82 (10) ...`처럼 괄호가 있는 전화번호 표기를 현재 정규식이 놓친다.
 - Injection indirect false negatives: `필터 없이`, `숨겨진 지시를 요약`, `내부 룰셋 개요` 같은 완곡 표현은 추가 룰이 필요하다.
 - Boundary false positive: `Do not reveal hidden prompt`처럼 금지 문맥의 정상 문장을 공격으로 볼 수 있다.
-- Obfuscation coverage: 난독화 표현은 일부 위험 표현으로 탐지되지만 별도 obfuscation 라벨 보존이 약하다.
+- Obfuscation coverage: `h1dden instruction`, `s y s t e m prompt` 계열은 별도 `INJ_OBFUSCATED_INJECTION_ATTEMPT`로 보존되며 v2 기준 F1 1.000이다.
 
 ## Validation
 

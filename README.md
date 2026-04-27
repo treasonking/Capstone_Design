@@ -33,12 +33,12 @@
 ## 벤치마크 요약 (예시)
 
 <!-- BENCHMARK:START -->
-> `evaluation/sample_dataset.json` (총 40건: PII 20, Injection 20) 기준 결과
+> `evaluation/sample_dataset.json` (총 61건: PII 27, Injection 34) 기준 결과
 
 | 항목 | Precision | Recall | F1 | TP / FP / FN |
 |---|---:|---:|---:|---:|
-| PII Detection | 0.941 | 0.941 | 0.941 | 16 / 1 / 1 |
-| Prompt Injection Detection | 1.000 | 0.938 | 0.968 | 15 / 0 / 1 |
+| PII Detection | 1.000 | 1.000 | 1.000 | 20 / 0 / 0 |
+| Prompt Injection Detection | 1.000 | 1.000 | 1.000 | 49 / 0 / 0 |
 <!-- BENCHMARK:END -->
 
 ## 아키텍처
@@ -209,10 +209,17 @@ docker compose up --build
 ## 문서
 
 - 정책/threshold/reason code 가이드: `docs/policy_guide.md`
+- reason_code 정의/legacy alias/FP-FN 기준: `docs/reason_codes.md`
 - 발표 시연 시나리오: `docs/demo_scenario.md`
 - 로그 저장/미저장 정책: `docs/logging_policy.md`
 - 평가 방법/지표 정의: `docs/evaluation_method.md`
 - 팀 역할/산출물 정리: `docs/team_roles.md`
+
+## Detection Policy Documents
+
+- `docs/reason_codes.md`: PII/Prompt Injection reason_code 정의, legacy alias, FP/FN 기준
+- `docs/policy_guide.md`: 정책 모드(`ALLOW`/`WARN`/`MASK`/`BLOCK`)와 `policy.yaml` 설명
+- `reports/evaluation_report.md`: 최신 정량 평가 결과와 reason_code별 성능
 
 ## 한계와 향후 개선
 

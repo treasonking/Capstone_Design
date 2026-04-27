@@ -27,3 +27,36 @@ def test_detect_pii_rrn_space_variant() -> None:
     text = "주민번호 형식 테스트: 900101 1234567"
     results = detect_pii(text)
     assert any(item.reason_code == ReasonCode.PII_RRN_DETECTED.value for item in results)
+
+
+def test_version_number_not_detected_as_account() -> None:
+    text = "버전은 01.10.2026으로 업데이트되었습니다."
+    results = detect_pii(text)
+    reason_codes = {item.reason_code for item in results}
+
+    assert ReasonCode.PII_ACCOUNT_DETECTED.value not in reason_codes
+    assert ReasonCode.PII_PHONE_DETECTED.value not in reason_codes
+
+
+def test_math_expression_not_detected_as_account() -> None:
+    text = "1234-5678-90을 계산식 예제로 사용했다."
+    results = detect_pii(text)
+    reason_codes = {item.reason_code for item in results}
+
+    assert ReasonCode.PII_ACCOUNT_DETECTED.value not in reason_codes
+
+
+def test_approval_number_not_detected_as_account() -> None:
+    text = "승인번호 1234-5678-90을 확인해주세요."
+    results = detect_pii(text)
+    reason_codes = {item.reason_code for item in results}
+
+    assert ReasonCode.PII_ACCOUNT_DETECTED.value not in reason_codes
+
+
+def test_account_with_bank_context_detected() -> None:
+    text = "입금 계좌는 국민은행 123456-78-901234입니다."
+    results = detect_pii(text)
+    reason_codes = {item.reason_code for item in results}
+
+    assert ReasonCode.PII_ACCOUNT_DETECTED.value in reason_codes

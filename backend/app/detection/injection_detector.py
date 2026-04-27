@@ -7,6 +7,33 @@ from .models import DetectionResult, DetectorType
 from .reason_codes import ReasonCode
 
 
+EMIT_LEGACY_REASON_CODES = True
+_ZERO_WIDTH_PATTERN = re.compile(r"[\u200b\u200c\u200d\ufeff]")
+_LEET_MAP = str.maketrans(
+    {
+        "0": "o",
+        "1": "i",
+        "3": "e",
+        "4": "a",
+        "5": "s",
+        "7": "t",
+        "@": "a",
+        "$": "s",
+    }
+)
+_OBFUSCATABLE_KEYWORDS = (
+    "system",
+    "prompt",
+    "hidden",
+    "instruction",
+    "instructions",
+    "rule",
+    "rules",
+    "admin",
+    "developer",
+)
+
+
 @dataclass(frozen=True, slots=True)
 class _CategoryRule:
     score: int
@@ -36,6 +63,7 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "숨은 지침",
             "hidden instruction",
             "hidden prompt",
+            "hidden rules",
             "system prompt",
             "system instruction",
         ),
@@ -57,6 +85,10 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "internal policy",
             "policy priority",
             "instruction hierarchy",
+            "filter criteria",
+            "필터링 기준",
+            "내부 룰셋",
+            "내부 응답 규칙",
         ),
     ),
     "EXFILTRATION_VERB": _CategoryRule(
@@ -100,6 +132,7 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
         4,
         (
             "디버그 도우미",
+            "디버그 모드",
             "보안 점검자",
             "보안 감사관",
             "개발자 모드",
@@ -118,6 +151,8 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
         (
             "정책 무시",
             "제한 해제",
+            "제한 없이",
+            "필터 없이",
             "필터 우회",
             "검열 우회",
             "보안 정책 비활성화",
@@ -129,6 +164,7 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "bypass",
             "bypass policy",
             "ignore safety",
+            "safety filter off",
             "jailbreak",
             "unrestricted",
             "disable safety",
@@ -164,11 +200,19 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "숨 겨 진 지 침",
             "s y s t e m",
             "p r o m p t",
+            "h i d d e n",
+            "i n s t r u c t i o n",
             "sys-tem",
             "prom-pt",
+            "h-i-d-d-e-n",
+            "s-y-s-t-e-m",
+            "p-r-o-m-p-t",
             "ru1e",
             "r u l e",
             "h1dden",
+            "1nstruction",
+            "syst3m",
+            "pr0mpt",
         ),
     ),
 }
@@ -212,17 +256,53 @@ _SAFE_CONTEXT_TERMS = (
 
 
 def _normalize(text: str) -> str:
-    normalized = text.lower().strip()
-    normalized = re.sub(r"[\u2010-\u2015-]", "-", normalized)
+    return _normalize_obfuscated_text(text)
+
+
+def _normalize_obfuscated_text(text: str) -> str:
+    """Normalize obfuscated prompt injection terms for detection only."""
+    normalized = _ZERO_WIDTH_PATTERN.sub("", text.lower().strip())
+    normalized = re.sub(r"[\u2010-\u2015_./\\|]+", "-", normalized)
+    normalized = normalized.translate(_LEET_MAP)
+
+    for keyword in _OBFUSCATABLE_KEYWORDS:
+        separated_keyword = r"\b" + r"[\s-]*".join(re.escape(ch) for ch in keyword) + r"\b"
+        normalized = re.sub(separated_keyword, keyword, normalized)
+
     normalized = normalized.replace("sys-tem", "system")
     normalized = normalized.replace("prom-pt", "prompt")
-    normalized = normalized.replace("ru1e", "rule")
-    normalized = normalized.replace("h1dden", "hidden")
-    normalized = re.sub(r"\bs\s*y\s*s\s*t\s*e\s*m\b", "system", normalized)
-    normalized = re.sub(r"\bp\s*r\s*o\s*m\s*p\s*t\b", "prompt", normalized)
-    normalized = re.sub(r"\br\s*u\s*l\s*e\b", "rule", normalized)
+    normalized = normalized.replace("hid-den", "hidden")
+    normalized = normalized.replace("ruie", "rule")
+    normalized = re.sub(r"[^0-9a-z가-힣]+", " ", normalized)
     normalized = re.sub(r"\s+", " ", normalized)
     return normalized
+
+
+def _has_obfuscation_signal(original: str, normalized: str) -> bool:
+    """Return true when original text shows prompt-injection obfuscation signals."""
+    lowered = original.lower()
+    if _ZERO_WIDTH_PATTERN.search(original):
+        return True
+    if any(token in lowered for token in ("h1dden", "1nstruction", "syst3m", "pr0mpt", "ru1e")):
+        return True
+    if re.search(
+        r"\b(?:s[\s\-]+y[\s\-]+s[\s\-]+t[\s\-]+e[\s\-]+m|"
+        r"p[\s\-]+r[\s\-]+o[\s\-]+m[\s\-]+p[\s\-]+t|"
+        r"h[\s\-]+i[\s\-]+d[\s\-]+d[\s\-]+e[\s\-]+n|"
+        r"r[\s\-]+u[\s\-]+l[\s\-]+e)\b",
+        lowered,
+    ):
+        return True
+
+    risky_terms = (
+        "hidden instruction",
+        "hidden prompt",
+        "hidden rules",
+        "system prompt",
+        "ignore previous",
+        "internal rule",
+    )
+    return any(term in normalized for term in risky_terms) and not any(term in lowered for term in risky_terms)
 
 
 def _find_category_matches(text: str) -> dict[str, list[str]]:
@@ -232,6 +312,17 @@ def _find_category_matches(text: str) -> dict[str, list[str]]:
         if category_terms:
             matches[category] = sorted(set(category_terms), key=category_terms.index)
     return matches
+
+
+def _merge_matches(*match_sets: dict[str, list[str]]) -> dict[str, list[str]]:
+    merged: dict[str, list[str]] = {}
+    for matches in match_sets:
+        for category, terms in matches.items():
+            merged.setdefault(category, [])
+            for term in terms:
+                if term not in merged[category]:
+                    merged[category].append(term)
+    return merged
 
 
 def _has_mixed_language_risk(text: str, matches: dict[str, list[str]]) -> bool:
@@ -279,9 +370,20 @@ def detect_injection(text: str) -> list[DetectionResult]:
     if not text:
         return []
 
+    raw_normalized = text.lower().strip()
     normalized = _normalize(text)
-    matches = _find_category_matches(normalized)
+    raw_matches = _find_category_matches(raw_normalized)
+    normalized_matches = _find_category_matches(normalized)
+    matches = _merge_matches(raw_matches, normalized_matches)
     matched_categories = set(matches)
+    obfuscated = _has_obfuscation_signal(text, normalized)
+
+    if obfuscated and (
+        normalized_matches
+        or {"SYSTEM_PROMPT", "RULE_DISCLOSURE", "DIRECT_OVERRIDE", "POLICY_BYPASS"} & matched_categories
+    ):
+        matched_categories.add("OBFUSCATED")
+        matches.setdefault("OBFUSCATED", ["normalized-obfuscated-pattern"])
 
     if _is_safe_learning_context(normalized, matched_categories):
         return []
@@ -309,9 +411,12 @@ def detect_injection(text: str) -> list[DetectionResult]:
         if category in matched_categories and category in matches:
             results.append(_result(category, reason_code, matches[category], float(score)))
 
-    for category, reason_code in _LEGACY_REASON_CODES.items():
-        if category in matched_categories and category in matches:
-            results.append(_result(category, reason_code, matches[category], float(score)))
+    # Legacy aliases are emitted for backward compatibility with v1 tests and reports.
+    # New docs and policy should prefer the non-legacy reason codes for reporting.
+    if EMIT_LEGACY_REASON_CODES:
+        for category, reason_code in _LEGACY_REASON_CODES.items():
+            if category in matched_categories and category in matches:
+                results.append(_result(category, reason_code, matches[category], float(score)))
 
     if "EXFILTRATION_VERB" in matched_categories and not results:
         return []

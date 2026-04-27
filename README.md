@@ -158,7 +158,7 @@ pip install ".[dev]"
 python -m pytest -q
 ```
 
-3. 평가 실행
+3. 평가 실행(powershell)
 
 ```bash
 python -m evaluation.evaluate \
@@ -181,7 +181,7 @@ python -m uvicorn backend.app.api.proxy:app --host 127.0.0.1 --port 8000 --reloa
 5. Mock LLM 실행
 
 ```bash
-python tools/mock_llm.py
+python -m uvicorn tools.mock_llm:app --host 127.0.0.1 --port 8001 --app-dir .
 ```
 
 ## 배포/시연 편의

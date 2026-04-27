@@ -92,6 +92,38 @@ def _eligible_detections(
     return eligible
 
 
+def _injection_audit(eligible: list[tuple[DetectionResult, PolicyRule]]) -> dict[str, Any] | None:
+    injection_items = [
+        item
+        for item in eligible
+        if item[0].detector_type.value == "INJECTION"
+    ]
+    if not injection_items:
+        return None
+
+    injection_detections = [detection for detection, _rule in injection_items]
+    matched_terms: list[str] = []
+    for detection in injection_detections:
+        matched_terms.extend(
+            term.strip()
+            for term in detection.matched_text.split(",")
+            if term.strip()
+        )
+    winning_detection, winning_rule = max(
+        injection_items,
+        key=lambda item: (item[1].priority, _ACTION_WEIGHT[item[1].action]),
+    )
+
+    return {
+        "detector": "PROMPT_INJECTION",
+        "score": max(detection.score for detection in injection_detections),
+        "action": winning_rule.action.value,
+        "reason_code": winning_detection.reason_code,
+        "matched_categories": sorted({detection.category for detection in injection_detections}),
+        "matched_terms": sorted(set(matched_terms)),
+    }
+
+
 def evaluate_policy(
     text: str,
     detections: list[DetectionResult],
@@ -132,6 +164,9 @@ def evaluate_policy(
         "applied_rule_count": len(reasons),
         "winning_reason": winner_detection.reason_code,
     }
+    injection_audit = _injection_audit(eligible)
+    if injection_audit is not None:
+        audit_summary["prompt_injection"] = injection_audit
 
     return PolicyDecision(
         final_action=winner_rule.action,

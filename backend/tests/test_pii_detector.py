@@ -60,3 +60,32 @@ def test_account_with_bank_context_detected() -> None:
     reason_codes = {item.reason_code for item in results}
 
     assert ReasonCode.PII_ACCOUNT_DETECTED.value in reason_codes
+
+
+def test_korean_international_phone_with_parentheses_detected() -> None:
+    cases = [
+        "+82 (10) 2222 3333",
+        "+82 (10) 2222-3333",
+        "+82-(10)-2222-3333",
+        "+82 10 2222 3333",
+        "0082 (10) 2222 3333",
+        "+82 (010) 2222 3333",
+    ]
+
+    for text in cases:
+        results = detect_pii(text)
+        reason_codes = {item.reason_code for item in results}
+        assert ReasonCode.PII_PHONE_DETECTED.value in reason_codes
+
+
+def test_korean_international_phone_false_positive_guards() -> None:
+    cases = [
+        "+82 version 10.2222.3333",
+        "+82 (10) 2026 release",
+        "+82 (10) is country and area explanation",
+    ]
+
+    for text in cases:
+        results = detect_pii(text)
+        reason_codes = {item.reason_code for item in results}
+        assert ReasonCode.PII_PHONE_DETECTED.value not in reason_codes

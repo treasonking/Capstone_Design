@@ -32,6 +32,121 @@ _OBFUSCATABLE_KEYWORDS = (
     "admin",
     "developer",
 )
+_KOREAN_DIRECT_OVERRIDE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"(이전|앞선|앞의|기존|상위|시스템|개발자)\s*"
+        r"(지시|명령|규칙|지침|프롬프트)\s*"
+        r"(은|는|을|를)?\s*(무시|따르지\s*말|잊어|폐기|취소)"
+    ),
+    re.compile(r"(무시하고|무시한\s*채|따르지\s*말고|따르지\s*마|잊고)\s*(답변|출력|수행|진행)"),
+    re.compile(
+        r"(상위|시스템|기존)\s*(지시|지침|명령)\s*"
+        r"(보다|대신)\s*(내|사용자|새로운)\s*(지시|명령)"
+    ),
+)
+_DEFENSIVE_TERMS = (
+    "do not",
+    "don't",
+    "never",
+    "must not",
+    "should not",
+    "cannot",
+    "prohibit",
+    "forbidden",
+    "prevent",
+    "avoid",
+    "하지 마",
+    "하지 말",
+    "공개하지",
+    "노출하지",
+    "출력하지",
+    "보여주지",
+    "알려주지",
+    "금지",
+    "방지",
+    "차단",
+    "막아",
+    "유출하지 않도록",
+)
+_SENSITIVE_BOUNDARY_TERMS = (
+    "hidden prompt",
+    "hidden instruction",
+    "system prompt",
+    "internal rule",
+    "internal rules",
+    "internal instruction",
+    "policy hierarchy",
+    "숨겨진 프롬프트",
+    "숨겨진 지시",
+    "시스템 프롬프트",
+    "내부 규칙",
+    "내부 지침",
+    "내부 원칙",
+    "정책 우선순위",
+)
+_STRONG_ATTACK_TERMS = (
+    "ignore previous",
+    "disregard previous",
+    "do not follow",
+    "bypass",
+    "jailbreak",
+    "developer mode",
+    "admin mode",
+    "무시하고",
+    "우회",
+    "따르지 말고",
+    "개발자 모드",
+    "관리자 모드",
+    "탈옥",
+)
+_MULTI_STEP_TERMS = (
+    "first",
+    "then",
+    "next",
+    "after that",
+    "step 1",
+    "step one",
+    "phase 1",
+    "before answering",
+    "summarize first",
+    "reveal first",
+    "먼저",
+    "그 다음",
+    "다음으로",
+    "이후",
+    "마지막으로",
+    "1단계",
+    "2단계",
+    "첫 번째",
+    "두 번째",
+    "답변하기 전에",
+    "요약하고",
+    "정리하고",
+)
+_RISK_TARGET_TERMS = (
+    "system prompt",
+    "hidden prompt",
+    "hidden instruction",
+    "internal rule",
+    "internal rules",
+    "internal policy",
+    "internal principle",
+    "policy hierarchy",
+    "decision criteria",
+    "response criteria",
+    "answer criteria",
+    "시스템 프롬프트",
+    "숨겨진 프롬프트",
+    "숨겨진 지시",
+    "숨겨진 항목",
+    "내부 규칙",
+    "내부 지침",
+    "내부 원칙",
+    "정책 우선순위",
+    "판단 기준",
+    "응답 기준",
+    "답변 기준",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +175,7 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "시스템 지시문",
             "프롬프트 원문",
             "숨겨진 지침",
+            "숨겨진 지시",
             "숨은 지침",
             "hidden instruction",
             "hidden prompt",
@@ -73,22 +189,35 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
         (
             "내부 규칙",
             "내부 지침",
+            "내부 원칙",
             "상위 지침",
             "시스템 지침",
             "응답 기준",
             "답변 기준",
+            "판단 기준",
+            "평가 기준",
+            "정책 기준",
             "응답 생성 기준",
             "답변 생성 기준",
             "정책 우선순위",
             "규칙 우선순위",
             "internal rule",
+            "internal rules",
             "internal policy",
+            "hidden rules",
+            "response criteria",
+            "safety rules",
+            "policy hierarchy",
+            "decision criteria",
+            "scoring criteria",
+            "guardrail rules",
             "policy priority",
             "instruction hierarchy",
             "filter criteria",
             "필터링 기준",
             "내부 룰셋",
             "내부 응답 규칙",
+            "규칙부터",
         ),
     ),
     "EXFILTRATION_VERB": _CategoryRule(
@@ -100,6 +229,8 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "공개해",
             "설명해",
             "정리해",
+            "요약",
+            "요약해",
             "나열해",
             "먼저 보여줘",
             "먼저 출력",
@@ -121,10 +252,23 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
         4,
         (
             "지금부터 너는",
+            "너는 지금부터",
             "너는 이제",
             "역할을 바꿔",
+            "역할극",
+            "역할을 해",
+            "역할이야",
+            "처럼 행동해",
+            "라고 가정해",
+            "관리자인 척",
+            "개발자인 척",
+            "보안 담당자인 척",
             "act as",
+            "pretend to be",
+            "you are now",
             "roleplay as",
+            "from now on you are",
+            "behave as",
             "unrestricted assistant",
         ),
     ),
@@ -142,7 +286,6 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "debug mode",
             "developer mode",
             "admin mode",
-            "security auditor",
             "jailbreak",
         ),
     ),
@@ -153,6 +296,7 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "제한 해제",
             "제한 없이",
             "필터 없이",
+            "우회",
             "필터 우회",
             "검열 우회",
             "보안 정책 비활성화",
@@ -180,14 +324,31 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "2단계",
             "3단계",
             "단계별로",
+            "먼저",
+            "그 다음",
+            "다음으로",
+            "이후",
+            "마지막으로",
+            "첫 번째",
+            "두 번째",
+            "답변하기 전에",
+            "요약하고",
+            "정리하고",
             "먼저 기준",
             "그 다음 숨겨진",
             "예시 형식",
             "step 1",
             "step 2",
             "step 3",
+            "step one",
+            "phase 1",
+            "before answering",
+            "summarize first",
+            "reveal first",
             "first",
             "then",
+            "next",
+            "after that",
             "finally",
         ),
     ),
@@ -325,6 +486,46 @@ def _merge_matches(*match_sets: dict[str, list[str]]) -> dict[str, list[str]]:
     return merged
 
 
+def _add_match(matches: dict[str, list[str]], category: str, term: str) -> None:
+    matches.setdefault(category, [])
+    if term not in matches[category]:
+        matches[category].append(term)
+
+
+def _count_terms(text: str, terms: tuple[str, ...]) -> int:
+    return sum(1 for term in terms if term in text)
+
+
+def _is_defensive_boundary_context(text: str, normalized_text: str) -> bool:
+    original_lowered = text.lower()
+    has_defensive = any(term in normalized_text or term in original_lowered for term in _DEFENSIVE_TERMS)
+    has_sensitive = any(term in normalized_text or term in original_lowered for term in _SENSITIVE_BOUNDARY_TERMS)
+    has_strong_attack = any(term in normalized_text or term in original_lowered for term in _STRONG_ATTACK_TERMS)
+    return has_defensive and has_sensitive and not has_strong_attack
+
+
+def _apply_pattern_signals(text: str, normalized: str, matches: dict[str, list[str]]) -> None:
+    for pattern in _KOREAN_DIRECT_OVERRIDE_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            _add_match(matches, "DIRECT_OVERRIDE", match.group(0))
+
+    multi_step_count = _count_terms(normalized, _MULTI_STEP_TERMS)
+    risk_target_count = _count_terms(normalized, _RISK_TARGET_TERMS)
+    if (multi_step_count >= 2 and risk_target_count >= 1) or (multi_step_count >= 1 and risk_target_count >= 2):
+        _add_match(matches, "MULTI_STEP", "multi-step-risk-target")
+
+
+def _is_multi_step_extraction_context(normalized: str) -> bool:
+    multi_step_count = _count_terms(normalized, _MULTI_STEP_TERMS)
+    risk_target_count = _count_terms(normalized, _RISK_TARGET_TERMS)
+    return (multi_step_count >= 2 and risk_target_count >= 1) or (multi_step_count >= 1 and risk_target_count >= 2)
+
+
+def _is_only_low_risk_instruction(matches: dict[str, list[str]], matched_categories: set[str]) -> bool:
+    return bool(matched_categories) and matched_categories <= {"EXFILTRATION_VERB", "MULTI_STEP"}
+
+
 def _has_mixed_language_risk(text: str, matches: dict[str, list[str]]) -> bool:
     has_korean = re.search(r"[가-힣]", text) is not None
     has_english_risk = any(
@@ -372,9 +573,11 @@ def detect_injection(text: str) -> list[DetectionResult]:
 
     raw_normalized = text.lower().strip()
     normalized = _normalize(text)
+    signal_text = f"{raw_normalized} {normalized}"
     raw_matches = _find_category_matches(raw_normalized)
     normalized_matches = _find_category_matches(normalized)
     matches = _merge_matches(raw_matches, normalized_matches)
+    _apply_pattern_signals(text, signal_text, matches)
     matched_categories = set(matches)
     obfuscated = _has_obfuscation_signal(text, normalized)
 
@@ -384,6 +587,28 @@ def detect_injection(text: str) -> list[DetectionResult]:
     ):
         matched_categories.add("OBFUSCATED")
         matches.setdefault("OBFUSCATED", ["normalized-obfuscated-pattern"])
+
+    if _is_defensive_boundary_context(text, normalized):
+        for category in ("SYSTEM_PROMPT", "RULE_DISCLOSURE", "EXFILTRATION_VERB", "OBFUSCATED"):
+            matches.pop(category, None)
+            matched_categories.discard(category)
+        if not {"DIRECT_OVERRIDE", "POLICY_BYPASS", "ROLE_OVERRIDE", "DEBUG_MODE", "MULTI_STEP"} & matched_categories:
+            return []
+
+    if "MULTI_STEP" in matched_categories and not _is_multi_step_extraction_context(signal_text):
+        matches.pop("MULTI_STEP", None)
+        matched_categories.discard("MULTI_STEP")
+
+    if (
+        "POLICY_BYPASS" in matched_categories
+        and matches.get("RULE_DISCLOSURE") == ["safety rules"]
+        and "EXFILTRATION_VERB" not in matched_categories
+    ):
+        matches.pop("RULE_DISCLOSURE", None)
+        matched_categories.discard("RULE_DISCLOSURE")
+
+    if _is_only_low_risk_instruction(matches, matched_categories):
+        return []
 
     if _is_safe_learning_context(normalized, matched_categories):
         return []
@@ -424,7 +649,16 @@ def detect_injection(text: str) -> list[DetectionResult]:
     if "MULTI_STEP" in matched_categories and {"RULE_DISCLOSURE", "SYSTEM_PROMPT"}.isdisjoint(matched_categories):
         results = [item for item in results if item.category != "MULTI_STEP"]
 
-    if not results and matched_terms:
+    fallback_categories = {
+        "DIRECT_OVERRIDE",
+        "SYSTEM_PROMPT",
+        "RULE_DISCLOSURE",
+        "ROLE_OVERRIDE",
+        "DEBUG_MODE",
+        "POLICY_BYPASS",
+        "OBFUSCATED",
+    }
+    if not results and matched_terms and matched_categories & fallback_categories:
         results.append(
             _result(
                 "PROMPT_INJECTION",

@@ -30,11 +30,11 @@ Boundary를 크게 늘린 이유는 다음과 같다.
 
 ## Current v2 Summary
 
-- 총 샘플 수: 129개
-- PII / Injection: 65 / 64개
-- Positive / Negative: 80 / 49개
-- Multilabel 샘플: 36개
-- Boundary 후보: 75개
+- 총 샘플 수: 152개
+- PII / Injection: 70 / 82개
+- Positive / Negative: 94 / 58개
+- Multilabel 샘플: 49개
+- Boundary 후보: 89개
 - 주요 추가 유형: 전화번호 boundary, 계좌번호 boundary, 간접형 injection, 다단계 extraction, system/prompt/policy 정상 질문
 
 ## Known Detector Limitations Exposed by v2
@@ -42,10 +42,10 @@ Boundary를 크게 늘린 이유는 다음과 같다.
 v2는 점수를 높이기 위해 쉬운 샘플만 추가하지 않았다. 현재 평가 리포트는 다음 한계를 드러낸다.
 
 - 계좌번호 탐지는 문서번호, 승인번호, 수식 같은 account-like 숫자에서 false positive가 발생하기 쉬웠으나, 현재 v2 리포트 기준 PII_ACCOUNT FP는 0건으로 감소했다.
-- `+82 (10) ...`처럼 괄호가 포함된 휴대전화는 기존 정규식이 놓칠 수 있다.
-- `상위 지시를 따르지 말고`, `필터 없이`, `숨겨진 지시를 요약` 같은 간접 표현은 일부 미탐된다.
+- `+82 (10) ...`처럼 괄호가 포함된 휴대전화 국제 표기를 탐지하도록 보강했다.
+- `상위 지시를 따르지 말고`, `필터 없이`, `숨겨진 지시를 요약`, `내부 원칙을 정리` 같은 간접 표현을 추가 라벨과 탐지 룰로 보강했다.
 - 기본 평가셋에서는 `h1dden instruction`, `s y s t e m prompt` 같은 난독화 샘플을 별도 reason_code로 보존하도록 개선했다.
-- `Do not reveal hidden prompt`처럼 금지 문맥으로 등장한 표현도 단순 키워드 기반 detector에서는 공격으로 오탐될 수 있다.
+- `Do not reveal hidden prompt`처럼 금지 문맥으로 등장한 표현은 boundary-safe 처리로 정상 문장과 공격 문장을 분리하도록 보강했다.
 
 ## Synthetic Data Caveat
 

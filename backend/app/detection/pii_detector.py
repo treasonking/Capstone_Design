@@ -17,6 +17,22 @@ _PII_PATTERNS: list[tuple[str, str, re.Pattern[str], float]] = [
         0.95,
     ),
     (
+        "PHONE_INTL",
+        ReasonCode.PII_PHONE_DETECTED.value,
+        re.compile(
+            r"(?<!\d)"
+            r"(?:\+82|0082)"
+            r"[\s\-\.]*"
+            r"(?:\(?0?1[016789]\)?|\(?10\)?)"
+            r"[\s\-\.]*"
+            r"\d{3,4}"
+            r"[\s\-\.]*"
+            r"\d{4}"
+            r"(?!\d)"
+        ),
+        0.9,
+    ),
+    (
         "PHONE",
         ReasonCode.PII_PHONE_DETECTED.value,
         re.compile(
@@ -145,8 +161,11 @@ def detect_pii(text: str) -> list[DetectionResult]:
             matched_text = match.group(0)
 
             match_context = _context(text, match.start(), match.end())
-            if category == "PHONE" and not _valid_phone_candidate(match_context):
-                continue
+            if category.startswith("PHONE"):
+                if _overlaps(results, match.start(), match.end()):
+                    continue
+                if not _valid_phone_candidate(match_context):
+                    continue
 
             if category == "ACCOUNT":
                 if _overlaps(results, match.start(), match.end()):

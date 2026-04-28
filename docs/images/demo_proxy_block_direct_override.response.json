@@ -1,0 +1,49 @@
+{
+  "request_id": "d99f4860-3e4c-4845-96dd-b18897f5880e",
+  "action": "BLOCK",
+  "reason_code": "INJ_DIRECT_OVERRIDE_ATTEMPT",
+  "reasons": [
+    "INJ_DIRECT_OVERRIDE_ATTEMPT",
+    "INJ_IGNORE_PREVIOUS_INSTRUCTIONS",
+    "INJ_RULE_DISCLOSURE_ATTEMPT"
+  ],
+  "input_action": "BLOCK",
+  "output_action": null,
+  "content": null,
+  "audit_summary": {
+    "timestamp_utc": "2026-04-28T16:42:02.729946+09:00",
+    "latency_ms": 18.66,
+    "input": {
+      "total_detections": 3,
+      "detector_counts": {
+        "INJECTION": 3
+      },
+      "applied_rule_count": 3,
+      "winning_reason": "INJ_DIRECT_OVERRIDE_ATTEMPT",
+      "prompt_injection": {
+        "detector": "PROMPT_INJECTION",
+        "score": 11.0,
+        "action": "BLOCK",
+        "reason_code": "INJ_DIRECT_OVERRIDE_ATTEMPT",
+        "matched_categories": [
+          "DIRECT_OVERRIDE",
+          "RULE_DISCLOSURE"
+        ],
+        "matched_terms": [
+          "(이전|앞의|앞선|기존|상위|위|앞서\\s*말한)\\s*(지시|명령|규칙|지침|정책|제한)[은는을를]?\\s*(무시|따르지\\s*말|따르지\\s*않|넘어가|제외)",
+          "내부 규칙",
+          "상위 지시를 따르지 말"
+        ]
+      },
+      "action": "BLOCK",
+      "reasons": [
+        "INJ_DIRECT_OVERRIDE_ATTEMPT",
+        "INJ_IGNORE_PREVIOUS_INSTRUCTIONS",
+        "INJ_RULE_DISCLOSURE_ATTEMPT"
+      ],
+      "pii_detected": false,
+      "injection_detected": true
+    },
+    "output": null
+  }
+}

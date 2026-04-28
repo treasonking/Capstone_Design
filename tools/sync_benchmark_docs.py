@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import json
 from pathlib import Path
 import sys
@@ -34,7 +35,9 @@ def _render_block(dataset_path: Path) -> str:
     return "\n".join(
         [
             START_MARKER,
-            f"> `{dataset_path.as_posix()}` (총 {dataset_size}건: PII {pii_count}, Injection {inj_count}) 기준 결과",
+            f"> `{dataset_path.as_posix()}` (총 {dataset_size}건) 기준 결과  ",
+            f"> 생성 시각: {datetime.now().isoformat(timespec='seconds')}  ",
+            "> 상세 결과: `reports/evaluation_report.md`",
             "",
             "| 항목 | Precision | Recall | F1 | TP / FP / FN |",
             "|---|---:|---:|---:|---:|",

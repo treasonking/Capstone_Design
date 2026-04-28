@@ -1,0 +1,41 @@
+{
+  "request_id": "42edfdee-57c4-43fd-9579-c8023b9947b7",
+  "action": "MASK",
+  "reason_code": "PII_PHONE_DETECTED",
+  "reasons": [
+    "PII_PHONE_DETECTED",
+    "SAFE_INPUT"
+  ],
+  "input_action": "MASK",
+  "output_action": "ALLOW",
+  "content": "[Mock 응답] 입력 받음: 내 번호는 010-22**-**** 입니다. 요약해줘....",
+  "audit_summary": {
+    "timestamp_utc": "2026-04-28T16:42:04.460074+09:00",
+    "latency_ms": 327.95,
+    "input": {
+      "total_detections": 1,
+      "detector_counts": {
+        "PII": 1
+      },
+      "applied_rule_count": 1,
+      "winning_reason": "PII_PHONE_DETECTED",
+      "action": "MASK",
+      "reasons": [
+        "PII_PHONE_DETECTED"
+      ],
+      "pii_detected": true,
+      "injection_detected": false
+    },
+    "output": {
+      "total_detections": 0,
+      "detector_counts": {},
+      "applied_rule_count": 0,
+      "action": "ALLOW",
+      "reasons": [
+        "SAFE_INPUT"
+      ],
+      "pii_detected": false,
+      "injection_detected": false
+    }
+  }
+}

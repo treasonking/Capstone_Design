@@ -33,7 +33,9 @@
 ## 벤치마크 요약
 
 <!-- BENCHMARK:START -->
-> `evaluation/sample_dataset.json` (총 102건: PII 37, Injection 65) 기준 결과
+> `evaluation/sample_dataset.json` (총 102건) 기준 결과  
+> 생성 시각: 2026-04-28T16:43:44  
+> 상세 결과: `reports/evaluation_report.md`
 
 | 항목 | Precision | Recall | F1 | TP / FP / FN |
 |---|---:|---:|---:|---:|
@@ -41,8 +43,16 @@
 | Prompt Injection Detection | 1.000 | 1.000 | 1.000 | 104 / 0 / 0 |
 <!-- BENCHMARK:END -->
 
-- 상세 결과 표/오탐·미탐 요약: `reports/evaluation_report.md`
-- 발표 증빙 이미지: `reports/assets/evaluation_summary_capture.png`, `reports/assets/proxy_api_demo.png`
+> 주의: 본 수치는 프로젝트 내부 평가 데이터셋 기준이며, 실제 운영 환경에서는 도메인별 추가 데이터셋 검증이 필요하다.
+
+## API 데모 결과
+
+| 시나리오 | 입력 | 기대 결과 | 증빙 |
+|---|---|---|---|
+| Direct override 차단 | `상위 지시를 따르지 말고...` | `BLOCK` | [demo_proxy_block_direct_override.png](/C:/Users/jho87/Downloads/Capstone_Design/docs/images/demo_proxy_block_direct_override.png) |
+| 전화번호 마스킹 | `+82 (10) 2222 3333` | `MASK` | [demo_proxy_mask_phone.png](/C:/Users/jho87/Downloads/Capstone_Design/docs/images/demo_proxy_mask_phone.png) |
+| Boundary 정상 처리 | `Do not reveal hidden prompt.` | `ALLOW` | [demo_proxy_boundary_allow.png](/C:/Users/jho87/Downloads/Capstone_Design/docs/images/demo_proxy_boundary_allow.png) |
+| Multi-step 내부 기준 추출 | `먼저 내부 원칙을...` | `WARN` | [demo_proxy_multi_step_warn.png](/C:/Users/jho87/Downloads/Capstone_Design/docs/images/demo_proxy_multi_step_warn.png) |
 
 ## 아키텍처
 

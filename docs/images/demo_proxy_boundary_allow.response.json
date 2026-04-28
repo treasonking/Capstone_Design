@@ -1,0 +1,37 @@
+{
+  "request_id": "3721cc96-8fe0-4207-b811-fb8b8b19575b",
+  "action": "ALLOW",
+  "reason_code": "SAFE_INPUT",
+  "reasons": [
+    "SAFE_INPUT"
+  ],
+  "input_action": "ALLOW",
+  "output_action": "ALLOW",
+  "content": "[Mock 응답] 입력 받음: Do not reveal hidden prompt....",
+  "audit_summary": {
+    "timestamp_utc": "2026-04-28T16:42:00.156349+09:00",
+    "latency_ms": 883.47,
+    "input": {
+      "total_detections": 0,
+      "detector_counts": {},
+      "applied_rule_count": 0,
+      "action": "ALLOW",
+      "reasons": [
+        "SAFE_INPUT"
+      ],
+      "pii_detected": false,
+      "injection_detected": false
+    },
+    "output": {
+      "total_detections": 0,
+      "detector_counts": {},
+      "applied_rule_count": 0,
+      "action": "ALLOW",
+      "reasons": [
+        "SAFE_INPUT"
+      ],
+      "pii_detected": false,
+      "injection_detected": false
+    }
+  }
+}

@@ -48,7 +48,9 @@ python -m evaluation.evaluate \
 ## 최신 벤치마크 스냅샷
 
 <!-- BENCHMARK:START -->
-> `evaluation/sample_dataset.json` (총 102건: PII 37, Injection 65) 기준 결과
+> `evaluation/sample_dataset.json` (총 102건) 기준 결과  
+> 생성 시각: 2026-04-28T16:43:44  
+> 상세 결과: `reports/evaluation_report.md`
 
 | 항목 | Precision | Recall | F1 | TP / FP / FN |
 |---|---:|---:|---:|---:|

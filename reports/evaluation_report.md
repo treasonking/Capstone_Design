@@ -82,10 +82,10 @@
 
 - Dataset size 102 기준 요약 캡처: `reports/assets/evaluation_summary_capture.png`
 
-![Evaluation Summary Capture](/C:/Users/jho87/Downloads/Capstone_Design/reports/assets/evaluation_summary_capture.png)
+![Evaluation Summary Capture](assets/evaluation_summary_capture.png)
 
 ### Proxy API Demo Snapshot
 
 - 실제 프록시 API 응답 캡처: `reports/assets/proxy_api_demo.png`
 
-![Proxy API Demo Capture](/C:/Users/jho87/Downloads/Capstone_Design/reports/assets/proxy_api_demo.png)
+![Proxy API Demo Capture](assets/proxy_api_demo.png)

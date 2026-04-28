@@ -81,7 +81,7 @@
 
 ### Evaluation Snapshot
 
-- Dataset size 102 기준 요약 캡처: `reports/assets/evaluation_summary_capture.png`
+- Dataset size 108 기준 요약 캡처: `reports/assets/evaluation_summary_capture.png`
 
 ![Evaluation Summary Capture](assets/evaluation_summary_capture.png)
 

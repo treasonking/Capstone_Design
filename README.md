@@ -1,7 +1,7 @@
 # Capstone Design - LLM Security Proxy MVP
 
-동사무소/행정복지센터 환경에서 LLM 사용 시 개인정보 유출과 프롬프트 인젝션을 줄이기 위한
-정책/탐지 중심 MVP 코드베이스입니다.
+동사무소/행정복지센터 등 주민 행정 업무 환경에서 LLM 사용 시 주민등록번호, 주소, 연락처,
+민원정보 유출과 프롬프트 인젝션을 줄이기 위한 정책/탐지 중심 MVP 코드베이스입니다.
 
 ## 프로젝트 배경
 
@@ -72,8 +72,9 @@ flowchart LR
 ## 핵심 범위
 
 - YAML 정책 기반 판정 (`ALLOW`, `WARN`, `MASK`, `BLOCK`)
-- PII 탐지 (이메일, 휴대전화, 주소, 주민번호, 계좌 유사 패턴)
-- Prompt Injection 탐지 (한/영 룰 기반)
+- PII 탐지: 이메일, 휴대전화, 주민등록번호, 계좌 유사 패턴, 주소
+- 동사무소/행정복지센터 업무 시나리오: 전입신고, 주민등록등본, 복지 신청, 민원 접수
+- Prompt Injection 탐지: direct override, system prompt extraction, obfuscation, boundary, multi-step
 - 마스킹 유틸 및 정책 엔진
 - 정량 평가(precision/recall/F1)
 - 프록시 입력/출력 단계 정책 적용

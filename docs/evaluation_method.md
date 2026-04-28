@@ -48,12 +48,12 @@ python -m evaluation.evaluate \
 ## 최신 벤치마크 스냅샷
 
 <!-- BENCHMARK:START -->
-> `evaluation/sample_dataset.json` (총 84건: PII 32, Injection 52) 기준 결과
+> `evaluation/sample_dataset.json` (총 102건: PII 37, Injection 65) 기준 결과
 
 | 항목 | Precision | Recall | F1 | TP / FP / FN |
 |---|---:|---:|---:|---:|
-| PII Detection | 1.000 | 1.000 | 1.000 | 23 / 0 / 0 |
-| Prompt Injection Detection | 1.000 | 1.000 | 1.000 | 80 / 0 / 0 |
+| PII Detection | 1.000 | 1.000 | 1.000 | 26 / 0 / 0 |
+| Prompt Injection Detection | 1.000 | 1.000 | 1.000 | 104 / 0 / 0 |
 <!-- BENCHMARK:END -->
 
 자동 갱신:

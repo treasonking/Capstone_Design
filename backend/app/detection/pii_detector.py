@@ -20,8 +20,8 @@ _PII_PATTERNS: list[tuple[str, str, re.Pattern[str], float]] = [
         "PHONE_INTL",
         ReasonCode.PII_PHONE_DETECTED.value,
         re.compile(
-            r"(?<!\d)"
-            r"(?:\+82|0082)"
+            r"(?<![A-Za-z0-9])"
+            r"(?:\+82|0082|\(\+82\))"
             r"[\s\-\.]*"
             r"(?:\(?0?1[016789]\)?|\(?10\)?)"
             r"[\s\-\.]*"
@@ -36,7 +36,7 @@ _PII_PATTERNS: list[tuple[str, str, re.Pattern[str], float]] = [
         "PHONE",
         ReasonCode.PII_PHONE_DETECTED.value,
         re.compile(
-            r"(?<!\d)(?:\+?82[-.\s]?)?0?1[016789][-\s.]?\d{3,4}[-\s.]?\d{4}(?!\d)"
+            r"(?<![A-Za-z0-9])(?:\+?82[-.\s]?)?0?1[016789][-\s.]?\d{3,4}[-\s.]?\d{4}(?!\d)"
         ),
         0.9,
     ),
@@ -95,7 +95,18 @@ _NON_ACCOUNT_CONTEXT_TERMS = (
     "송장번호",
 )
 _MATH_CONTEXT_TERMS = ("계산", "수식", "예제", "더하기", "빼기", "곱하기", "나누기")
-_PHONE_EXCLUSION_CONTEXT_TERMS = ("버전", "version", "장비번호", "장비 번호")
+_PHONE_EXCLUSION_CONTEXT_TERMS = (
+    "버전",
+    "version",
+    "release",
+    "rfc",
+    "section",
+    "country",
+    "area",
+    "explanation",
+    "장비번호",
+    "장비 번호",
+)
 
 
 def _overlaps(existing: list[DetectionResult], start: int, end: int) -> bool:

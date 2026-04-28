@@ -39,6 +39,16 @@ class ProxyResponse(BaseModel):
     audit_summary: dict[str, Any] = Field(default_factory=dict)
 
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatCompletionRequest(BaseModel):
+    model: str = "mock"
+    messages: list[ChatMessage]
+
+
 def _merge_detections(text: str) -> list[DetectionResult]:
     return sorted(
         [*detect_pii(text), *detect_injection(text)],
@@ -190,3 +200,40 @@ async def proxy_chat(req: ProxyRequest):
             "output": {**output_decision.audit_summary, **output_audit},
         },
     )
+
+
+@app.post("/v1/chat/completions")
+async def chat_completions(req: ChatCompletionRequest):
+    """OpenAI-compatible mock endpoint for local policy demos."""
+    started = time.perf_counter()
+    timestamp_utc = datetime.now(timezone.utc).isoformat()
+    request_id = str(uuid.uuid4())
+    user_messages = [message.content for message in req.messages if message.role == "user"]
+    message = "\n".join(user_messages)
+
+    detections = _merge_detections(message)
+    decision = evaluate_policy(message, detections, POLICY_PATH)
+    action = decision.final_action.value
+    audit = _audit_from_detections(action, decision.reasons, detections)
+    content = None if action == PolicyAction.BLOCK.value else decision.masked_text or "mock response"
+
+    return {
+        "id": request_id,
+        "object": "chat.completion",
+        "model": req.model,
+        "action": action,
+        "reason_code": _resolve_reason_code(decision.reasons),
+        "reasons": decision.reasons,
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": content},
+                "finish_reason": "content_filter" if action == PolicyAction.BLOCK.value else "stop",
+            }
+        ],
+        "audit_summary": {
+            "timestamp_utc": timestamp_utc,
+            "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+            "input": {**decision.audit_summary, **audit},
+        },
+    }

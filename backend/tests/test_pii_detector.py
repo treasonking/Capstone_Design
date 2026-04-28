@@ -70,6 +70,7 @@ def test_korean_international_phone_with_parentheses_detected() -> None:
         "+82 10 2222 3333",
         "0082 (10) 2222 3333",
         "+82 (010) 2222 3333",
+        "(+82) 10 2222 3333",
     ]
 
     for text in cases:
@@ -83,6 +84,8 @@ def test_korean_international_phone_false_positive_guards() -> None:
         "+82 version 10.2222.3333",
         "+82 (10) 2026 release",
         "+82 (10) is country and area explanation",
+        "RFC 822 section 10.2222.3333",
+        "v10.2222.3333",
     ]
 
     for text in cases:

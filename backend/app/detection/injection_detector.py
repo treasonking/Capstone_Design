@@ -92,9 +92,14 @@ _STRONG_ATTACK_TERMS = (
     "jailbreak",
     "developer mode",
     "admin mode",
+    "but show",
+    "show it to me",
+    "to me only",
     "무시하고",
     "우회",
     "따르지 말고",
+    "따르지 않고",
+    "알지만",
     "개발자 모드",
     "관리자 모드",
     "탈옥",
@@ -105,6 +110,7 @@ _MULTI_STEP_TERMS = (
     "next",
     "after that",
     "step 1",
+    "step 2",
     "step one",
     "phase 1",
     "before answering",
@@ -138,6 +144,7 @@ _RISK_TARGET_TERMS = (
     "시스템 프롬프트",
     "숨겨진 프롬프트",
     "숨겨진 지시",
+    "숨겨진 지침",
     "숨겨진 항목",
     "내부 규칙",
     "내부 지침",
@@ -152,7 +159,8 @@ _RISK_TARGET_TERMS = (
 @dataclass(frozen=True, slots=True)
 class _CategoryRule:
     score: int
-    terms: tuple[str, ...]
+    terms: tuple[str, ...] = ()
+    patterns: tuple[re.Pattern[str], ...] = ()
 
 
 _CATEGORY_RULES: dict[str, _CategoryRule] = {
@@ -163,9 +171,23 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "이전 지시를 무시",
             "위 지시 무시",
             "기존 규칙 무시",
+            "앞서 말한 제한",
             "ignore previous",
             "ignore all previous",
             "do not follow previous",
+        ),
+        (
+            re.compile(
+                r"(이전|앞의|앞선|기존|상위|위|앞서\s*말한)\s*"
+                r"(지시|명령|규칙|지침|정책|제한)[은는을를]?\s*"
+                r"(무시|따르지\s*말|따르지\s*않|넘어가|제외)",
+                re.IGNORECASE,
+            ),
+            re.compile(
+                r"(무시하고|무시한\s*채|따르지\s*말고|따르지\s*않고)\s*"
+                r"(계속|답변|출력|진행|알려|보여)",
+                re.IGNORECASE,
+            ),
         ),
     ),
     "SYSTEM_PROMPT": _CategoryRule(
@@ -190,11 +212,14 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "내부 규칙",
             "내부 지침",
             "내부 원칙",
+            "내부 기준",
             "상위 지침",
             "시스템 지침",
             "응답 기준",
             "답변 기준",
             "판단 기준",
+            "숨겨진 기준",
+            "비공개 기준",
             "평가 기준",
             "정책 기준",
             "응답 생성 기준",
@@ -204,6 +229,10 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "internal rule",
             "internal rules",
             "internal policy",
+            "internal principle",
+            "internal criteria",
+            "hidden criteria",
+            "hidden policy",
             "hidden rules",
             "response criteria",
             "safety rules",
@@ -351,6 +380,10 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "after that",
             "finally",
         ),
+        (
+            re.compile(r"(먼저|1단계|첫\s*번째).{0,40}(그\s*다음|다음으로|이후|2단계|두\s*번째)", re.IGNORECASE),
+            re.compile(r"\b(first|step\s*1)\b.{0,80}\b(then|next|step\s*2)\b", re.IGNORECASE),
+        ),
     ),
     "OBFUSCATED": _CategoryRule(
         2,
@@ -470,6 +503,9 @@ def _find_category_matches(text: str) -> dict[str, list[str]]:
     matches: dict[str, list[str]] = {}
     for category, rule in _CATEGORY_RULES.items():
         category_terms = [term for term in rule.terms if term.lower() in text]
+        for pattern in rule.patterns:
+            if pattern.search(text):
+                category_terms.append(pattern.pattern)
         if category_terms:
             matches[category] = sorted(set(category_terms), key=category_terms.index)
     return matches
@@ -619,6 +655,8 @@ def detect_injection(text: str) -> list[DetectionResult]:
     score = sum(_CATEGORY_RULES[category].score for category in matches)
     if "MIXED_LANGUAGE" in matched_categories:
         score += 1
+    if "MULTI_STEP" in matched_categories and {"RULE_DISCLOSURE", "SYSTEM_PROMPT"} & matched_categories:
+        score = max(score, 5)
     if _has_hard_block(matched_categories):
         score = max(score, 5)
 

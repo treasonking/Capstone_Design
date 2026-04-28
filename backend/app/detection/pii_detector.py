@@ -41,6 +41,22 @@ _PII_PATTERNS: list[tuple[str, str, re.Pattern[str], float]] = [
         0.9,
     ),
     (
+        "ADDRESS",
+        ReasonCode.PII_ADDRESS_DETECTED.value,
+        re.compile(
+            r"(?<![A-Za-z0-9])"
+            r"(?:(?:서울|부산|대구|인천|광주|대전|울산|세종)"
+            r"(?:특별시|광역시|특별자치시)?|"
+            r"[가-힣]+(?:도|특별자치도))?\s*"
+            r"(?:[가-힣]+시\s+)?"
+            r"[가-힣]+(?:시|군|구)\s+"
+            r"[가-힣0-9]+(?:읍|면|동|가|로|길)\s+"
+            r"\d+(?:-\d+)?(?:번지)?"
+            r"(?!\d)"
+        ),
+        0.88,
+    ),
+    (
         "RRN",
         ReasonCode.PII_RRN_DETECTED.value,
         re.compile(r"(?<!\d)\d{6}[-\s]?[1-4]\d{6}(?!\d)"),
@@ -107,6 +123,31 @@ _PHONE_EXCLUSION_CONTEXT_TERMS = (
     "장비번호",
     "장비 번호",
 )
+_ADDRESS_CONTEXT_TERMS = (
+    "주소",
+    "소재지",
+    "거주지",
+    "배송지",
+    "주민등록",
+    "전입",
+    "행정복지센터",
+    "주민센터",
+    "동사무소",
+    "민원",
+)
+_ADDRESS_EXCLUSION_CONTEXT_TERMS = (
+    "지역 설명",
+    "예시 지역",
+    "행정구역",
+    "관할",
+    "일대",
+    "부근",
+    "근처",
+    "방향",
+    "위치 설명",
+    "지도",
+)
+_ADDRESS_TOKEN_SUFFIXES = ("로", "길", "동", "가", "읍", "면")
 
 
 def _overlaps(existing: list[DetectionResult], start: int, end: int) -> bool:
@@ -161,6 +202,23 @@ def _valid_phone_candidate(context: str) -> bool:
     return not _has_any(context, _PHONE_EXCLUSION_CONTEXT_TERMS)
 
 
+def _valid_address_candidate(raw: str, context: str) -> bool:
+    normalized = re.sub(r"\s+", " ", raw).strip()
+    parts = normalized.split(" ")
+    if len(parts) < 3:
+        return False
+    if not any(char.isdigit() for char in normalized):
+        return False
+    if _has_any(context, _ADDRESS_EXCLUSION_CONTEXT_TERMS):
+        return False
+
+    tail = parts[-2] if len(parts) >= 2 else ""
+    has_detail_suffix = any(tail.endswith(suffix) for suffix in _ADDRESS_TOKEN_SUFFIXES)
+    has_lot_number = bool(re.search(r"\d+(?:-\d+)?(?:번지)?$", parts[-1]))
+    has_address_context = _has_any(context, _ADDRESS_CONTEXT_TERMS)
+    return has_detail_suffix and has_lot_number and (has_address_context or len(parts) >= 4)
+
+
 def detect_pii(text: str) -> list[DetectionResult]:
     """Detect common PII patterns with deterministic regex rules."""
     if not text:
@@ -176,6 +234,12 @@ def detect_pii(text: str) -> list[DetectionResult]:
                 if _overlaps(results, match.start(), match.end()):
                     continue
                 if not _valid_phone_candidate(match_context):
+                    continue
+
+            if category == "ADDRESS":
+                if _overlaps(results, match.start(), match.end()):
+                    continue
+                if not _valid_address_candidate(matched_text, match_context):
                     continue
 
             if category == "ACCOUNT":

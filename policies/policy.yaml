@@ -10,6 +10,11 @@ rules:
     priority: 70
     threshold: 0.7
     description: "Mask phone number for privacy."
+  PII_ADDRESS_DETECTED:
+    action: MASK
+    priority: 82
+    threshold: 0.8
+    description: "Mask address details that frequently appear in civil-service requests."
   PII_RRN_DETECTED:
     action: BLOCK
     priority: 100

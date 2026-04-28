@@ -1,12 +1,12 @@
 # Capstone Design - LLM Security Proxy MVP
 
-공공기관/사내망 환경에서 LLM 사용 시 개인정보 유출과 프롬프트 인젝션을 줄이기 위한
+동사무소/행정복지센터 환경에서 LLM 사용 시 개인정보 유출과 프롬프트 인젝션을 줄이기 위한
 정책/탐지 중심 MVP 코드베이스입니다.
 
 ## 프로젝트 배경
 
-- 내부 업무에서 생성형 AI 활용 수요는 빠르게 늘고 있음
-- 동시에 PII 유출, 시스템 프롬프트 노출, 정책 우회 시도 위험이 존재
+- 동사무소/행정복지센터 민원 업무에서도 생성형 AI 활용 수요는 빠르게 늘고 있음
+- 동시에 주민등록번호, 주소, 연락처, 민원번호, 세대정보 유출과 정책 우회 시도 위험이 존재
 - 본 프로젝트는 사용자와 LLM 사이에 보안 프록시를 두어 위험을 통제하는 것을 목표로 함
 
 ## 문제 정의
@@ -33,13 +33,13 @@
 ## 벤치마크 요약
 
 <!-- BENCHMARK:START -->
-> `evaluation/sample_dataset.json` (총 102건) 기준 결과  
-> 생성 시각: 2026-04-28T16:43:44  
+> `evaluation/sample_dataset.json` (총 108건) 기준 결과  
+> 생성 시각: 2026-04-28T21:29:43  
 > 상세 결과: `reports/evaluation_report.md`
 
 | 항목 | Precision | Recall | F1 | TP / FP / FN |
 |---|---:|---:|---:|---:|
-| PII Detection | 1.000 | 1.000 | 1.000 | 26 / 0 / 0 |
+| PII Detection | 1.000 | 1.000 | 1.000 | 29 / 0 / 0 |
 | Prompt Injection Detection | 1.000 | 1.000 | 1.000 | 104 / 0 / 0 |
 <!-- BENCHMARK:END -->
 
@@ -72,7 +72,7 @@ flowchart LR
 ## 핵심 범위
 
 - YAML 정책 기반 판정 (`ALLOW`, `WARN`, `MASK`, `BLOCK`)
-- PII 탐지 (이메일, 휴대전화, 주민번호, 계좌 유사 패턴)
+- PII 탐지 (이메일, 휴대전화, 주소, 주민번호, 계좌 유사 패턴)
 - Prompt Injection 탐지 (한/영 룰 기반)
 - 마스킹 유틸 및 정책 엔진
 - 정량 평가(precision/recall/F1)
@@ -119,6 +119,13 @@ evaluation/
    (`audit_summary`에는 `timestamp_utc`, `latency_ms`, `pii_detected`, `injection_detected` 요약 포함)
 
 ## API 예시
+
+## 행정복지센터 민원 위험 시나리오
+
+- 주민등록번호가 포함된 민원 초안 요약 요청
+- 상세 주소와 연락처가 포함된 전입/복지 신청 문서 정리 요청
+- 민원번호, 세대정보, 계좌번호가 섞인 상담 기록 정리 요청
+- 내부 응대 기준이나 숨겨진 시스템 지침을 추출하려는 프롬프트 인젝션 시도
 
 ### 요청 예시
 

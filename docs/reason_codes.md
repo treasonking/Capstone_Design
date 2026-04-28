@@ -32,12 +32,15 @@
 |---|---|---|---|---|---|---|
 | `PII_EMAIL_DETECTED` | PII | MASK | MEDIUM | 이메일 주소 탐지 | `user@example.com` | 낮음 |
 | `PII_PHONE_DETECTED` | PII | MASK | MEDIUM | 휴대전화 번호 탐지 | `010-1234-5678`, `+82 (10) 2222 3333` | 중간 |
+| `PII_ADDRESS_DETECTED` | PII | MASK | MEDIUM | 한국 주소 상세 표기 탐지 | `대전광역시 동구 대학로 62`, `대전 서구 둔산동 100-1` | 중간 |
 | `PII_RRN_DETECTED` | PII | BLOCK | HIGH | 주민등록번호 탐지 | `900101-1234567` | 낮음 |
 | `PII_ACCOUNT_DETECTED` | PII | WARN | MEDIUM | 계좌번호 후보 탐지 | `국민은행 123456-78-901234` | 높음 |
 
 `PII_ACCOUNT_DETECTED`는 문서번호, 승인번호, 수식, 버전 번호와 충돌할 수 있어 문맥 기반 validation을 적용한다.
 
 `PII_PHONE_DETECTED`는 국내 휴대전화 표기와 한국 국제 표기를 함께 지원한다. 지원 예시는 `+82 (10) 2222 3333`, `+82 (10) 2222-3333`, `0082 (10) 2222 3333`, `(+82) 10 2222 3333`이다. 단, `+82 (10) is country and area explanation` 같은 설명 문장은 전화번호로 보지 않는다.
+
+`PII_ADDRESS_DETECTED`는 행정복지센터/동사무소 민원 맥락에서 자주 등장하는 상세 주소를 탐지한다. `대전광역시 동구 대학로 62`, `서울특별시 강남구 테헤란로 123`, `대전 서구 둔산동 100-1` 같은 도로명/동명 + 번지 조합을 대상으로 하며, `대전광역시 동구는 민원 수요가 많은 지역입니다.` 같은 단순 지역 설명 문장은 주소로 보지 않는다.
 
 ## 5. Prompt Injection Reason Codes
 

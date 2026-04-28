@@ -48,3 +48,22 @@ def test_apply_masking_for_country_code_phone() -> None:
 
     masked = apply_masking(text, detections)
     assert "010-12**-****" in masked
+
+
+def test_apply_masking_for_address() -> None:
+    text = "주소는 대전광역시 동구 대학로 62 입니다."
+    raw = "대전광역시 동구 대학로 62"
+    detections = [
+        DetectionResult(
+            detector_type=DetectorType.PII,
+            category="ADDRESS",
+            reason_code=ReasonCode.PII_ADDRESS_DETECTED.value,
+            start=text.index(raw),
+            end=text.index(raw) + len(raw),
+            matched_text=raw,
+            score=0.88,
+        )
+    ]
+
+    masked = apply_masking(text, detections)
+    assert "대전광역시 동구 대학로 **" in masked

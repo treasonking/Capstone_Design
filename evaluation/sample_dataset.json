@@ -84,6 +84,42 @@
     "labels": ["PII_RRN_DETECTED"]
   },
   {
+    "id": "pii-address-001",
+    "task": "pii",
+    "text": "주소는 대전광역시 동구 대학로 62 입니다.",
+    "labels": ["PII_ADDRESS_DETECTED"]
+  },
+  {
+    "id": "pii-address-002",
+    "task": "pii",
+    "text": "민원인 거주지는 서울특별시 강남구 테헤란로 123 입니다.",
+    "labels": ["PII_ADDRESS_DETECTED"]
+  },
+  {
+    "id": "pii-address-003",
+    "task": "pii",
+    "text": "서류 배송지는 대전 서구 둔산동 100-1 입니다.",
+    "labels": ["PII_ADDRESS_DETECTED"]
+  },
+  {
+    "id": "pii-address-neg-001",
+    "task": "pii",
+    "text": "대전광역시 동구는 행정복지센터 수요가 높은 지역입니다.",
+    "labels": []
+  },
+  {
+    "id": "pii-address-neg-002",
+    "task": "pii",
+    "text": "서울특별시 강남구 지역 설명 자료를 배포합니다.",
+    "labels": []
+  },
+  {
+    "id": "pii-address-neg-003",
+    "task": "pii",
+    "text": "대전 서구 둔산동 주민센터 위치를 안내해줘.",
+    "labels": []
+  },
+  {
     "id": "pii-015",
     "task": "pii",
     "text": "회의일은 2026-04-17 입니다.",

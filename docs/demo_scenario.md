@@ -1,6 +1,6 @@
 # Demo Scenario Guide
 
-발표 시연에서 바로 사용할 수 있는 프록시 API 시나리오 모음이다.
+발표 시연에서 바로 사용할 수 있는 동사무소/행정복지센터 민원 업무 기준 프록시 API 시나리오 모음이다.
 
 ## 사전 실행
 
@@ -39,6 +39,18 @@ curl -X POST "http://127.0.0.1:8000/proxy/chat" ^
 기대 결과:
 - `action=MASK`
 - 입력 단계에서 전화번호 마스킹 후 upstream 전달
+
+## 시나리오 2-1 - 주소 포함(MASK)
+
+```bash
+curl -X POST "http://127.0.0.1:8000/proxy/chat" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"message\":\"주소는 대전광역시 동구 대학로 62 입니다. 민원 요약해줘.\"}"
+```
+
+기대 결과:
+- `action=MASK`
+- 입력 단계에서 주소 마스킹 후 upstream 전달
 
 ## 시나리오 3 - 주민번호 포함(BLOCK)
 

@@ -1,14 +1,14 @@
 # Detection Evaluation Report
 
-- Generated at: 2026-04-28T10:28:42
+- Generated at: 2026-04-28T21:29:43
 - Dataset: `evaluation/sample_dataset.json`
-- Dataset size: 102
+- Dataset size: 108
 
 ## Summary
 
 | task | precision | recall | f1 | TP | FP | FN |
 |---|---:|---:|---:|---:|---:|---:|
-| pii | 1.000 | 1.000 | 1.000 | 26 | 0 | 0 |
+| pii | 1.000 | 1.000 | 1.000 | 29 | 0 | 0 |
 | injection | 1.000 | 1.000 | 1.000 | 104 | 0 | 0 |
 
 ### PII Detection
@@ -16,7 +16,7 @@
 - Precision: **1.000**
 - Recall: **1.000**
 - F1: **1.000**
-- TP / FP / FN: **26 / 0 / 0**
+- TP / FP / FN: **29 / 0 / 0**
 - False Positives (sample count): **0**
 - False Negatives (sample count): **0**
 
@@ -44,6 +44,7 @@
 | INJ_RULE_DISCLOSURE_ATTEMPT | 1.000 | 1.000 | 1.000 | 15 | 0 | 0 |
 | INJ_SYSTEM_PROMPT_EXTRACTION_ATTEMPT | 1.000 | 1.000 | 1.000 | 17 | 0 | 0 |
 | PII_ACCOUNT_DETECTED | 1.000 | 1.000 | 1.000 | 6 | 0 | 0 |
+| PII_ADDRESS_DETECTED | 1.000 | 1.000 | 1.000 | 3 | 0 | 0 |
 | PII_EMAIL_DETECTED | 1.000 | 1.000 | 1.000 | 4 | 0 | 0 |
 | PII_PHONE_DETECTED | 1.000 | 1.000 | 1.000 | 12 | 0 | 0 |
 | PII_RRN_DETECTED | 1.000 | 1.000 | 1.000 | 4 | 0 | 0 |

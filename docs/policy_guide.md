@@ -11,6 +11,7 @@
 
 - `PII_EMAIL_DETECTED`: 이메일 주소 패턴 탐지
 - `PII_PHONE_DETECTED`: 휴대전화(하이픈/공백/국가코드 포함) 패턴 탐지
+- `PII_ADDRESS_DETECTED`: 한국 주소 상세 표기(시/군/구 + 도로명/동명 + 번지) 탐지
 - `PII_RRN_DETECTED`: 주민등록번호 형식 탐지
 - `PII_ACCOUNT_DETECTED`: 계좌번호 유사 패턴 탐지
 
@@ -36,7 +37,7 @@
 
 현재 기본 정책 예시:
 
-- 이메일/전화번호: `MASK`
+- 이메일/전화번호/주소: `MASK`
 - 주민등록번호: `BLOCK`
 - 계좌 유사 패턴: `WARN`
 - Injection 주요 패턴: `BLOCK`

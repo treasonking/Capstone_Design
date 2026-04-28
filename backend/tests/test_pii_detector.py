@@ -62,6 +62,32 @@ def test_account_with_bank_context_detected() -> None:
     assert ReasonCode.PII_ACCOUNT_DETECTED.value in reason_codes
 
 
+def test_detect_pii_korean_address_variants() -> None:
+    cases = [
+        "주소는 대전광역시 동구 대학로 62 입니다.",
+        "민원인 거주지는 서울특별시 강남구 테헤란로 123 입니다.",
+        "대전 서구 둔산동 100-1로 서류를 보내주세요.",
+    ]
+
+    for text in cases:
+        results = detect_pii(text)
+        reason_codes = {item.reason_code for item in results}
+        assert ReasonCode.PII_ADDRESS_DETECTED.value in reason_codes
+
+
+def test_detect_pii_address_false_positive_guards() -> None:
+    cases = [
+        "대전광역시 동구는 민원 수요가 많은 지역입니다.",
+        "서울특별시 강남구 지역 설명 자료를 검토했다.",
+        "대전 서구 둔산동 주민센터 위치를 안내해줘.",
+    ]
+
+    for text in cases:
+        results = detect_pii(text)
+        reason_codes = {item.reason_code for item in results}
+        assert ReasonCode.PII_ADDRESS_DETECTED.value not in reason_codes
+
+
 def test_korean_international_phone_with_parentheses_detected() -> None:
     cases = [
         "+82 (10) 2222-3333",

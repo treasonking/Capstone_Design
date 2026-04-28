@@ -2,7 +2,7 @@
 
 ## 목적
 
-탐지 품질을 정량적으로 비교하기 위해 PII 탐지와 Prompt Injection 탐지를 분리 평가한다.
+동사무소/행정복지센터 민원 업무 맥락에서 탐지 품질을 정량적으로 비교하기 위해 PII 탐지와 Prompt Injection 탐지를 분리 평가한다.
 
 ## 데이터셋
 
@@ -48,13 +48,13 @@ python -m evaluation.evaluate \
 ## 최신 벤치마크 스냅샷
 
 <!-- BENCHMARK:START -->
-> `evaluation/sample_dataset.json` (총 102건) 기준 결과  
-> 생성 시각: 2026-04-28T16:43:44  
+> `evaluation/sample_dataset.json` (총 108건) 기준 결과  
+> 생성 시각: 2026-04-28T21:29:43  
 > 상세 결과: `reports/evaluation_report.md`
 
 | 항목 | Precision | Recall | F1 | TP / FP / FN |
 |---|---:|---:|---:|---:|
-| PII Detection | 1.000 | 1.000 | 1.000 | 26 / 0 / 0 |
+| PII Detection | 1.000 | 1.000 | 1.000 | 29 / 0 / 0 |
 | Prompt Injection Detection | 1.000 | 1.000 | 1.000 | 104 / 0 / 0 |
 <!-- BENCHMARK:END -->
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from backend.app.detection.models import DetectionResult
 from backend.app.detection.reason_codes import ReasonCode
 
@@ -38,11 +40,29 @@ def _mask_account(value: str) -> str:
     return f"{digits[:2]}{'*' * max(len(digits) - 4, 6)}{digits[-2:]}"
 
 
+def _mask_address(value: str) -> str:
+    normalized = " ".join(value.split())
+    parts = normalized.split(" ")
+    if len(parts) < 2:
+        return "*" * len(value)
+    if len(parts) == 2:
+        return f"{parts[0]} {'*' * len(parts[1])}"
+    masked_tail = []
+    for index, part in enumerate(parts):
+        if index < len(parts) - 1:
+            masked_tail.append(part)
+            continue
+        masked_tail.append(re.sub(r"\d", "*", part))
+    return " ".join(masked_tail)
+
+
 def _mask_by_reason(reason_code: str, value: str) -> str:
     if reason_code == ReasonCode.PII_EMAIL_DETECTED.value:
         return _mask_email(value)
     if reason_code == ReasonCode.PII_PHONE_DETECTED.value:
         return _mask_phone(value)
+    if reason_code == ReasonCode.PII_ADDRESS_DETECTED.value:
+        return _mask_address(value)
     if reason_code == ReasonCode.PII_RRN_DETECTED.value:
         return _mask_rrn(value)
     if reason_code == ReasonCode.PII_ACCOUNT_DETECTED.value:

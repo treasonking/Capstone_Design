@@ -150,7 +150,7 @@ function New-EvaluationImage {
     $cardBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::White)
     $g.FillRectangle($cardBrush, 60, 60, 1480, 780)
     $g.DrawString("Capstone Detection Evaluation", $titleFont, $darkBrush, 100, 100)
-    $g.DrawString("Dataset size 102 evidence snapshot", $subFont, $mutedBrush, 100, 148)
+    $g.DrawString("Dataset size $datasetSize evidence snapshot", $subFont, $mutedBrush, 100, 148)
     $g.DrawString("Generated: $generatedAt", $smallFont, $mutedBrush, 100, 178)
 
     Draw-Badge -Graphics $g -Text "Dataset $datasetSize" -Font $smallFont -X 1180 -Y 100 -FillColor ([System.Drawing.Color]::FromArgb(225, 240, 255)) -TextColor ([System.Drawing.Color]::FromArgb(17, 88, 164))
@@ -199,7 +199,7 @@ function New-EvaluationImage {
 
     $g.DrawString("Evidence Notes", $sectionFont, $darkBrush, 100, 560)
     [void](Draw-TextBlock -Graphics $g -Text "Source: reports/evaluation_report.md generated from evaluation/sample_dataset.json. This capture is intended for presentation and report appendix use." -Font $subFont -Brush $mutedBrush -X 100 -Y 610 -MaxWidth 1320 -LineHeight 28)
-    [void](Draw-TextBlock -Graphics $g -Text "Focused risk areas in the full markdown report: INJ_OBFUSCATED_INJECTION_ATTEMPT and PII_ACCOUNT_DETECTED. Both remain at 1.000 precision, recall, and F1 in the 102-sample benchmark." -Font $subFont -Brush $mutedBrush -X 100 -Y 680 -MaxWidth 1320 -LineHeight 28)
+    [void](Draw-TextBlock -Graphics $g -Text "Focused risk areas in the full markdown report: INJ_OBFUSCATED_INJECTION_ATTEMPT and PII_ACCOUNT_DETECTED. Both remain at 1.000 precision, recall, and F1 in the current benchmark." -Font $subFont -Brush $mutedBrush -X 100 -Y 680 -MaxWidth 1320 -LineHeight 28)
 
     Save-Bitmap -Context $ctx -Path $OutputPath
 

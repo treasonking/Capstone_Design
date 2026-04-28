@@ -30,7 +30,7 @@
   - `pip install .`
   - 개발/테스트 포함: `pip install ".[dev]"`
 
-## 벤치마크 요약 (예시)
+## 벤치마크 요약
 
 <!-- BENCHMARK:START -->
 > `evaluation/sample_dataset.json` (총 102건: PII 37, Injection 65) 기준 결과
@@ -40,6 +40,9 @@
 | PII Detection | 1.000 | 1.000 | 1.000 | 26 / 0 / 0 |
 | Prompt Injection Detection | 1.000 | 1.000 | 1.000 | 104 / 0 / 0 |
 <!-- BENCHMARK:END -->
+
+- 상세 결과 표/오탐·미탐 요약: `reports/evaluation_report.md`
+- 발표 증빙 이미지: `reports/assets/evaluation_summary_capture.png`, `reports/assets/proxy_api_demo.png`
 
 ## 아키텍처
 

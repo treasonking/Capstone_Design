@@ -64,7 +64,6 @@ def test_account_with_bank_context_detected() -> None:
 
 def test_korean_international_phone_with_parentheses_detected() -> None:
     cases = [
-        "+82 (10) 2222 3333",
         "+82 (10) 2222-3333",
         "+82-(10)-2222-3333",
         "+82 10 2222 3333",
@@ -77,6 +76,14 @@ def test_korean_international_phone_with_parentheses_detected() -> None:
         results = detect_pii(text)
         reason_codes = {item.reason_code for item in results}
         assert ReasonCode.PII_PHONE_DETECTED.value in reason_codes
+
+
+def test_korean_international_phone_plus82_parentheses_detected() -> None:
+    text = "담당자 연락처는 +82 (10) 2222 3333 입니다."
+    results = detect_pii(text)
+    reason_codes = {item.reason_code for item in results}
+
+    assert ReasonCode.PII_PHONE_DETECTED.value in reason_codes
 
 
 def test_korean_international_phone_false_positive_guards() -> None:

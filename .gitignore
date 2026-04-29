@@ -6,3 +6,5 @@ evaluation/evaluation_report.md
 venv/
 .env
 *.egg-info/
+logs/
+

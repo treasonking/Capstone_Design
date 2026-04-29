@@ -1,12 +1,9 @@
-version: "3.9"
-
 services:
   mock-llm:
-    image: python:3.10-slim
-    working_dir: /app
-    volumes:
-      - ./:/app
-    command: python tools/mock_llm.py
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m uvicorn tools.mock_llm:app --host 0.0.0.0 --port 8001
     ports:
       - "8001:8001"
 
@@ -21,4 +18,3 @@ services:
       - "8000:8000"
     depends_on:
       - mock-llm
-

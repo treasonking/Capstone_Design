@@ -36,6 +36,37 @@ class UpstreamRequestError(Exception):
         self.status_code = status_code
 
 
+def get_upstream_config_summary() -> dict[str, Any]:
+    return {
+        "default_provider": DEFAULT_PROVIDER,
+        "default_timeout_seconds": DEFAULT_TIMEOUT_SECONDS,
+        "default_retry_count": DEFAULT_RETRY_COUNT,
+        "providers": {
+            "mock": {
+                "enabled": True,
+                "url": _PROVIDER_URLS["mock"],
+                "default_model": "mock",
+            },
+            "openai": {
+                "enabled": bool(os.getenv("OPENAI_API_KEY", "")),
+                "url": _PROVIDER_URLS["openai"],
+                "default_model": DEFAULT_OPENAI_MODEL,
+            },
+            "azure": {
+                "enabled": bool(os.getenv("AZURE_OPENAI_API_KEY", "")) and bool(_PROVIDER_URLS["azure"]),
+                "url": _PROVIDER_URLS["azure"],
+                "default_model": DEFAULT_AZURE_DEPLOYMENT or DEFAULT_OPENAI_MODEL,
+                "api_version": DEFAULT_AZURE_API_VERSION,
+            },
+            "ollama": {
+                "enabled": bool(_PROVIDER_URLS["ollama"]),
+                "url": _PROVIDER_URLS["ollama"],
+                "default_model": DEFAULT_OLLAMA_MODEL,
+            },
+        },
+    }
+
+
 def _split_model_target(model: str) -> tuple[str, str]:
     raw_model = (model or "").strip()
     if ":" in raw_model:

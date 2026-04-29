@@ -8,7 +8,9 @@ from fastapi import FastAPI
 
 from backend.app.detection.models import PolicyAction
 from backend.app.engine.policy_engine import evaluate_policy
+from backend.app.schemas.admin import AdminStatsResponse, ReasonCodeStatItem, RecentBlockItem
 from backend.app.schemas.proxy import ChatCompletionRequest, ProxyRequest, ProxyResponse
+from backend.app.services.audit_service import get_admin_stats, get_reason_code_stats, get_recent_block_history
 from backend.app.services.proxy_service import (
     POLICY_PATH,
     _audit_from_detections,
@@ -23,6 +25,21 @@ app = FastAPI()
 @app.post("/proxy/chat")
 async def proxy_chat(req: ProxyRequest) -> ProxyResponse:
     return await process_proxy_chat(req)
+
+
+@app.get("/admin/stats")
+async def admin_stats() -> AdminStatsResponse:
+    return AdminStatsResponse(**get_admin_stats())
+
+
+@app.get("/admin/recent-blocks")
+async def admin_recent_blocks(limit: int = 10) -> list[RecentBlockItem]:
+    return [RecentBlockItem(**entry) for entry in get_recent_block_history(limit=limit)]
+
+
+@app.get("/admin/reason-codes")
+async def admin_reason_codes() -> list[ReasonCodeStatItem]:
+    return [ReasonCodeStatItem(**entry) for entry in get_reason_code_stats()]
 
 
 @app.post("/v1/chat/completions")

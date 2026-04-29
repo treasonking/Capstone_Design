@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -42,3 +43,59 @@ def save_audit_log(
     log_entry = _build_log_entry(request_id, user_id, audit_summary)
     with LOG_FILE.open("a", encoding="utf-8") as file:
         file.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+
+
+def read_audit_logs(limit: int | None = None) -> list[dict[str, Any]]:
+    if not LOG_FILE.exists():
+        return []
+
+    entries: list[dict[str, Any]] = []
+    with LOG_FILE.open("r", encoding="utf-8") as file:
+        for line in file:
+            line = line.strip()
+            if not line:
+                continue
+            entries.append(json.loads(line))
+
+    if limit is None or limit >= len(entries):
+        return entries
+    return entries[-limit:]
+
+
+def get_admin_stats() -> dict[str, Any]:
+    entries = read_audit_logs()
+    action_counts = Counter(entry.get("action", "UNKNOWN") for entry in entries)
+
+    detection_type_counts = {
+        "pii": sum(1 for entry in entries if entry.get("pii_detected")),
+        "injection": sum(1 for entry in entries if entry.get("injection_detected")),
+    }
+
+    return {
+        "total_requests": len(entries),
+        "blocked_requests": action_counts.get("BLOCK", 0),
+        "masked_requests": action_counts.get("MASK", 0),
+        "warned_requests": action_counts.get("WARN", 0),
+        "allowed_requests": action_counts.get("ALLOW", 0),
+        "error_requests": action_counts.get("ERROR", 0),
+        "detection_type_counts": detection_type_counts,
+    }
+
+
+def get_recent_block_history(limit: int = 10) -> list[dict[str, Any]]:
+    blocked_entries = [entry for entry in read_audit_logs() if entry.get("action") == "BLOCK"]
+    recent_entries = blocked_entries[-limit:]
+    recent_entries.reverse()
+    return recent_entries
+
+
+def get_reason_code_stats() -> list[dict[str, Any]]:
+    counter: Counter[str] = Counter()
+    for entry in read_audit_logs():
+        for reason_code in entry.get("reason_codes", []):
+            counter[reason_code] += 1
+
+    return [
+        {"reason_code": reason_code, "count": count}
+        for reason_code, count in counter.most_common()
+    ]

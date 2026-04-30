@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class AdminStatsResponse(BaseModel):
-    # Summary cards for the admin dashboard.
+    # 관리자 대시보드의 요약 카드에 표시할 통계 응답입니다.
     total_requests: int
     blocked_requests: int
     masked_requests: int
@@ -17,7 +17,7 @@ class AdminStatsResponse(BaseModel):
 
 
 class RecentBlockItem(BaseModel):
-    # Row model for the recent blocked-history table.
+    # 최근 차단 이력 테이블의 한 행을 표현하는 응답 형식입니다.
     request_id: str
     user_id: str
     timestamp: str | None = None
@@ -32,6 +32,6 @@ class RecentBlockItem(BaseModel):
 
 
 class ReasonCodeStatItem(BaseModel):
-    # Frequency item for charts or ranked reason-code lists.
+    # 차트나 순위 목록에 사용할 reason_code 빈도 항목입니다.
     reason_code: str
     count: int

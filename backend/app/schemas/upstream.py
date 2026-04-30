@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class UpstreamProviderConfig(BaseModel):
-    # Per-provider runtime configuration exposed to admins.
+    # 관리자에게 보여줄 LLM 제공자별 실행 설정입니다.
     enabled: bool
     url: str
     default_model: str
@@ -14,7 +14,7 @@ class UpstreamProviderConfig(BaseModel):
 
 
 class UpstreamConfigResponse(BaseModel):
-    # Response model for the upstream configuration inspection endpoint.
+    # 현재 upstream 설정 확인 API의 응답 형식입니다.
     default_provider: str
     default_timeout_seconds: float
     default_retry_count: int

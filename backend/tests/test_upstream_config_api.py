@@ -7,7 +7,7 @@ from backend.app.services import llm_service
 
 
 def test_upstream_config_reports_provider_defaults(monkeypatch) -> None:
-    # Admin config endpoint should reflect the current runtime defaults.
+    # 관리자 설정 API는 현재 실행 기본값을 반영해야 합니다.
     monkeypatch.setattr(llm_service, "DEFAULT_PROVIDER", "ollama")
     monkeypatch.setattr(llm_service, "DEFAULT_TIMEOUT_SECONDS", 15.0)
     monkeypatch.setattr(llm_service, "DEFAULT_RETRY_COUNT", 2)
@@ -31,7 +31,7 @@ def test_upstream_config_reports_provider_defaults(monkeypatch) -> None:
 
 
 def test_upstream_config_hides_api_keys_and_marks_openai_enabled(monkeypatch) -> None:
-    # The endpoint may show that OpenAI is enabled, but must never leak the key itself.
+    # OpenAI 사용 가능 여부는 보여주되, API 키 자체는 절대 노출하면 안 됩니다.
     monkeypatch.setenv("OPENAI_API_KEY", "super-secret-key")
     monkeypatch.setattr(llm_service, "DEFAULT_OPENAI_MODEL", "gpt-4o-mini")
 

@@ -19,8 +19,8 @@ POLICY_PATH = Path(__file__).resolve().parents[3] / "policies" / "policy.yaml"
 
 
 def _merge_detections(text: str) -> list[DetectionResult]:
-    # PII and prompt-injection detectors run independently, then get merged into
-    # one ordered list so the policy engine can evaluate them together.
+    # PII 탐지와 프롬프트 인젝션 탐지를 각각 실행한 뒤,
+    # 정책 엔진이 한 번에 판단할 수 있도록 위치 기준으로 합칩니다.
     return sorted(
         [*detect_pii(text), *detect_injection(text)],
         key=lambda item: (item.start, item.end),
@@ -71,8 +71,8 @@ def _build_audit_summary(
     output_summary: dict[str, Any] | None,
     upstream_call: bool,
 ) -> dict[str, Any]:
-    # Keep only security-relevant metadata in the audit summary. Raw prompt and
-    # response bodies are intentionally excluded before the log is written.
+    # 감사 요약에는 보안 판단에 필요한 메타데이터만 남깁니다.
+    # 원문 프롬프트와 원문 응답은 로그 저장 전에 의도적으로 제외합니다.
     return {
         "timestamp_utc": timestamp_utc,
         "latency_ms": round((time.perf_counter() - started) * 1000, 2),
@@ -114,7 +114,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
     timestamp_utc = datetime.now(timezone.utc).isoformat()
     request_id = str(uuid.uuid4())
 
-    # Phase 1: inspect the incoming prompt before any upstream call is made.
+    # 1단계: 외부 LLM을 호출하기 전에 입력 프롬프트를 먼저 검사합니다.
     input_detections = _merge_detections(req.message)
     input_decision = evaluate_policy(req.message, input_detections, POLICY_PATH)
     input_action = input_decision.final_action.value
@@ -144,7 +144,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
             audit_summary,
         )
 
-    # Only the masked prompt is forwarded when policy requires redaction.
+    # 정책이 마스킹을 요구하면 원문 대신 마스킹된 프롬프트만 전달합니다.
     processed_message = input_decision.masked_text or req.message
 
     try:
@@ -178,7 +178,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
         )
         return _response(req, request_id, "ERROR", reasons, input_action, None, None, audit_summary)
 
-    # Phase 2: treat the model response as untrusted output and scan it again.
+    # 2단계: 모델 응답도 신뢰하지 않고 다시 검사합니다.
     output_detections = _merge_detections(llm_content)
     output_decision = evaluate_policy(llm_content, output_detections, POLICY_PATH)
     output_action = output_decision.final_action.value
@@ -208,7 +208,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
             audit_summary,
         )
 
-    # When both input and output have actions, return the more restrictive one.
+    # 입력과 출력에 각각 정책 결과가 있으면 더 강한 조치를 최종 action으로 반환합니다.
     safe_content = output_decision.masked_text or llm_content
     final_action = _final_action(input_action, output_action)
     all_reasons = sorted(set(input_decision.reasons + output_decision.reasons))

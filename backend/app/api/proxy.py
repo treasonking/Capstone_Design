@@ -21,8 +21,7 @@ from backend.app.services.proxy_service import (
     process_proxy_chat,
 )
 
-# FastAPI entrypoint that exposes both the user-facing proxy route and
-# the admin/demo endpoints used during evaluation.
+# 사용자용 프록시 API와 관리자/데모용 API를 함께 제공하는 FastAPI 진입점입니다.
 app = FastAPI()
 
 
@@ -53,7 +52,7 @@ async def admin_upstream_config() -> UpstreamConfigResponse:
 
 @app.post("/v1/chat/completions")
 async def chat_completions(req: ChatCompletionRequest):
-    """OpenAI-compatible mock endpoint for local policy demos."""
+    """로컬 정책 데모용 OpenAI 호환 Mock 엔드포인트입니다."""
     started = time.perf_counter()
     timestamp_utc = datetime.now(timezone.utc).isoformat()
     request_id = str(uuid.uuid4())
@@ -64,8 +63,7 @@ async def chat_completions(req: ChatCompletionRequest):
     decision = evaluate_policy(message, detections, POLICY_PATH)
     action = decision.final_action.value
     audit = _audit_from_detections(action, decision.reasons, detections)
-    # The mock endpoint mirrors the policy behavior of the main proxy so demos
-    # can show filtering without needing a real upstream model.
+    # 실제 모델 없이도 데모할 수 있도록 메인 프록시와 같은 정책 흐름을 따릅니다.
     content = None if action == PolicyAction.BLOCK.value else decision.masked_text or "mock response"
 
     return {

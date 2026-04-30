@@ -19,7 +19,7 @@ def _build_log_entry(
     input_summary = audit_summary.get("input") or {}
     output_summary = audit_summary.get("output") or {}
 
-    # Persist only metadata needed for audit and admin statistics.
+    # 감사와 관리자 통계에 필요한 메타데이터만 저장합니다.
     return {
         "request_id": request_id,
         "user_id": user_id,
@@ -47,8 +47,7 @@ def save_audit_log(
 
 
 def read_audit_logs(limit: int | None = None) -> list[dict[str, Any]]:
-    # JSONL is used so each request can be appended independently without
-    # rewriting the entire log file.
+    # JSONL 형식을 사용하면 전체 파일을 다시 쓰지 않고 요청별 로그를 한 줄씩 추가할 수 있습니다.
     if not LOG_FILE.exists():
         return []
 
@@ -66,7 +65,7 @@ def read_audit_logs(limit: int | None = None) -> list[dict[str, Any]]:
 
 
 def get_admin_stats() -> dict[str, Any]:
-    # Precompute counts in the backend so the admin UI can stay simple.
+    # 관리자 화면이 단순하게 표시만 할 수 있도록 백엔드에서 집계를 미리 계산합니다.
     entries = read_audit_logs()
     action_counts = Counter(entry.get("action", "UNKNOWN") for entry in entries)
 
@@ -87,7 +86,7 @@ def get_admin_stats() -> dict[str, Any]:
 
 
 def get_recent_block_history(limit: int = 10) -> list[dict[str, Any]]:
-    # Return the newest blocked events first for the admin activity table.
+    # 관리자 최근 이력 테이블에서 바로 쓰도록 최신 차단 이벤트를 먼저 반환합니다.
     blocked_entries = [entry for entry in read_audit_logs() if entry.get("action") == "BLOCK"]
     recent_entries = blocked_entries[-limit:]
     recent_entries.reverse()
@@ -95,7 +94,7 @@ def get_recent_block_history(limit: int = 10) -> list[dict[str, Any]]:
 
 
 def get_reason_code_stats() -> list[dict[str, Any]]:
-    # Reason-code frequency powers the "top detection reasons" widget.
+    # reason_code 빈도는 탐지 사유 통계 위젯에서 사용됩니다.
     counter: Counter[str] = Counter()
     for entry in read_audit_logs():
         for reason_code in entry.get("reason_codes", []):

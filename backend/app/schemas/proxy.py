@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class ProxyRequest(BaseModel):
-    # Client request sent to the security proxy instead of directly to an LLM.
+    # 클라이언트가 LLM에 직접 보내지 않고 보안 프록시로 보내는 요청 형식입니다.
     message: str
     policy_id: str = "default"
     user_id: str = "anonymous"
@@ -14,7 +14,7 @@ class ProxyRequest(BaseModel):
 
 
 class ProxyResponse(BaseModel):
-    # Standardized proxy response that includes both LLM output and policy result.
+    # LLM 응답과 정책 처리 결과를 함께 담는 표준 프록시 응답 형식입니다.
     request_id: str
     action: str
     reason_code: str | None
@@ -31,6 +31,6 @@ class ChatMessage(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
-    # Minimal OpenAI-style request schema used by the local mock endpoint.
+    # 로컬 Mock 엔드포인트에서 사용하는 최소 OpenAI 호환 요청 형식입니다.
     model: str = "mock"
     messages: list[ChatMessage]

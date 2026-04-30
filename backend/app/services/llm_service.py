@@ -37,8 +37,7 @@ class UpstreamRequestError(Exception):
 
 
 def get_upstream_config_summary() -> dict[str, Any]:
-    # This summary is exposed to admins so they can verify runtime configuration
-    # without leaking secrets such as API keys.
+    # 관리자가 현재 실행 설정을 확인할 수 있게 하되, API 키 같은 비밀값은 노출하지 않습니다.
     return {
         "default_provider": DEFAULT_PROVIDER,
         "default_timeout_seconds": DEFAULT_TIMEOUT_SECONDS,
@@ -70,8 +69,7 @@ def get_upstream_config_summary() -> dict[str, Any]:
 
 
 def _split_model_target(model: str) -> tuple[str, str]:
-    # Accept values like "ollama:llama3" while keeping backward compatibility
-    # with plain provider names such as "mock" or "openai".
+    # "ollama:llama3" 같은 provider:model 형식과 "mock" 같은 기존 형식을 모두 지원합니다.
     raw_model = (model or "").strip()
     if ":" in raw_model:
         provider_prefix, provider_model = raw_model.split(":", 1)
@@ -97,7 +95,7 @@ def _resolve_provider(model: str) -> str:
 
 
 def _with_query_param(url: str, key: str, value: str) -> str:
-    # Azure OpenAI expects api-version in the query string.
+    # Azure OpenAI는 api-version 값을 쿼리 문자열로 요구합니다.
     split_result = urlsplit(url)
     query = dict(parse_qsl(split_result.query, keep_blank_values=True))
     query.setdefault(key, value)
@@ -117,7 +115,7 @@ def _build_request(provider: str, message: str, model: str) -> tuple[str, dict[s
     headers: dict[str, str] = {"Content-Type": "application/json"}
     _provider, upstream_model = _split_model_target(model)
 
-    # Each upstream provider expects a slightly different payload and auth shape.
+    # 각 LLM 제공자는 요청 본문과 인증 헤더 형식이 조금씩 다릅니다.
     if provider == "openai":
         api_key = os.getenv("OPENAI_API_KEY", "")
         if api_key:
@@ -142,7 +140,7 @@ def _build_request(provider: str, message: str, model: str) -> tuple[str, dict[s
 
 
 def _extract_content(provider: str, payload: dict[str, Any]) -> str:
-    # Ollama and OpenAI-style APIs return assistant text in different fields.
+    # Ollama와 OpenAI 호환 API는 응답 본문에서 텍스트가 들어 있는 위치가 다릅니다.
     if provider == "ollama":
         message = payload.get("message", {})
         content = message.get("content")
@@ -189,7 +187,7 @@ async def call_upstream_llm(
         except httpx.HTTPStatusError as exc:
             last_error = exc
             last_status_code = exc.response.status_code
-            # Retry only on transient HTTP failures such as rate limiting or 5xx.
+            # 429나 5xx처럼 일시적일 가능성이 있는 HTTP 오류만 재시도합니다.
             if not _is_retryable_http_error(exc) or attempt == attempts:
                 raise UpstreamRequestError(
                     "Upstream HTTP request failed.",

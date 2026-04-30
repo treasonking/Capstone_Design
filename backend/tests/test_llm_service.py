@@ -23,7 +23,7 @@ class _FakeResponse:
 
 
 def test_split_model_target_for_openai() -> None:
-    # Prefixed model strings should split cleanly into provider and model name.
+    # provider:model 형식은 제공자와 모델 이름으로 정확히 분리되어야 합니다.
     provider, model = llm_service._split_model_target("openai:gpt-4o-mini")
 
     assert provider == "openai"
@@ -31,7 +31,7 @@ def test_split_model_target_for_openai() -> None:
 
 
 def test_build_openai_request_includes_bearer_header(monkeypatch) -> None:
-    # OpenAI requests should carry a bearer token and explicit model field.
+    # OpenAI 요청에는 Bearer 토큰과 명시적인 model 필드가 포함되어야 합니다.
     monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
     monkeypatch.setattr(llm_service, "DEFAULT_OPENAI_MODEL", "gpt-4o-mini")
 
@@ -44,7 +44,7 @@ def test_build_openai_request_includes_bearer_header(monkeypatch) -> None:
 
 
 def test_build_azure_request_adds_api_version(monkeypatch) -> None:
-    # Azure OpenAI uses deployment-specific URLs plus api-version query params.
+    # Azure OpenAI는 배포별 URL과 api-version 쿼리 파라미터를 사용합니다.
     monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-azure-key")
     monkeypatch.setattr(llm_service, "DEFAULT_AZURE_API_VERSION", "2024-02-15-preview")
     monkeypatch.setattr(llm_service, "_PROVIDER_URLS", {
@@ -61,14 +61,14 @@ def test_build_azure_request_adds_api_version(monkeypatch) -> None:
 
 
 def test_extract_ollama_content() -> None:
-    # Ollama responses store assistant text under message.content.
+    # Ollama 응답의 assistant 텍스트는 message.content 아래에 들어 있습니다.
     content = llm_service._extract_content("ollama", {"message": {"content": "ollama reply"}})
 
     assert content == "ollama reply"
 
 
 def test_call_upstream_llm_uses_ollama_prefixed_model(monkeypatch) -> None:
-    # Provider-prefixed models should be converted into the correct Ollama payload.
+    # provider 접두사가 붙은 모델명은 올바른 Ollama 요청 본문으로 변환되어야 합니다.
     captured: dict[str, object] = {}
 
     class _InspectAsyncClient:
@@ -97,7 +97,7 @@ def test_call_upstream_llm_uses_ollama_prefixed_model(monkeypatch) -> None:
 
 
 def test_call_upstream_llm_uses_openai_prefixed_model(monkeypatch) -> None:
-    # Provider-prefixed models should also work for OpenAI-style upstreams.
+    # provider 접두사가 붙은 모델명은 OpenAI 호환 upstream에서도 동작해야 합니다.
     captured: dict[str, object] = {}
 
     class _InspectAsyncClient:

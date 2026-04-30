@@ -8,7 +8,7 @@ from backend.app.services import audit_service
 
 
 def _write_logs(tmp_path, entries: list[dict]) -> None:
-    # Seed a temporary JSONL log file so admin endpoints can be tested offline.
+    # 관리자 API를 오프라인으로 검증하기 위해 임시 JSONL 로그 파일을 만듭니다.
     log_dir = tmp_path / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / "audit_log.jsonl"
@@ -18,7 +18,7 @@ def _write_logs(tmp_path, entries: list[dict]) -> None:
 
 
 def test_admin_stats_returns_aggregate_counts(tmp_path, monkeypatch) -> None:
-    # The stats endpoint should collapse raw audit logs into dashboard counters.
+    # 통계 API는 원시 감사 로그를 대시보드용 집계 값으로 변환해야 합니다.
     log_file = tmp_path / "logs" / "audit_log.jsonl"
     _write_logs(
         tmp_path,
@@ -77,7 +77,7 @@ def test_admin_stats_returns_aggregate_counts(tmp_path, monkeypatch) -> None:
 
 
 def test_admin_recent_blocks_returns_latest_first(tmp_path, monkeypatch) -> None:
-    # Recent block history should show newest blocked events first.
+    # 최근 차단 이력은 최신 차단 이벤트가 먼저 보여야 합니다.
     log_file = tmp_path / "logs" / "audit_log.jsonl"
     _write_logs(
         tmp_path,
@@ -133,7 +133,7 @@ def test_admin_recent_blocks_returns_latest_first(tmp_path, monkeypatch) -> None
 
 
 def test_admin_reason_codes_returns_frequency_stats(tmp_path, monkeypatch) -> None:
-    # Reason-code stats should be sorted by descending frequency.
+    # reason_code 통계는 빈도가 높은 순서로 정렬되어야 합니다.
     log_file = tmp_path / "logs" / "audit_log.jsonl"
     _write_logs(
         tmp_path,

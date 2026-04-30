@@ -23,6 +23,7 @@ class _FakeResponse:
 
 
 def test_split_model_target_for_openai() -> None:
+    # Prefixed model strings should split cleanly into provider and model name.
     provider, model = llm_service._split_model_target("openai:gpt-4o-mini")
 
     assert provider == "openai"
@@ -30,6 +31,7 @@ def test_split_model_target_for_openai() -> None:
 
 
 def test_build_openai_request_includes_bearer_header(monkeypatch) -> None:
+    # OpenAI requests should carry a bearer token and explicit model field.
     monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
     monkeypatch.setattr(llm_service, "DEFAULT_OPENAI_MODEL", "gpt-4o-mini")
 
@@ -42,6 +44,7 @@ def test_build_openai_request_includes_bearer_header(monkeypatch) -> None:
 
 
 def test_build_azure_request_adds_api_version(monkeypatch) -> None:
+    # Azure OpenAI uses deployment-specific URLs plus api-version query params.
     monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-azure-key")
     monkeypatch.setattr(llm_service, "DEFAULT_AZURE_API_VERSION", "2024-02-15-preview")
     monkeypatch.setattr(llm_service, "_PROVIDER_URLS", {
@@ -58,12 +61,14 @@ def test_build_azure_request_adds_api_version(monkeypatch) -> None:
 
 
 def test_extract_ollama_content() -> None:
+    # Ollama responses store assistant text under message.content.
     content = llm_service._extract_content("ollama", {"message": {"content": "ollama reply"}})
 
     assert content == "ollama reply"
 
 
 def test_call_upstream_llm_uses_ollama_prefixed_model(monkeypatch) -> None:
+    # Provider-prefixed models should be converted into the correct Ollama payload.
     captured: dict[str, object] = {}
 
     class _InspectAsyncClient:
@@ -92,6 +97,7 @@ def test_call_upstream_llm_uses_ollama_prefixed_model(monkeypatch) -> None:
 
 
 def test_call_upstream_llm_uses_openai_prefixed_model(monkeypatch) -> None:
+    # Provider-prefixed models should also work for OpenAI-style upstreams.
     captured: dict[str, object] = {}
 
     class _InspectAsyncClient:

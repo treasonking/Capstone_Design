@@ -21,6 +21,8 @@ from backend.app.services.proxy_service import (
     process_proxy_chat,
 )
 
+# FastAPI entrypoint that exposes both the user-facing proxy route and
+# the admin/demo endpoints used during evaluation.
 app = FastAPI()
 
 
@@ -62,6 +64,8 @@ async def chat_completions(req: ChatCompletionRequest):
     decision = evaluate_policy(message, detections, POLICY_PATH)
     action = decision.final_action.value
     audit = _audit_from_detections(action, decision.reasons, detections)
+    # The mock endpoint mirrors the policy behavior of the main proxy so demos
+    # can show filtering without needing a real upstream model.
     content = None if action == PolicyAction.BLOCK.value else decision.masked_text or "mock response"
 
     return {

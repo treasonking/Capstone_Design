@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class ProxyRequest(BaseModel):
+    # Client request sent to the security proxy instead of directly to an LLM.
     message: str
     policy_id: str = "default"
     user_id: str = "anonymous"
@@ -13,6 +14,7 @@ class ProxyRequest(BaseModel):
 
 
 class ProxyResponse(BaseModel):
+    # Standardized proxy response that includes both LLM output and policy result.
     request_id: str
     action: str
     reason_code: str | None
@@ -29,5 +31,6 @@ class ChatMessage(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
+    # Minimal OpenAI-style request schema used by the local mock endpoint.
     model: str = "mock"
     messages: list[ChatMessage]

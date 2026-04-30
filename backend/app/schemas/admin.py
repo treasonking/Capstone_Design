@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class AdminStatsResponse(BaseModel):
+    # Summary cards for the admin dashboard.
     total_requests: int
     blocked_requests: int
     masked_requests: int
@@ -16,6 +17,7 @@ class AdminStatsResponse(BaseModel):
 
 
 class RecentBlockItem(BaseModel):
+    # Row model for the recent blocked-history table.
     request_id: str
     user_id: str
     timestamp: str | None = None
@@ -30,5 +32,6 @@ class RecentBlockItem(BaseModel):
 
 
 class ReasonCodeStatItem(BaseModel):
+    # Frequency item for charts or ranked reason-code lists.
     reason_code: str
     count: int

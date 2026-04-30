@@ -37,6 +37,8 @@ class UpstreamRequestError(Exception):
 
 
 def get_upstream_config_summary() -> dict[str, Any]:
+    # This summary is exposed to admins so they can verify runtime configuration
+    # without leaking secrets such as API keys.
     return {
         "default_provider": DEFAULT_PROVIDER,
         "default_timeout_seconds": DEFAULT_TIMEOUT_SECONDS,
@@ -68,6 +70,8 @@ def get_upstream_config_summary() -> dict[str, Any]:
 
 
 def _split_model_target(model: str) -> tuple[str, str]:
+    # Accept values like "ollama:llama3" while keeping backward compatibility
+    # with plain provider names such as "mock" or "openai".
     raw_model = (model or "").strip()
     if ":" in raw_model:
         provider_prefix, provider_model = raw_model.split(":", 1)
@@ -93,6 +97,7 @@ def _resolve_provider(model: str) -> str:
 
 
 def _with_query_param(url: str, key: str, value: str) -> str:
+    # Azure OpenAI expects api-version in the query string.
     split_result = urlsplit(url)
     query = dict(parse_qsl(split_result.query, keep_blank_values=True))
     query.setdefault(key, value)
@@ -112,6 +117,7 @@ def _build_request(provider: str, message: str, model: str) -> tuple[str, dict[s
     headers: dict[str, str] = {"Content-Type": "application/json"}
     _provider, upstream_model = _split_model_target(model)
 
+    # Each upstream provider expects a slightly different payload and auth shape.
     if provider == "openai":
         api_key = os.getenv("OPENAI_API_KEY", "")
         if api_key:
@@ -136,6 +142,7 @@ def _build_request(provider: str, message: str, model: str) -> tuple[str, dict[s
 
 
 def _extract_content(provider: str, payload: dict[str, Any]) -> str:
+    # Ollama and OpenAI-style APIs return assistant text in different fields.
     if provider == "ollama":
         message = payload.get("message", {})
         content = message.get("content")
@@ -182,6 +189,7 @@ async def call_upstream_llm(
         except httpx.HTTPStatusError as exc:
             last_error = exc
             last_status_code = exc.response.status_code
+            # Retry only on transient HTTP failures such as rate limiting or 5xx.
             if not _is_retryable_http_error(exc) or attempt == attempts:
                 raise UpstreamRequestError(
                     "Upstream HTTP request failed.",

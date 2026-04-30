@@ -19,6 +19,7 @@ def _build_log_entry(
     input_summary = audit_summary.get("input") or {}
     output_summary = audit_summary.get("output") or {}
 
+    # Persist only metadata needed for audit and admin statistics.
     return {
         "request_id": request_id,
         "user_id": user_id,
@@ -46,6 +47,8 @@ def save_audit_log(
 
 
 def read_audit_logs(limit: int | None = None) -> list[dict[str, Any]]:
+    # JSONL is used so each request can be appended independently without
+    # rewriting the entire log file.
     if not LOG_FILE.exists():
         return []
 
@@ -63,6 +66,7 @@ def read_audit_logs(limit: int | None = None) -> list[dict[str, Any]]:
 
 
 def get_admin_stats() -> dict[str, Any]:
+    # Precompute counts in the backend so the admin UI can stay simple.
     entries = read_audit_logs()
     action_counts = Counter(entry.get("action", "UNKNOWN") for entry in entries)
 
@@ -83,6 +87,7 @@ def get_admin_stats() -> dict[str, Any]:
 
 
 def get_recent_block_history(limit: int = 10) -> list[dict[str, Any]]:
+    # Return the newest blocked events first for the admin activity table.
     blocked_entries = [entry for entry in read_audit_logs() if entry.get("action") == "BLOCK"]
     recent_entries = blocked_entries[-limit:]
     recent_entries.reverse()
@@ -90,6 +95,7 @@ def get_recent_block_history(limit: int = 10) -> list[dict[str, Any]]:
 
 
 def get_reason_code_stats() -> list[dict[str, Any]]:
+    # Reason-code frequency powers the "top detection reasons" widget.
     counter: Counter[str] = Counter()
     for entry in read_audit_logs():
         for reason_code in entry.get("reason_codes", []):

@@ -8,6 +8,7 @@ from backend.app.services import audit_service
 
 
 def _write_logs(tmp_path, entries: list[dict]) -> None:
+    # Seed a temporary JSONL log file so admin endpoints can be tested offline.
     log_dir = tmp_path / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / "audit_log.jsonl"
@@ -17,6 +18,7 @@ def _write_logs(tmp_path, entries: list[dict]) -> None:
 
 
 def test_admin_stats_returns_aggregate_counts(tmp_path, monkeypatch) -> None:
+    # The stats endpoint should collapse raw audit logs into dashboard counters.
     log_file = tmp_path / "logs" / "audit_log.jsonl"
     _write_logs(
         tmp_path,
@@ -75,6 +77,7 @@ def test_admin_stats_returns_aggregate_counts(tmp_path, monkeypatch) -> None:
 
 
 def test_admin_recent_blocks_returns_latest_first(tmp_path, monkeypatch) -> None:
+    # Recent block history should show newest blocked events first.
     log_file = tmp_path / "logs" / "audit_log.jsonl"
     _write_logs(
         tmp_path,
@@ -130,6 +133,7 @@ def test_admin_recent_blocks_returns_latest_first(tmp_path, monkeypatch) -> None
 
 
 def test_admin_reason_codes_returns_frequency_stats(tmp_path, monkeypatch) -> None:
+    # Reason-code stats should be sorted by descending frequency.
     log_file = tmp_path / "logs" / "audit_log.jsonl"
     _write_logs(
         tmp_path,

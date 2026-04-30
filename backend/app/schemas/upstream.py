@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class UpstreamProviderConfig(BaseModel):
+    # Per-provider runtime configuration exposed to admins.
     enabled: bool
     url: str
     default_model: str
@@ -13,6 +14,7 @@ class UpstreamProviderConfig(BaseModel):
 
 
 class UpstreamConfigResponse(BaseModel):
+    # Response model for the upstream configuration inspection endpoint.
     default_provider: str
     default_timeout_seconds: float
     default_retry_count: int

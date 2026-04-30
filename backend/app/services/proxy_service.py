@@ -19,6 +19,8 @@ POLICY_PATH = Path(__file__).resolve().parents[3] / "policies" / "policy.yaml"
 
 
 def _merge_detections(text: str) -> list[DetectionResult]:
+    # PII and prompt-injection detectors run independently, then get merged into
+    # one ordered list so the policy engine can evaluate them together.
     return sorted(
         [*detect_pii(text), *detect_injection(text)],
         key=lambda item: (item.start, item.end),
@@ -69,6 +71,8 @@ def _build_audit_summary(
     output_summary: dict[str, Any] | None,
     upstream_call: bool,
 ) -> dict[str, Any]:
+    # Keep only security-relevant metadata in the audit summary. Raw prompt and
+    # response bodies are intentionally excluded before the log is written.
     return {
         "timestamp_utc": timestamp_utc,
         "latency_ms": round((time.perf_counter() - started) * 1000, 2),
@@ -110,6 +114,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
     timestamp_utc = datetime.now(timezone.utc).isoformat()
     request_id = str(uuid.uuid4())
 
+    # Phase 1: inspect the incoming prompt before any upstream call is made.
     input_detections = _merge_detections(req.message)
     input_decision = evaluate_policy(req.message, input_detections, POLICY_PATH)
     input_action = input_decision.final_action.value
@@ -139,6 +144,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
             audit_summary,
         )
 
+    # Only the masked prompt is forwarded when policy requires redaction.
     processed_message = input_decision.masked_text or req.message
 
     try:
@@ -172,6 +178,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
         )
         return _response(req, request_id, "ERROR", reasons, input_action, None, None, audit_summary)
 
+    # Phase 2: treat the model response as untrusted output and scan it again.
     output_detections = _merge_detections(llm_content)
     output_decision = evaluate_policy(llm_content, output_detections, POLICY_PATH)
     output_action = output_decision.final_action.value
@@ -201,6 +208,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
             audit_summary,
         )
 
+    # When both input and output have actions, return the more restrictive one.
     safe_content = output_decision.masked_text or llm_content
     final_action = _final_action(input_action, output_action)
     all_reasons = sorted(set(input_decision.reasons + output_decision.reasons))

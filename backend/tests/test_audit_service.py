@@ -25,6 +25,7 @@ class _FakeResponse:
 
 
 def _build_fake_client(payload: dict, status_code: int = 200):
+    # Reuse a fake upstream so audit-log tests stay deterministic.
     class _FakeAsyncClient:
         def __init__(self, *args, **kwargs) -> None:
             self._payload = payload
@@ -43,6 +44,7 @@ def _build_fake_client(payload: dict, status_code: int = 200):
 
 
 def test_build_log_entry_keeps_metadata_only() -> None:
+    # Audit entries must never copy raw prompt or raw response fields through.
     audit_summary = {
         "timestamp_utc": "2026-04-30T00:00:00Z",
         "action": "MASK",
@@ -76,6 +78,7 @@ def test_build_log_entry_keeps_metadata_only() -> None:
 
 
 def test_save_audit_log_writes_jsonl_without_raw_fields(tmp_path) -> None:
+    # Stored log lines should be valid JSONL and keep only safe metadata fields.
     log_dir = tmp_path / "logs"
     log_file = log_dir / "audit_log.jsonl"
     audit_service.LOG_DIR = log_dir
@@ -108,6 +111,7 @@ def test_save_audit_log_writes_jsonl_without_raw_fields(tmp_path) -> None:
 
 
 def test_proxy_chat_audit_log_excludes_raw_prompt_and_response(tmp_path, monkeypatch) -> None:
+    # Full proxy execution should still write a sanitized audit record.
     log_dir = tmp_path / "logs"
     log_file = log_dir / "audit_log.jsonl"
     monkeypatch.setattr(audit_service, "LOG_DIR", log_dir)

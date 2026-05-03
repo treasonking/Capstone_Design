@@ -252,3 +252,62 @@ docker compose up --build
 - 현재 탐지는 룰 기반 MVP로, 복잡한 문맥형 우회 공격에는 한계가 있음
 - 데이터셋을 더 확대하고 도메인별 정책 프로파일링이 필요함
 - 운영 단계에서는 로그 저장소, 인증/인가, 대시보드 통합이 추가로 필요함
+
+## 성능/증빙 자동화 파이프라인
+
+이번 성능/증빙 파트는 프록시가 실제 운영 환경에서 다음 두 가지를 만족하는지 자동으로 검증하기 위해 추가했다.
+
+- `원문 미저장 원칙` 준수 여부 확인
+- 마스킹 처리와 정책 판정에 따른 성능 오버헤드 측정
+
+즉, API가 정상 응답하는지만 보는 것이 아니라, 시스템이 동작한 이후에도 로그와 DB에 민감정보가 평문으로 남지 않는지 점검하고, 동시에 부하 조건에서의 지연 시간과 오류율을 객관적으로 기록하는 것을 목표로 한다.
+
+### 주요 검증 도구
+
+| 도구 | 역할 | 산출물 |
+|---|---|---|
+| `tools/scanner.py` | 로컬 `logs/` 디렉토리와 `proxy.db`를 전수 조사하여 마스킹되지 않은 민감정보(PII) 잔존 여부를 확인 | JSON 결과 파일 |
+| `tools/locustfile.py` | Locust 기반 부하 테스트 봇으로 정상 요청, PII 포함 요청, 프롬프트 인젝션 시나리오를 혼합 전송 | `*_stats.csv`, `*_failures.csv`, `*_exceptions.csv` |
+| `evaluation/report_generator.py` | 스캐너 결과와 Locust 측정 지표를 종합해 PASS/FAIL을 판정하고 `performance_report.pdf`를 생성 | PDF 리포트 |
+
+### 평가 기준
+
+| 항목 | 기준 | 의미 |
+|---|---|---|
+| 보안성 | 로그 및 DB 내 민감정보 평문 노출 0건 | PASS |
+| 안정성 | 부하 상태에서 Error Rate 1.00% 이하 | PASS |
+| 성능 | p95 Latency 500ms 이하 | MVP 환경의 오버헤드 측정 기준 |
+
+### 실행 방법
+
+가상환경 `venv` 활성화 상태를 가정하고, 아래 순서대로 실행하면 스캔 결과와 부하 테스트 결과를 종합한 PDF 리포트를 얻을 수 있다.
+
+1. 부하 테스트 실행
+
+```bash
+locust -f tools/locustfile.py --host http://127.0.0.1:8000 --headless -u 20 -r 5 -t 1m --csv performance/proxy_load
+```
+
+2. 스캐너 실행
+
+```bash
+python tools/scanner.py
+```
+
+3. PDF 리포트 생성
+
+```bash
+python -m evaluation.report_generator --scanner-json reports/scanner_result.json --locust-csv performance/proxy_load_stats.csv
+```
+
+### 결과 확인
+
+- 스캐너 결과는 `reports/scanner_result.json`에 저장된다.
+- Locust 결과는 `performance/proxy_load_stats.csv`를 중심으로 생성된다.
+- 최종 PDF는 `reports/performance_report.pdf`로 자동 생성된다.
+
+### 해석 메모
+
+- 스캐너 결과가 `0건`이면 현재 로그/DB 기준으로 원문 미저장 원칙을 충족한 것으로 본다.
+- `p95 Latency`는 절대 성능 수치라기보다, 마스킹과 정책 판정이 추가된 프록시의 오버헤드를 비교하는 기준으로 사용한다.
+- `Error Rate`는 부하 조건에서의 안정성을 보는 보조 지표이며, 예외 응답이나 정책 실패가 급증하는지 확인하는 데 유용하다.

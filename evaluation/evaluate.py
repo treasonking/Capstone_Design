@@ -148,7 +148,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--report",
-        default="evaluation/evaluation_report.md",
+        default="reports/evaluation_report.md",
         help="Output markdown report path.",
     )
     args = parser.parse_args()

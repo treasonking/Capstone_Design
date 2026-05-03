@@ -196,7 +196,7 @@ python -m pytest -q
 ```bash
 python -m evaluation.evaluate \
   --dataset evaluation/sample_dataset.json \
-  --report evaluation/evaluation_report.md
+  --report reports/evaluation_report.md
 ```
 
 3-1. README/문서 벤치마크 표 자동 동기화

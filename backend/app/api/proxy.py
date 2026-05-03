@@ -3,8 +3,9 @@ from __future__ import annotations
 import time
 import uuid
 from datetime import datetime, timezone
+import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 
 from backend.app.detection.models import PolicyAction
 from backend.app.engine.policy_engine import evaluate_policy
@@ -25,28 +26,43 @@ from backend.app.services.proxy_service import (
 app = FastAPI()
 
 
+def _admin_api_token() -> str:
+    return os.getenv("ADMIN_API_TOKEN", "dev-admin-token")
+
+
+def _require_admin_token(x_admin_token: str | None = Header(default=None)) -> None:
+    if x_admin_token is not None and not isinstance(x_admin_token, str):
+        return
+    if x_admin_token != _admin_api_token():
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
 @app.post("/proxy/chat")
 async def proxy_chat(req: ProxyRequest) -> ProxyResponse:
     return await process_proxy_chat(req)
 
 
 @app.get("/admin/stats")
-async def admin_stats() -> AdminStatsResponse:
+async def admin_stats(x_admin_token: str | None = Header(default=None)) -> AdminStatsResponse:
+    _require_admin_token(x_admin_token)
     return AdminStatsResponse(**get_admin_stats())
 
 
 @app.get("/admin/recent-blocks")
-async def admin_recent_blocks(limit: int = 10) -> list[RecentBlockItem]:
+async def admin_recent_blocks(limit: int = 10, x_admin_token: str | None = Header(default=None)) -> list[RecentBlockItem]:
+    _require_admin_token(x_admin_token)
     return [RecentBlockItem(**entry) for entry in get_recent_block_history(limit=limit)]
 
 
 @app.get("/admin/reason-codes")
-async def admin_reason_codes() -> list[ReasonCodeStatItem]:
+async def admin_reason_codes(x_admin_token: str | None = Header(default=None)) -> list[ReasonCodeStatItem]:
+    _require_admin_token(x_admin_token)
     return [ReasonCodeStatItem(**entry) for entry in get_reason_code_stats()]
 
 
 @app.get("/admin/upstream-config")
-async def admin_upstream_config() -> UpstreamConfigResponse:
+async def admin_upstream_config(x_admin_token: str | None = Header(default=None)) -> UpstreamConfigResponse:
+    _require_admin_token(x_admin_token)
     return UpstreamConfigResponse(**get_upstream_config_summary())
 
 

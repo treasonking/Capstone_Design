@@ -7,7 +7,7 @@
 ## 데이터셋
 
 - 파일: `evaluation/sample_dataset.json`
-- 현재 크기: 102건
+- 현재 크기: 108건
 - 구성:
   - PII 샘플: 37건 (양성/음성 혼합)
   - Injection 샘플: 65건 (양성/음성 혼합)
@@ -42,7 +42,7 @@
 ```bash
 python -m evaluation.evaluate \
   --dataset evaluation/sample_dataset.json \
-  --report evaluation/evaluation_report.md
+  --report reports/evaluation_report.md
 ```
 
 ## 최신 벤치마크 스냅샷

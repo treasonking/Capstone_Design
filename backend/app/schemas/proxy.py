@@ -10,7 +10,7 @@ class ProxyRequest(BaseModel):
     message: str
     policy_id: str = "default"
     user_id: str = "anonymous"
-    model: str = "mock"
+    model: str = ""
 
 
 class ProxyResponse(BaseModel):

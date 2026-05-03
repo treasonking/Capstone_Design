@@ -4,7 +4,10 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+import re
 from typing import Any
+
+from fastapi import HTTPException
 
 from backend.app.detection.injection_detector import detect_injection
 from backend.app.detection.models import DetectionResult, DetectorType, PolicyAction
@@ -15,7 +18,14 @@ from backend.app.services.audit_service import save_audit_log
 from backend.app.services.llm_service import UpstreamRequestError, UpstreamTimeoutError, call_upstream_llm
 
 
-POLICY_PATH = Path(__file__).resolve().parents[3] / "policies" / "policy.yaml"
+POLICY_DIR = Path(__file__).resolve().parents[3] / "policies"
+POLICY_PATH = POLICY_DIR / "policy.yaml"
+STRICT_POLICY_PATH = POLICY_DIR / "strict.yaml"
+ALLOWED_POLICY_IDS = {
+    "default": POLICY_PATH,
+    "strict": STRICT_POLICY_PATH,
+}
+POLICY_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 def _merge_detections(text: str) -> list[DetectionResult]:
@@ -86,6 +96,18 @@ def _build_audit_summary(
     }
 
 
+def resolve_policy_path(policy_id: str) -> Path:
+    normalized_policy_id = (policy_id or "default").strip()
+    if not POLICY_ID_PATTERN.fullmatch(normalized_policy_id):
+        raise HTTPException(status_code=400, detail="Invalid policy_id format.")
+
+    policy_path = ALLOWED_POLICY_IDS.get(normalized_policy_id)
+    if policy_path is None:
+        raise HTTPException(status_code=400, detail="Unsupported policy_id.")
+
+    return policy_path
+
+
 def _response(
     req: ProxyRequest,
     request_id: str,
@@ -113,10 +135,11 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
     started = time.perf_counter()
     timestamp_utc = datetime.now(timezone.utc).isoformat()
     request_id = str(uuid.uuid4())
+    policy_path = resolve_policy_path(req.policy_id)
 
     # 1단계: 외부 LLM을 호출하기 전에 입력 프롬프트를 먼저 검사합니다.
     input_detections = _merge_detections(req.message)
-    input_decision = evaluate_policy(req.message, input_detections, POLICY_PATH)
+    input_decision = evaluate_policy(req.message, input_detections, policy_path)
     input_action = input_decision.final_action.value
     input_audit = _audit_from_detections(input_action, input_decision.reasons, input_detections)
     input_summary = {**input_decision.audit_summary, **input_audit}
@@ -163,8 +186,8 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
             upstream_call=True,
         )
         return _response(req, request_id, "ERROR", reasons, input_action, None, None, audit_summary)
-    except UpstreamRequestError:
-        reasons = ["UPSTREAM_ERROR"]
+    except UpstreamRequestError as exc:
+        reasons = [exc.reason_code]
         audit_summary = _build_audit_summary(
             timestamp_utc,
             started,
@@ -180,7 +203,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
 
     # 2단계: 모델 응답도 신뢰하지 않고 다시 검사합니다.
     output_detections = _merge_detections(llm_content)
-    output_decision = evaluate_policy(llm_content, output_detections, POLICY_PATH)
+    output_decision = evaluate_policy(llm_content, output_detections, policy_path)
     output_action = output_decision.final_action.value
     output_audit = _audit_from_detections(output_action, output_decision.reasons, output_detections)
     output_summary = {**output_decision.audit_summary, **output_audit}

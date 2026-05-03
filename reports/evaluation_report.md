@@ -1,6 +1,6 @@
 # Detection Evaluation Report
 
-- Generated at: 2026-04-28T21:29:43
+- Generated at: 2026-05-03T22:05:52
 - Dataset: `evaluation/sample_dataset.json`
 - Dataset size: 108
 
@@ -76,17 +76,3 @@
 | id | expected | actual | text_excerpt | suspected_cause |
 |---|---|---|---|---|
 | - | - | - | - | - |
-
-## Evidence Capture
-
-### Evaluation Snapshot
-
-- Dataset size 108 기준 요약 캡처: `reports/assets/evaluation_summary_capture.png`
-
-![Evaluation Summary Capture](assets/evaluation_summary_capture.png)
-
-### Proxy API Demo Snapshot
-
-- 실제 프록시 API 응답 캡처: `reports/assets/proxy_api_demo.png`
-
-![Proxy API Demo Capture](assets/proxy_api_demo.png)

@@ -106,8 +106,15 @@ backend/
     test_masking.py
     test_policy_engine.py
     test_proxy_api.py
+tools/
+  mock_llm.py
+  sync_benchmark_docs.py
+  scanner.py
+  locustfile.py
 policies/
   policy.yaml
+performance/
+reports/
 evaluation/
   sample_dataset.json
   evaluate.py

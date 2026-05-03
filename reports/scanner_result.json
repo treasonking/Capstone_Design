@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-05-03T15:58:17",
+  "status": "PASS",
+  "sensitive_findings_count": 0,
+  "log_findings_count": 0,
+  "db_findings_count": 0,
+  "log_dir": "logs",
+  "db_path": "proxy.db",
+  "findings": []
+}

@@ -1,0 +1,82 @@
+default_action: ALLOW
+rules:
+  PII_EMAIL_DETECTED:
+    action: MASK
+    priority: 60
+    threshold: 0.7
+    description: "Mask email address before forwarding to model."
+  PII_PHONE_DETECTED:
+    action: MASK
+    priority: 70
+    threshold: 0.7
+    description: "Mask phone number for privacy."
+  PII_ADDRESS_DETECTED:
+    action: MASK
+    priority: 82
+    threshold: 0.8
+    description: "Mask address details that frequently appear in civil-service requests."
+  PII_RRN_DETECTED:
+    action: BLOCK
+    priority: 100
+    threshold: 0.8
+    description: "Block resident registration number exposure."
+  PII_ACCOUNT_DETECTED:
+    action: MASK
+    priority: 55
+    threshold: 0.75
+    description: "Mask account-number candidate values in strict mode."
+  INJ_IGNORE_PREVIOUS_INSTRUCTIONS:
+    action: BLOCK
+    priority: 90
+    threshold: 5.0
+    description: "Legacy alias for INJ_DIRECT_OVERRIDE_ATTEMPT. Kept for backward compatibility."
+  INJ_REVEAL_SYSTEM_PROMPT:
+    action: BLOCK
+    priority: 98
+    threshold: 5.0
+    description: "Block attempts to reveal system prompt."
+  INJ_DIRECT_OVERRIDE_ATTEMPT:
+    action: BLOCK
+    priority: 96
+    threshold: 5.0
+    description: "Block attempts to override previous or higher-priority instructions."
+  INJ_SYSTEM_PROMPT_EXTRACTION_ATTEMPT:
+    action: BLOCK
+    priority: 98
+    threshold: 5.0
+    description: "Block attempts to reveal system prompts or hidden instructions."
+  INJ_RULE_DISCLOSURE_ATTEMPT:
+    action: BLOCK
+    priority: 88
+    threshold: 3.0
+    description: "Block internal rule disclosure attempts in strict mode."
+  INJ_ROLE_OVERRIDE_ATTEMPT:
+    action: BLOCK
+    priority: 94
+    threshold: 5.0
+    description: "Block attempts to redefine the assistant role."
+  INJ_POLICY_BYPASS_ATTEMPT:
+    action: BLOCK
+    priority: 90
+    threshold: 5.0
+    description: "Block policy bypass attempts."
+  INJ_DEBUG_MODE_ATTEMPT:
+    action: BLOCK
+    priority: 93
+    threshold: 5.0
+    description: "Block attempts to enable debug, developer, admin, or audit modes."
+  INJ_MULTI_STEP_EXTRACTION_ATTEMPT:
+    action: BLOCK
+    priority: 86
+    threshold: 3.0
+    description: "Block multi-step hidden-rule extraction attempts in strict mode."
+  INJ_OBFUSCATED_INJECTION_ATTEMPT:
+    action: BLOCK
+    priority: 99
+    threshold: 3.0
+    description: "Block obfuscated prompt injection attempts, including leetspeak or spaced system/hidden instruction terms."
+  SAFE_INPUT:
+    action: ALLOW
+    priority: 0
+    threshold: 0.0
+    description: "No risky signal found."

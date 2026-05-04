@@ -1,0 +1,181 @@
+"""
+기대값 vs 실제값 Diff 리포트 생성기
+사용법: python diff_report.py --input results/test_result_YYYYMMDD_HHMMSS.json
+"""
+
+import json
+import argparse
+from pathlib import Path
+from datetime import datetime
+from collections import Counter
+
+# ─────────────────────────────────────────
+# HTML 리포트 생성
+# ─────────────────────────────────────────
+def generate_html_report(results: list, output_path: str):
+    total   = len(results)
+    passed  = sum(1 for r in results if r["status"] == "PASS")
+    failed  = sum(1 for r in results if r["status"] == "FAIL")
+    errors  = sum(1 for r in results if r["status"] == "ERROR")
+    pass_rate = passed / total * 100 if total else 0
+
+    # 카테고리별 통계
+    cat_counter = Counter(r["category"] for r in results)
+    cat_fail    = Counter(r["category"] for r in results if r["status"] == "FAIL")
+
+    # reason_code 실패 통계
+    fail_codes = []
+    for r in results:
+        if r["status"] == "FAIL":
+            fail_codes.extend(r.get("expected_codes_list", []))
+    code_fail_counter = Counter(fail_codes)
+
+    rows = ""
+    for r in results:
+        status_class = {"PASS": "pass", "FAIL": "fail", "ERROR": "error"}.get(r["status"], "")
+        exp_codes = ", ".join(r.get("expected_codes_list", []))
+        act_codes = ", ".join(r.get("actual_reason_codes", []))
+        action_diff = "" if r.get("action_pass") else " ⚠️"
+        codes_diff  = "" if r.get("codes_pass")  else " ⚠️"
+        rows += f"""
+        <tr class="{status_class}">
+            <td>{r['tc_id']}</td>
+            <td><span class="cat-badge">{r['category']}</span></td>
+            <td class="input-cell">{r['input_text'][:40]}{'...' if len(r['input_text'])>40 else ''}</td>
+            <td>{r['expected_action']}</td>
+            <td>{r.get('actual_action','—')}{action_diff}</td>
+            <td>{exp_codes}</td>
+            <td>{act_codes}{codes_diff}</td>
+            <td><span class="status-badge {status_class}">{r['status']}</span></td>
+            <td>{r.get('latency_ms','—')}ms</td>
+        </tr>"""
+
+    cat_stat_rows = ""
+    for cat, cnt in sorted(cat_counter.items()):
+        fail_cnt = cat_fail.get(cat, 0)
+        cat_stat_rows += f"<tr><td>{cat}</td><td>{cnt}</td><td>{fail_cnt}</td><td>{cnt-fail_cnt}</td></tr>"
+
+    code_stat_rows = ""
+    for code, cnt in code_fail_counter.most_common():
+        code_stat_rows += f"<tr><td>{code}</td><td>{cnt}</td></tr>"
+
+    html = f"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>QA Diff Report - {datetime.now().strftime('%Y-%m-%d %H:%M')}</title>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ font-family: 'Malgun Gothic', sans-serif; background: #f0f2f5; color: #1a1a2e; }}
+  .header {{ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 32px 40px; }}
+  .header h1 {{ font-size: 1.8rem; font-weight: 700; }}
+  .header p  {{ color: #aab; margin-top: 6px; font-size: 0.9rem; }}
+  .container {{ padding: 32px 40px; }}
+  .summary-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }}
+  .card {{ background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }}
+  .card .num  {{ font-size: 2.4rem; font-weight: 800; }}
+  .card .label{{ font-size: 0.85rem; color: #666; margin-top: 4px; }}
+  .card.pass  .num {{ color: #22c55e; }}
+  .card.fail  .num {{ color: #ef4444; }}
+  .card.error .num {{ color: #f59e0b; }}
+  .card.total .num {{ color: #3b82f6; }}
+  .section {{ background: white; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }}
+  .section h2 {{ font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: #1a1a2e; border-left: 4px solid #3b82f6; padding-left: 10px; }}
+  table {{ width: 100%; border-collapse: collapse; font-size: 0.85rem; }}
+  th {{ background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #e2e8f0; }}
+  td {{ padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }}
+  tr.pass td  {{ background: #f0fdf4; }}
+  tr.fail td  {{ background: #fef2f2; }}
+  tr.error td {{ background: #fffbeb; }}
+  .status-badge {{ padding: 3px 10px; border-radius: 99px; font-size: 0.75rem; font-weight: 700; }}
+  .status-badge.pass  {{ background: #dcfce7; color: #166534; }}
+  .status-badge.fail  {{ background: #fee2e2; color: #991b1b; }}
+  .status-badge.error {{ background: #fef9c3; color: #854d0e; }}
+  .cat-badge {{ background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; }}
+  .input-cell {{ font-family: monospace; font-size: 0.8rem; color: #444; }}
+  .progress {{ height: 12px; background: #e2e8f0; border-radius: 99px; overflow: hidden; margin-top: 8px; }}
+  .progress-bar {{ height: 100%; background: linear-gradient(90deg, #22c55e, #16a34a); border-radius: 99px; transition: width .6s; }}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🛡️ LLM 보안 프록시 QA Diff Report</h1>
+  <p>생성일시: {datetime.now().strftime('%Y년 %m월 %d일 %H:%M:%S')} | 총 {total}개 테스트 케이스</p>
+</div>
+<div class="container">
+  <div class="summary-grid">
+    <div class="card total"><div class="num">{total}</div><div class="label">전체 케이스</div></div>
+    <div class="card pass"><div class="num">{passed}</div><div class="label">PASS ✅</div>
+      <div class="progress"><div class="progress-bar" style="width:{pass_rate:.1f}%"></div></div>
+      <div class="label" style="margin-top:4px">{pass_rate:.1f}%</div>
+    </div>
+    <div class="card fail"><div class="num">{failed}</div><div class="label">FAIL ❌</div></div>
+    <div class="card error"><div class="num">{errors}</div><div class="label">ERROR ⚠️</div></div>
+  </div>
+
+  <div class="section">
+    <h2>카테고리별 결과</h2>
+    <table>
+      <tr><th>카테고리</th><th>전체</th><th>FAIL</th><th>PASS</th></tr>
+      {cat_stat_rows}
+    </table>
+  </div>
+
+  {"<div class='section'><h2>실패 다발 reason_code</h2><table><tr><th>reason_code</th><th>실패 건수</th></tr>" + code_stat_rows + "</table></div>" if code_stat_rows else ""}
+
+  <div class="section">
+    <h2>전체 테스트 케이스 상세</h2>
+    <table>
+      <tr>
+        <th>ID</th><th>카테고리</th><th>입력</th>
+        <th>기대 Action</th><th>실제 Action</th>
+        <th>기대 Codes</th><th>실제 Codes</th>
+        <th>결과</th><th>지연</th>
+      </tr>
+      {rows}
+    </table>
+  </div>
+</div>
+</body>
+</html>"""
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(html)
+    print(f"HTML 리포트 저장: {output_path}")
+
+# ─────────────────────────────────────────
+# 텍스트 요약 출력
+# ─────────────────────────────────────────
+def print_diff_summary(results: list):
+    print("\n" + "="*60)
+    print(" DIFF 요약 (기대값 vs 실제값)")
+    print("="*60)
+    for r in results:
+        if r["status"] != "PASS":
+            print(f"\n[{r['tc_id']}] {r['description']}")
+            if not r.get("action_pass"):
+                print(f"  Action  기대: {r['expected_action']}  →  실제: {r.get('actual_action','—')}")
+            if not r.get("codes_pass"):
+                exp = r.get("expected_codes_list", [])
+                act = r.get("actual_reason_codes", [])
+                missing = [c for c in exp if c not in act]
+                extra   = [c for c in act if c not in exp]
+                if missing: print(f"  Codes 누락: {missing}")
+                if extra:   print(f"  Codes 추가: {extra}")
+
+# ─────────────────────────────────────────
+# 메인
+# ─────────────────────────────────────────
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="QA Diff 리포트 생성기")
+    parser.add_argument("--input",  required=True, help="qa_runner.py 결과 JSON 파일")
+    parser.add_argument("--output", default=None,  help="HTML 리포트 출력 경로 (기본: results/)")
+    args = parser.parse_args()
+
+    with open(args.input, encoding="utf-8") as f:
+        results = json.load(f)
+
+    output_path = args.output or args.input.replace(".json", "_report.html")
+    generate_html_report(results, output_path)
+    print_diff_summary(results)
+    print(f"\n브라우저에서 열기: open {output_path}\n")

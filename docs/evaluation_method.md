@@ -45,6 +45,16 @@ python -m evaluation.evaluate \
   --report reports/evaluation_report.md
 ```
 
+외부 스타일 샘플 초안 검증:
+
+```bash
+python -m evaluation.evaluate \
+  --dataset evaluation/external_validation_sample.json \
+  --report reports/external_validation_report.md
+```
+
+추가 해석 가이드는 `docs/evaluation_limitations.md`를 참고한다.
+
 ## 최신 벤치마크 스냅샷
 
 <!-- BENCHMARK:START -->

@@ -25,7 +25,9 @@
 
 ## 실행 환경
 
-- Python: **3.10.x 권장** (프로젝트 기준: `>=3.10,<3.12`)
+- Python: **3.10 ~ 3.12 지원** (프로젝트 기준: `>=3.10,<3.13`)
+- 권장: **Python 3.10 또는 3.12**
+- 목표 시연 환경: **Python 3.12.3**에서도 `pip install ".[dev]"`와 `pytest`가 통과하도록 구성
 - 설치:
   - `pip install .`
   - 개발/테스트 포함: `pip install ".[dev]"`
@@ -43,7 +45,10 @@
 | Prompt Injection Detection | 1.000 | 1.000 | 1.000 | 104 / 0 / 0 |
 <!-- BENCHMARK:END -->
 
-> 주의: 본 수치는 프로젝트 내부 평가 데이터셋 기준이며, 실제 운영 환경에서는 동사무소/행정복지센터별 업무 데이터와 더 큰 외부 데이터셋으로 추가 검증이 필요하다.
+> 주의: 현재 Precision/Recall/F1 1.000 결과는 프로젝트 내부 평가 데이터셋 기준이다.  
+> 해당 데이터셋은 탐지 규칙 개발 과정에서 함께 설계되었기 때문에 내부 과적합 가능성이 있다.  
+> 따라서 실제 운영 성능을 주장하기보다는 MVP 수준의 회귀 테스트 및 시연 지표로 해석해야 한다.  
+> 향후 PromptBench, JailbreakBench, 공개 jailbreak prompt 목록, 공개 PII 샘플 등을 활용해 외부 검증 데이터셋을 추가할 예정이다.
 
 ## API 데모 결과
 
@@ -85,6 +90,12 @@ flowchart LR
 - 프록시 입력/출력 단계 정책 적용
 - pytest 테스트
 
+## 현재 구현 상태
+
+- 현재 저장소의 핵심 구현 범위는 **백엔드 보안 프록시, 정책 엔진, 감사 로그, 관리자 API, 평가 코드**다.
+- `frontend/`는 `src/.gitkeep`만 있는 placeholder 상태이며, **실사용 UI는 아직 구현되지 않았다.**
+- 발표/시연은 FastAPI API, curl, Swagger UI, 평가 리포트, 관리자 API 응답을 중심으로 진행하는 것을 전제로 한다.
+
 ## 프로젝트 구조
 
 ```text
@@ -108,8 +119,10 @@ backend/
     test_proxy_api.py
 policies/
   policy.yaml
+  strict.yaml
 evaluation/
   sample_dataset.json
+  external_validation_sample.json
   evaluate.py
   report_generator.py
 ```
@@ -117,7 +130,7 @@ evaluation/
 ## 프록시 동작 흐름 (`backend/app/api/proxy.py`)
 
 1. 입력 텍스트를 PII + Injection 탐지
-2. `policy.yaml`로 입력 단계 action 결정
+2. `policy_id=default`이면 `policies/policy.yaml`, `policy_id=strict`이면 `policies/strict.yaml`로 입력 단계 action 결정
 3. `BLOCK`이면 즉시 차단, `MASK`면 마스킹 후 LLM 호출
 4. LLM 응답을 다시 탐지/정책 평가
 5. 출력이 `BLOCK`이면 차단, `MASK`면 마스킹 후 반환
@@ -192,7 +205,18 @@ python -m evaluation.evaluate \
   --report reports/evaluation_report.md
 ```
 
-3-1. README/문서 벤치마크 표 자동 동기화
+3-1. 외부 스타일 샘플 검증
+
+내부 데이터셋 외에도 PromptBench/JailbreakBench 스타일을 참고한 소규모 외부 검증 샘플 초안을 별도로 제공한다.  
+이 샘플은 실제 공개 데이터셋 전체를 대체하지 않으며, 발표 단계에서 내부 과적합 가능성을 설명하기 위한 추가 검증 초안이다.
+
+```bash
+python -m evaluation.evaluate \
+  --dataset evaluation/external_validation_sample.json \
+  --report reports/external_validation_report.md
+```
+
+3-2. README/문서 벤치마크 표 자동 동기화
 
 ```bash
 python tools/sync_benchmark_docs.py --dataset evaluation/sample_dataset.json
@@ -225,6 +249,13 @@ docker compose up --build
   - `scripts/sync_benchmark_docs.ps1`
 - 환경변수 예시: `.env.example`
 
+## 운영 가드레일 현황
+
+- 관리자 API `/admin/stats`, `/admin/recent-blocks`, `/admin/reason-codes`, `/admin/upstream-config`는 `X-Admin-Token` 헤더와 `ADMIN_API_TOKEN`으로 보호된다.
+- `policy_id`는 `default`와 `strict`만 지원하며, 각각 `policies/policy.yaml`과 `policies/strict.yaml`을 선택한다.
+- 허용되지 않은 값이나 경로 조작 시도는 400으로 거부된다.
+- `logs/audit_log.jsonl`에는 원문 prompt/response를 저장하지 않고, `user_id`는 `anonymous`, `role_id`, `session_hash` 같은 비식별 값을 사용하는 것을 권장한다.
+
 ## 확장 아이디어
 
 - Presidio 어댑터 추가
@@ -239,7 +270,10 @@ docker compose up --build
 - 발표 시연 시나리오: `docs/demo_scenario.md`
 - 로그 저장/미저장 정책: `docs/logging_policy.md`
 - 평가 방법/지표 정의: `docs/evaluation_method.md`
+- 평가 한계 및 외부 검증 계획: `docs/evaluation_limitations.md`
+- 발표 예상 질의응답: `docs/presentation_qna.md`
 - 팀 역할/산출물 정리: `docs/team_roles.md`
+- 외부 스타일 샘플 검증 결과: `reports/external_validation_report.md`
 
 ## Detection Policy Documents
 

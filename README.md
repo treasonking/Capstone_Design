@@ -1,5 +1,7 @@
 # Capstone Design - LLM Security Proxy MVP
 
+[![Test](https://github.com/treasonking/Capstone_Design/actions/workflows/test.yml/badge.svg)](https://github.com/treasonking/Capstone_Design/actions/workflows/test.yml)
+
 동사무소/행정복지센터 등 주민 행정 업무 환경에서 LLM 사용 시 주민등록번호, 주소, 연락처,
 민원정보 유출과 프롬프트 인젝션을 줄이기 위한 정책/탐지 중심 MVP 코드베이스입니다.
 
@@ -25,17 +27,17 @@
 
 ## 실행 환경
 
-- Python: **3.10.x 권장** (프로젝트 기준: `>=3.10,<3.12`)
-- 설치:
-  - `pip install .`
-  - 개발/테스트 포함: `pip install ".[dev]"`
+- Python: **3.10 ~ 3.12 지원** (프로젝트 기준: `>=3.10,<3.13`)
+- 권장: **Python 3.10 또는 3.12**
+- 목표 시연 환경: **Python 3.12.3**에서도 `python -m pip install -e ".[dev,perf]"`와 `pytest`가 통과하도록 구성
+- GitHub Actions CI: **Python 3.10**에서 `python -m pip install -e ".[dev,perf]"`, `pytest`, `compileall`, `scanner.py` smoke test를 자동 실행
 
 ## 벤치마크 요약
 
 <!-- BENCHMARK:START -->
-> `evaluation/sample_dataset.json` (총 108건) 기준 결과  
-> 생성 시각: 2026-04-28T21:29:43  
-> 상세 결과: `reports/evaluation_report.md`
+기준 데이터셋: `evaluation/sample_dataset.json` (총 108건)  
+생성 시각: `2026-04-28T21:29:43`  
+상세 결과: `reports/evaluation_report.md`
 
 | 항목 | Precision | Recall | F1 | TP / FP / FN |
 |---|---:|---:|---:|---:|
@@ -43,9 +45,27 @@
 | Prompt Injection Detection | 1.000 | 1.000 | 1.000 | 104 / 0 / 0 |
 <!-- BENCHMARK:END -->
 
-> 주의: 본 수치는 프로젝트 내부 평가 데이터셋 기준이며, 실제 운영 환경에서는 동사무소/행정복지센터별 업무 데이터와 더 큰 외부 데이터셋으로 추가 검증이 필요하다.
+> 주의: 현재 Precision/Recall/F1 1.000 결과는 프로젝트 내부 평가 데이터셋 기준이다.  
+> 해당 데이터셋은 탐지 규칙 개발 과정에서 함께 설계되었기 때문에 내부 과적합 가능성이 있다.  
+> 따라서 실제 운영 성능을 주장하기보다는 MVP 수준의 회귀 테스트 및 시연 지표로 해석해야 한다.  
+> 향후 PromptBench, JailbreakBench, 공개 jailbreak prompt 목록, 공개 PII 샘플 등을 활용해 외부 검증 데이터셋을 추가할 예정이다.
+
+> 성능 수치와 스캐너/리포트 결과도 현재 내부 테스트 및 로컬 환경 기준이며, 실제 운영 성능 보장을 의미하지 않는다.
+
+### 외부 스타일 샘플 검증
+
+`evaluation/external_validation_sample.json` 24건 기준:
+
+| 항목 | Precision | Recall | F1 | TP / FP / FN |
+|---|---:|---:|---:|---:|
+| PII Detection | 1.000 | 1.000 | 1.000 | 7 / 0 / 0 |
+| Prompt Injection Detection | 0.846 | 0.957 | 0.898 | 22 / 4 / 1 |
+
+내부 데이터셋과 달리 외부 스타일 샘플에서는 Injection 오탐/미탐이 발생했으며, 이는 향후 개선 대상으로 관리한다.
 
 ## API 데모 결과
+
+아래 표는 README에 포함된 대표 데모 시나리오 요약입니다.
 
 | 시나리오 | 입력 | 기대 결과 | 증빙 |
 |---|---|---|---|
@@ -85,6 +105,13 @@ flowchart LR
 - 프록시 입력/출력 단계 정책 적용
 - pytest 테스트
 
+## 현재 구현 상태
+
+- 현재 저장소의 핵심 구현 범위는 **백엔드 보안 프록시, 정책 엔진, 감사 로그, 관리자 API, 평가 코드**다.
+- `frontend/`는 `src/.gitkeep`만 있는 placeholder 상태이며, **실사용 UI는 아직 구현되지 않았다.**
+- 발표/시연은 FastAPI API, curl, Swagger UI, 평가 리포트, 관리자 API 응답을 중심으로 진행하는 것을 전제로 한다.
+- 발표 보조용으로는 `frontend/demo.html` 정적 데모 페이지를 제공하며, 사용자 입력/정책 선택/관리자 요약 흐름을 빠르게 보여줄 수 있다.
+
 ## 프로젝트 구조
 
 ```text
@@ -106,32 +133,39 @@ backend/
     test_masking.py
     test_policy_engine.py
     test_proxy_api.py
+policies/
+  policy.yaml
+  strict.yaml
+evaluation/
+  sample_dataset.json
+  external_validation_sample.json
+  evaluate.py
+  report_generator.py
+performance/
+  proxy_load_stats.csv
+frontend/
+  demo.html
 tools/
   mock_llm.py
   sync_benchmark_docs.py
-  scanner.py
   locustfile.py
-policies/
-  policy.yaml
-performance/
+  scanner.py
 reports/
-evaluation/
-  sample_dataset.json
-  evaluate.py
-  report_generator.py
+  evaluation_report.md
+  external_validation_report.md
+  performance_report.md
+  performance_report.pdf
 ```
 
 ## 프록시 동작 흐름 (`backend/app/api/proxy.py`)
 
 1. 입력 텍스트를 PII + Injection 탐지
-2. `policy.yaml`로 입력 단계 action 결정
+2. `policy_id=default`이면 `policies/policy.yaml`, `policy_id=strict`이면 `policies/strict.yaml`로 입력 단계 action 결정
 3. `BLOCK`이면 즉시 차단, `MASK`면 마스킹 후 LLM 호출
 4. LLM 응답을 다시 탐지/정책 평가
 5. 출력이 `BLOCK`이면 차단, `MASK`면 마스킹 후 반환
 6. 응답에 `action`, `input_action`, `output_action`, `reasons`, `audit_summary` 포함
    (`audit_summary`에는 `timestamp_utc`, `latency_ms`, `pii_detected`, `injection_detected` 요약 포함)
-
-## API 예시
 
 ## 행정복지센터 민원 위험 시나리오
 
@@ -139,6 +173,8 @@ evaluation/
 - 상세 주소와 연락처가 포함된 전입/복지 신청 문서 정리 요청
 - 민원번호, 세대정보, 계좌번호가 섞인 상담 기록 정리 요청
 - 내부 응대 기준이나 숨겨진 시스템 지침을 추출하려는 프롬프트 인젝션 시도
+
+## API 예시
 
 ### 요청 예시
 
@@ -182,7 +218,7 @@ PII_RRN_DETECTED:
 1. 의존성 설치
 
 ```bash
-pip install ".[dev]"
+python -m pip install -e ".[dev,perf]"
 ```
 
 2. 테스트 실행
@@ -191,7 +227,7 @@ pip install ".[dev]"
 python -m pytest -q
 ```
 
-3. 평가 실행(powershell)
+3. 내부 평가 실행
 
 ```bash
 python -m evaluation.evaluate \
@@ -199,23 +235,75 @@ python -m evaluation.evaluate \
   --report reports/evaluation_report.md
 ```
 
-3-1. README/문서 벤치마크 표 자동 동기화
+4. 외부 스타일 샘플 검증
+
+```bash
+python -m evaluation.evaluate \
+  --dataset evaluation/external_validation_sample.json \
+  --report reports/external_validation_report.md
+```
+
+5. README/문서 벤치마크 표 자동 동기화
 
 ```bash
 python tools/sync_benchmark_docs.py --dataset evaluation/sample_dataset.json
 ```
 
-4. FastAPI 프록시 실행
+6. FastAPI 프록시 실행
 
 ```bash
 python -m uvicorn backend.app.api.proxy:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-5. Mock LLM 실행
+7. Mock LLM 실행
 
 ```bash
 python -m uvicorn tools.mock_llm:app --host 127.0.0.1 --port 8001 --app-dir .
 ```
+
+8. Locust 성능 테스트 실행
+
+```bash
+locust -f tools/locustfile.py --host http://127.0.0.1:8000
+```
+
+샘플 Locust 요약 CSV는 `performance/proxy_load_stats.csv`에 포함되어 있으며, 성능 리포트 재현 예시로 사용할 수 있다.
+
+9. 원문 미저장 스캐너 실행
+
+```bash
+python tools/scanner.py --json reports/scanner_result.json
+```
+
+옵션 예시:
+
+```bash
+python tools/scanner.py --no-json
+python tools/scanner.py --include-reports --json reports/scanner_result.json
+```
+
+기본 스캔 대상은 `logs/*.log`, `proxy.db`, `performance/*.csv`이며, `reports/evaluation_report.md`는 기본 스캔 대상에서 제외된다.
+
+10. PDF + Markdown 성능 리포트 생성
+
+```bash
+python -m evaluation.report_generator \
+  --scanner-json reports/scanner_result.json \
+  --locust-csv performance/proxy_load_stats.csv
+```
+
+이 명령은 `reports/performance_report.md`와 `reports/performance_report.pdf`를 함께 생성한다.
+
+11. 정적 데모 페이지 열기
+
+`frontend/demo.html`은 별도 빌드 없이 브라우저에서 열 수 있는 발표용 보조 화면이다.  
+프록시 API가 `http://127.0.0.1:8000`에서 실행 중이면 입력 요청, 정책 선택, 관리자 요약을 한 화면에서 확인할 수 있다.
+
+## 성능/증빙 자동화 파이프라인
+
+- `tools/scanner.py`는 `logs/`, `proxy.db`, `performance/`의 `.log`, `.txt`, `.json`, `.jsonl`, `.csv` 파일을 검사한다.
+- 결과 JSON에는 원문 개인정보를 저장하지 않고, `masked_match`와 `masked_excerpt`만 남긴다.
+- `evaluation/report_generator.py`는 스캐너 결과와 Locust 지표를 종합해 Markdown/PDF 요약 리포트를 생성한다.
 
 ## 배포/시연 편의
 
@@ -232,12 +320,12 @@ docker compose up --build
   - `scripts/sync_benchmark_docs.ps1`
 - 환경변수 예시: `.env.example`
 
-## 확장 아이디어
+## 운영 가드레일 현황
 
-- Presidio 어댑터 추가
-- 정책 버전/테넌트별 정책 파일 분리
-- 감사 로그 저장소 연계 (원문 미저장 원칙 유지)
-- FastAPI 실제 라우터 + 인증 미들웨어 통합
+- 관리자 API `/admin/stats`, `/admin/recent-blocks`, `/admin/reason-codes`, `/admin/upstream-config`는 `X-Admin-Token` 헤더와 `ADMIN_API_TOKEN`으로 보호된다.
+- `policy_id`는 `default`와 `strict`만 지원하며, 각각 `policies/policy.yaml`과 `policies/strict.yaml`을 선택한다.
+- 허용되지 않은 값이나 경로 조작 시도는 400으로 거부된다.
+- `logs/audit_log.jsonl`에는 원문 prompt/response를 저장하지 않고, `user_id`는 `anonymous`, `role_id`, `session_hash` 같은 비식별 값을 사용하는 것을 권장한다.
 
 ## 문서
 
@@ -246,75 +334,14 @@ docker compose up --build
 - 발표 시연 시나리오: `docs/demo_scenario.md`
 - 로그 저장/미저장 정책: `docs/logging_policy.md`
 - 평가 방법/지표 정의: `docs/evaluation_method.md`
+- 평가 한계 및 외부 검증 계획: `docs/evaluation_limitations.md`
+- 발표 예상 질의응답: `docs/presentation_qna.md`
 - 팀 역할/산출물 정리: `docs/team_roles.md`
-
-## Detection Policy Documents
-
-- `docs/reason_codes.md`: PII/Prompt Injection reason_code 정의, legacy alias, FP/FN 기준
-- `docs/policy_guide.md`: 정책 모드(`ALLOW`/`WARN`/`MASK`/`BLOCK`)와 `policy.yaml` 설명
-- `reports/evaluation_report.md`: 최신 정량 평가 결과와 reason_code별 성능
+- 외부 스타일 샘플 검증 결과: `reports/external_validation_report.md`
+- 성능 요약 Markdown 리포트: `reports/performance_report.md`
 
 ## 한계와 향후 개선
 
 - 현재 탐지는 룰 기반 MVP로, 복잡한 문맥형 우회 공격에는 한계가 있음
 - 데이터셋을 더 확대하고 도메인별 정책 프로파일링이 필요함
 - 운영 단계에서는 로그 저장소, 인증/인가, 대시보드 통합이 추가로 필요함
-
-## 성능/증빙 자동화 파이프라인
-
-이번 성능/증빙 파트는 프록시가 실제 운영 환경에서 다음 두 가지를 만족하는지 자동으로 검증하기 위해 추가했다.
-
-- `원문 미저장 원칙` 준수 여부 확인
-- 마스킹 처리와 정책 판정에 따른 성능 오버헤드 측정
-
-즉, API가 정상 응답하는지만 보는 것이 아니라, 시스템이 동작한 이후에도 로그와 DB에 민감정보가 평문으로 남지 않는지 점검하고, 동시에 부하 조건에서의 지연 시간과 오류율을 객관적으로 기록하는 것을 목표로 한다.
-
-### 주요 검증 도구
-
-| 도구 | 역할 | 산출물 |
-|---|---|---|
-| `tools/scanner.py` | 로컬 `logs/` 디렉토리와 `proxy.db`를 전수 조사하여 마스킹되지 않은 민감정보(PII) 잔존 여부를 확인 | JSON 결과 파일 |
-| `tools/locustfile.py` | Locust 기반 부하 테스트 봇으로 정상 요청, PII 포함 요청, 프롬프트 인젝션 시나리오를 혼합 전송 | `*_stats.csv`, `*_failures.csv`, `*_exceptions.csv` |
-| `evaluation/report_generator.py` | 스캐너 결과와 Locust 측정 지표를 종합해 PASS/FAIL을 판정하고 `performance_report.pdf`를 생성 | PDF 리포트 |
-
-### 평가 기준
-
-| 항목 | 기준 | 의미 |
-|---|---|---|
-| 보안성 | 로그 및 DB 내 민감정보 평문 노출 0건 | PASS |
-| 안정성 | 부하 상태에서 Error Rate 1.00% 이하 | PASS |
-| 성능 | p95 Latency 500ms 이하 | MVP 환경의 오버헤드 측정 기준 |
-
-### 실행 방법
-
-가상환경 `venv` 활성화 상태를 가정하고, 아래 순서대로 실행하면 스캔 결과와 부하 테스트 결과를 종합한 PDF 리포트를 얻을 수 있다.
-
-1. 부하 테스트 실행
-
-```bash
-locust -f tools/locustfile.py --host http://127.0.0.1:8000 --headless -u 20 -r 5 -t 1m --csv performance/proxy_load
-```
-
-2. 스캐너 실행
-
-```bash
-python tools/scanner.py
-```
-
-3. PDF 리포트 생성
-
-```bash
-python -m evaluation.report_generator --scanner-json reports/scanner_result.json --locust-csv performance/proxy_load_stats.csv
-```
-
-### 결과 확인
-
-- 스캐너 결과는 `reports/scanner_result.json`에 저장된다.
-- Locust 결과는 `performance/proxy_load_stats.csv`를 중심으로 생성된다.
-- 최종 PDF는 `reports/performance_report.pdf`로 자동 생성된다.
-
-### 해석 메모
-
-- 스캐너 결과가 `0건`이면 현재 로그/DB 기준으로 원문 미저장 원칙을 충족한 것으로 본다.
-- `p95 Latency`는 절대 성능 수치라기보다, 마스킹과 정책 판정이 추가된 프록시의 오버헤드를 비교하는 기준으로 사용한다.
-- `Error Rate`는 부하 조건에서의 안정성을 보는 보조 지표이며, 예외 응답이나 정책 실패가 급증하는지 확인하는 데 유용하다.

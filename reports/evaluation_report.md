@@ -1,6 +1,6 @@
 # Detection Evaluation Report
 
-- Generated at: 2026-05-03T22:05:52
+- Generated at: 2026-05-04T14:51:37
 - Dataset: `evaluation/sample_dataset.json`
 - Dataset size: 108
 

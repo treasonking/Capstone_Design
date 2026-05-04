@@ -1,10 +1,15 @@
 {
-  "generated_at": "2026-05-03T17:56:42",
-  "status": "PASS",
-  "sensitive_findings_count": 0,
-  "log_findings_count": 0,
-  "db_findings_count": 0,
-  "log_dir": "logs",
-  "db_path": "proxy.db",
+  "summary": {
+    "scanned_files": 2,
+    "sensitive_findings": 0,
+    "include_reports": false,
+    "supported_suffixes": [
+      ".csv",
+      ".json",
+      ".jsonl",
+      ".log",
+      ".txt"
+    ]
+  },
   "findings": []
 }

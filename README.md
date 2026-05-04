@@ -29,9 +29,10 @@
 
 - Python: **3.10 ~ 3.12 지원** (프로젝트 기준: `>=3.10,<3.13`)
 - 권장: **Python 3.10 또는 3.12**
-<<<<<<< HEAD
 - 목표 시연 환경: **Python 3.12.3**에서도 `python -m pip install -e ".[dev,perf]"`와 `pytest`가 통과하도록 구성
 - GitHub Actions CI: **Python 3.10**에서 `python -m pip install -e ".[dev,perf]"`, `pytest`, `compileall`, `scanner.py` smoke test를 자동 실행
+- 설치:
+  - `python -m pip install -e ".[dev,perf]"`
 
 ## 벤치마크 요약
 
@@ -51,8 +52,8 @@
 > 따라서 실제 운영 성능을 주장하기보다는 MVP 수준의 회귀 테스트 및 시연 지표로 해석해야 한다.  
 > 향후 PromptBench, JailbreakBench, 공개 jailbreak prompt 목록, 공개 PII 샘플 등을 활용해 외부 검증 데이터셋을 추가할 예정이다.
 
-<<<<<<< HEAD
 > 성능 수치와 스캐너/리포트 결과도 현재 내부 테스트 및 로컬 환경 기준이며, 실제 운영 성능 보장을 의미하지 않는다.
+
 ### 외부 스타일 샘플 검증
 
 `evaluation/external_validation_sample.json` 24건 기준:
@@ -147,15 +148,8 @@ performance/
 frontend/
   demo.html
 tools/
-  mock_llm.py
-  sync_benchmark_docs.py
   locustfile.py
   scanner.py
-reports/
-  evaluation_report.md
-  external_validation_report.md
-  performance_report.md
-  performance_report.pdf
 ```
 
 ## 프록시 동작 흐름 (`backend/app/api/proxy.py`)
@@ -168,14 +162,14 @@ reports/
 6. 응답에 `action`, `input_action`, `output_action`, `reasons`, `audit_summary` 포함
    (`audit_summary`에는 `timestamp_utc`, `latency_ms`, `pii_detected`, `injection_detected` 요약 포함)
 
+## API 예시
+
 ## 행정복지센터 민원 위험 시나리오
 
 - 주민등록번호가 포함된 민원 초안 요약 요청
 - 상세 주소와 연락처가 포함된 전입/복지 신청 문서 정리 요청
 - 민원번호, 세대정보, 계좌번호가 섞인 상담 기록 정리 요청
 - 내부 응대 기준이나 숨겨진 시스템 지침을 추출하려는 프롬프트 인젝션 시도
-
-## API 예시
 
 ### 요청 예시
 
@@ -228,7 +222,7 @@ python -m pip install -e ".[dev,perf]"
 python -m pytest -q
 ```
 
-3. 내부 평가 실행
+3. 평가 실행(powershell)
 
 ```bash
 python -m evaluation.evaluate \
@@ -236,7 +230,10 @@ python -m evaluation.evaluate \
   --report reports/evaluation_report.md
 ```
 
-4. 외부 스타일 샘플 검증
+3-1. 외부 스타일 샘플 검증
+
+내부 데이터셋 외에도 PromptBench/JailbreakBench 스타일을 참고한 소규모 외부 검증 샘플 초안을 별도로 제공한다.  
+이 샘플은 실제 공개 데이터셋 전체를 대체하지 않으며, 발표 단계에서 내부 과적합 가능성을 설명하기 위한 추가 검증 초안이다.
 
 ```bash
 python -m evaluation.evaluate \
@@ -244,25 +241,25 @@ python -m evaluation.evaluate \
   --report reports/external_validation_report.md
 ```
 
-5. README/문서 벤치마크 표 자동 동기화
+3-2. README/문서 벤치마크 표 자동 동기화
 
 ```bash
 python tools/sync_benchmark_docs.py --dataset evaluation/sample_dataset.json
 ```
 
-6. FastAPI 프록시 실행
+4. FastAPI 프록시 실행
 
 ```bash
 python -m uvicorn backend.app.api.proxy:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-7. Mock LLM 실행
+5. Mock LLM 실행
 
 ```bash
 python -m uvicorn tools.mock_llm:app --host 127.0.0.1 --port 8001 --app-dir .
 ```
 
-8. Locust 성능 테스트 실행
+6. Locust 성능 테스트 실행
 
 ```bash
 locust -f tools/locustfile.py --host http://127.0.0.1:8000
@@ -270,7 +267,7 @@ locust -f tools/locustfile.py --host http://127.0.0.1:8000
 
 샘플 Locust 요약 CSV는 `performance/proxy_load_stats.csv`에 포함되어 있으며, 성능 리포트 재현 예시로 사용할 수 있다.
 
-9. 원문 미저장 스캐너 실행
+7. 원문 미저장 스캐너 실행
 
 ```bash
 python tools/scanner.py --json reports/scanner_result.json
@@ -285,7 +282,7 @@ python tools/scanner.py --include-reports --json reports/scanner_result.json
 
 기본 스캔 대상은 `logs/*.log`, `proxy.db`, `performance/*.csv`이며, `reports/evaluation_report.md`는 기본 스캔 대상에서 제외된다.
 
-10. PDF + Markdown 성능 리포트 생성
+8. PDF + Markdown 성능 리포트 생성
 
 ```bash
 python -m evaluation.report_generator \
@@ -295,16 +292,11 @@ python -m evaluation.report_generator \
 
 이 명령은 `reports/performance_report.md`와 `reports/performance_report.pdf`를 함께 생성한다.
 
-11. 정적 데모 페이지 열기
+9. 정적 데모 페이지 열기
 
 `frontend/demo.html`은 별도 빌드 없이 브라우저에서 열 수 있는 발표용 보조 화면이다.  
 프록시 API가 `http://127.0.0.1:8000`에서 실행 중이면 입력 요청, 정책 선택, 관리자 요약을 한 화면에서 확인할 수 있다.
 
-## 성능/증빙 자동화 파이프라인
-
-- `tools/scanner.py`는 `logs/`, `proxy.db`, `performance/`의 `.log`, `.txt`, `.json`, `.jsonl`, `.csv` 파일을 검사한다.
-- 결과 JSON에는 원문 개인정보를 저장하지 않고, `masked_match`와 `masked_excerpt`만 남긴다.
-- `evaluation/report_generator.py`는 스캐너 결과와 Locust 지표를 종합해 Markdown/PDF 요약 리포트를 생성한다.
 ## 배포/시연 편의
 
 - Docker 실행
@@ -327,6 +319,13 @@ docker compose up --build
 - 허용되지 않은 값이나 경로 조작 시도는 400으로 거부된다.
 - `logs/audit_log.jsonl`에는 원문 prompt/response를 저장하지 않고, `user_id`는 `anonymous`, `role_id`, `session_hash` 같은 비식별 값을 사용하는 것을 권장한다.
 
+## 확장 아이디어
+
+- Presidio 어댑터 추가
+- 정책 버전/테넌트별 정책 파일 분리
+- 감사 로그 저장소 연계 (원문 미저장 원칙 유지)
+- FastAPI 실제 라우터 + 인증 미들웨어 통합
+
 ## 문서
 
 - 정책/threshold/reason code 가이드: `docs/policy_guide.md`
@@ -339,6 +338,12 @@ docker compose up --build
 - 팀 역할/산출물 정리: `docs/team_roles.md`
 - 외부 스타일 샘플 검증 결과: `reports/external_validation_report.md`
 - 성능 요약 Markdown 리포트: `reports/performance_report.md`
+
+## Detection Policy Documents
+
+- `docs/reason_codes.md`: PII/Prompt Injection reason_code 정의, legacy alias, FP/FN 기준
+- `docs/policy_guide.md`: 정책 모드(`ALLOW`/`WARN`/`MASK`/`BLOCK`)와 `policy.yaml` 설명
+- `reports/evaluation_report.md`: 최신 정량 평가 결과와 reason_code별 성능
 
 ## 한계와 향후 개선
 

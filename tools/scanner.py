@@ -1,189 +1,155 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import json
-import os
-import re
-import sqlite3
-import sys
-from datetime import datetime
+from pathlib import Path
+from typing import Any
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DEFAULT_LOG_DIR = os.path.join(PROJECT_ROOT, "logs")
-DEFAULT_DB_PATH = os.path.join(PROJECT_ROOT, "proxy.db")
-DEFAULT_JSON_OUTPUT = os.path.join(PROJECT_ROOT, "reports", "scanner_result.json")
+from backend.app.detection.models import DetectionResult, DetectorType
+from backend.app.detection.pii_detector import detect_pii
+from backend.app.engine.masking import apply_masking
 
-PII_PATTERNS = {
-    "unmasked_mobile_phone": re.compile(r"(?<!\d)010[- .]?\d{4}[- .]?\d{4}(?!\d)"),
-    "unmasked_rrn": re.compile(r"(?<!\d)\d{6}[- ]?[1-4]\d{6}(?!\d)"),
-    "unmasked_email": re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"),
-    "possible_bank_account": re.compile(r"(?<!\d)\d{2,6}[- ]\d{2,6}[- ]\d{5,8}(?!\d)"),
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_JSON_PATH = PROJECT_ROOT / "reports" / "scanner_result.json"
+DEFAULT_EXCLUDED_PATHS = {
+    PROJECT_ROOT / "reports" / "evaluation_report.md",
 }
-
-MASK_HINT_PATTERN = re.compile(r"\*|x{2,}|X{2,}|masked|redacted|마스킹")
-TEXT_DECLARED_TYPES = ("CHAR", "CLOB", "TEXT", "VARCHAR", "NVARCHAR")
+SUPPORTED_SUFFIXES = {".log", ".txt", ".json", ".jsonl", ".csv"}
 
 
-def _line_excerpt(text: str, start: int, end: int, radius: int = 36) -> str:
-    left = max(0, start - radius)
-    right = min(len(text), end + radius)
-    return text[left:right].replace("\n", "\\n")
+def _default_targets(include_reports: bool) -> list[Path]:
+    targets = [
+        PROJECT_ROOT / "logs",
+        PROJECT_ROOT / "proxy.db",
+        PROJECT_ROOT / "performance",
+    ]
+    if include_reports:
+        targets.append(PROJECT_ROOT / "reports")
+    return targets
 
 
-def _looks_masked(value: str) -> bool:
-    return bool(MASK_HINT_PATTERN.search(value))
-
-
-def find_sensitive_values(text: str) -> list[dict[str, str]]:
-    findings: list[dict[str, str]] = []
-    if not text:
-        return findings
-
-    for pattern_name, pattern in PII_PATTERNS.items():
-        for match in pattern.finditer(text):
-            matched_value = match.group(0)
-            if _looks_masked(matched_value):
+def _iter_candidate_files(include_reports: bool) -> list[Path]:
+    files: list[Path] = []
+    for target in _default_targets(include_reports):
+        if not target.exists():
+            continue
+        if target.is_file():
+            if target.name == "proxy.db" or target.suffix.lower() in SUPPORTED_SUFFIXES:
+                files.append(target)
+            continue
+        for path in target.rglob("*"):
+            if not path.is_file():
                 continue
+            if path.resolve() in DEFAULT_EXCLUDED_PATHS:
+                continue
+            if path.name == "proxy.db" or path.suffix.lower() in SUPPORTED_SUFFIXES:
+                files.append(path)
+    return sorted({path.resolve() for path in files})
+
+
+def _read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return path.read_text(encoding="utf-8", errors="ignore")
+
+
+def _masked_excerpt(text: str, start: int, end: int, window: int = 36) -> str:
+    excerpt_start = max(0, start - window)
+    excerpt_end = min(len(text), end + window)
+    excerpt = text[excerpt_start:excerpt_end]
+    adjusted_start = start - excerpt_start
+    adjusted_end = adjusted_start + (end - start)
+
+    detections = detect_pii(excerpt)
+    if detections:
+        excerpt = apply_masking(excerpt, detections)
+    else:
+        excerpt = excerpt[:adjusted_start] + "***" + excerpt[adjusted_end:]
+    return excerpt.replace("\n", "\\n")
+
+
+def _masked_match_text(detection: DetectionResult) -> str:
+    normalized = DetectionResult(
+        detector_type=DetectorType.PII,
+        category=detection.category,
+        reason_code=detection.reason_code,
+        start=0,
+        end=len(detection.matched_text),
+        matched_text=detection.matched_text,
+        score=detection.score,
+    )
+    return apply_masking(detection.matched_text, [normalized])
+
+
+def scan_files(include_reports: bool = False) -> dict[str, Any]:
+    files = _iter_candidate_files(include_reports)
+    findings: list[dict[str, Any]] = []
+    scanned_files = 0
+
+    for path in files:
+        scanned_files += 1
+        text = _read_text(path)
+        detections = detect_pii(text)
+        for detection in detections:
             findings.append(
                 {
-                    "pattern": pattern_name,
-                    "matched": matched_value,
-                    "excerpt": _line_excerpt(text, match.start(), match.end()),
+                    "path": str(path.relative_to(PROJECT_ROOT)),
+                    "reason_code": detection.reason_code,
+                    "category": detection.category,
+                    "score": round(detection.score, 3),
+                    "masked_match": _masked_match_text(detection),
+                    "masked_excerpt": _masked_excerpt(text, detection.start, detection.end),
                 }
             )
-    return findings
 
-
-def scan_logs(log_dir: str) -> list[dict[str, str]]:
-    findings: list[dict[str, str]] = []
-    if not os.path.isdir(log_dir):
-        return findings
-
-    for current_dir, _, file_names in os.walk(log_dir):
-        for file_name in file_names:
-            if not file_name.endswith(".log"):
-                continue
-            path = os.path.join(current_dir, file_name)
-            try:
-                with open(path, "r", encoding="utf-8", errors="replace") as file:
-                    for line_number, line in enumerate(file, start=1):
-                        for finding in find_sensitive_values(line):
-                            findings.append(
-                                {
-                                    "source": "log",
-                                    "path": os.path.relpath(path, PROJECT_ROOT),
-                                    "line": str(line_number),
-                                    **finding,
-                                }
-                            )
-            except OSError as exc:
-                findings.append(
-                    {
-                        "source": "log",
-                        "path": os.path.relpath(path, PROJECT_ROOT),
-                        "line": "",
-                        "pattern": "read_error",
-                        "matched": str(exc),
-                        "excerpt": "",
-                    }
-                )
-    return findings
-
-
-def _quote_identifier(identifier: str) -> str:
-    return '"' + identifier.replace('"', '""') + '"'
-
-
-def _text_columns(cursor: sqlite3.Cursor, table_name: str) -> list[str]:
-    columns: list[str] = []
-    cursor.execute(f"PRAGMA table_info({_quote_identifier(table_name)})")
-    for row in cursor.fetchall():
-        column_name = row[1]
-        declared_type = str(row[2] or "").upper()
-        if not declared_type or any(type_name in declared_type for type_name in TEXT_DECLARED_TYPES):
-            columns.append(column_name)
-    return columns
-
-
-def scan_database(db_path: str) -> list[dict[str, str]]:
-    findings: list[dict[str, str]] = []
-    if not os.path.exists(db_path):
-        return findings
-
-    connection = sqlite3.connect(db_path)
-    try:
-        cursor = connection.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
-        table_names = [row[0] for row in cursor.fetchall()]
-
-        audit_tables = [name for name in table_names if "audit" in name.lower() or "log" in name.lower()]
-        scan_tables = audit_tables or table_names
-
-        for table_name in scan_tables:
-            columns = _text_columns(cursor, table_name)
-            if not columns:
-                continue
-
-            selected_columns = ", ".join(_quote_identifier(column) for column in columns)
-            cursor.execute(f"SELECT rowid, {selected_columns} FROM {_quote_identifier(table_name)}")
-            for row in cursor.fetchall():
-                rowid = row[0]
-                for column_name, value in zip(columns, row[1:]):
-                    if value is None:
-                        continue
-                    for finding in find_sensitive_values(str(value)):
-                        findings.append(
-                            {
-                                "source": "database",
-                                "path": os.path.relpath(db_path, PROJECT_ROOT),
-                                "line": f"{table_name}.rowid={rowid}.{column_name}",
-                                **finding,
-                            }
-                        )
-    finally:
-        connection.close()
-    return findings
-
-
-def run_scan(log_dir: str = DEFAULT_LOG_DIR, db_path: str = DEFAULT_DB_PATH) -> dict[str, object]:
-    log_findings = scan_logs(log_dir)
-    db_findings = scan_database(db_path)
-    findings = log_findings + db_findings
+    summary = {
+        "scanned_files": scanned_files,
+        "sensitive_findings": len(findings),
+        "include_reports": include_reports,
+        "supported_suffixes": sorted(SUPPORTED_SUFFIXES),
+    }
     return {
-        "generated_at": datetime.now().isoformat(timespec="seconds"),
-        "status": "PASS" if not findings else "FAIL",
-        "sensitive_findings_count": len(findings),
-        "log_findings_count": len(log_findings),
-        "db_findings_count": len(db_findings),
-        "log_dir": os.path.relpath(log_dir, PROJECT_ROOT) if os.path.isabs(log_dir) else log_dir,
-        "db_path": os.path.relpath(db_path, PROJECT_ROOT) if os.path.isabs(db_path) else db_path,
+        "summary": summary,
         "findings": findings,
     }
 
 
-def write_json_report(result: dict[str, object], output_path: str) -> None:
-    output_dir = os.path.dirname(output_path)
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as file:
-        json.dump(result, file, ensure_ascii=False, indent=2)
+def write_json_report(result: dict[str, Any], output_path: Path) -> Path:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    return output_path
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Scan logs and SQLite audit data for unmasked sensitive values.")
-    parser.add_argument("--logs-dir", default=DEFAULT_LOG_DIR, help="Directory containing .log files. Default: logs/")
-    parser.add_argument("--db", default=DEFAULT_DB_PATH, help="SQLite DB path. Default: proxy.db")
-    parser.add_argument("--json-output", default=DEFAULT_JSON_OUTPUT, help="Where to write scanner JSON output.")
-    parser.add_argument("--no-json", action="store_true", help="Do not write scanner JSON output.")
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Scan local evidence files for masked PII findings.")
+    parser.add_argument(
+        "--json",
+        dest="json_path",
+        default=str(DEFAULT_JSON_PATH),
+        help="Path to JSON report output.",
+    )
+    parser.add_argument(
+        "--no-json",
+        action="store_true",
+        help="Do not write a JSON report file.",
+    )
+    parser.add_argument(
+        "--include-reports",
+        action="store_true",
+        help="Include supported files under reports/ in the scan target set.",
+    )
     args = parser.parse_args()
 
-    result = run_scan(args.logs_dir, args.db)
-    if not args.no_json:
-        write_json_report(result, args.json_output)
+    result = scan_files(include_reports=args.include_reports)
+    print(f"Scanned files: {result['summary']['scanned_files']}")
+    print(f"Sensitive findings: {result['summary']['sensitive_findings']}")
 
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["status"] == "PASS" else 1
+    if not args.no_json:
+        output_path = write_json_report(result, Path(args.json_path))
+        print(f"JSON report saved to: {output_path}")
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

@@ -1,8 +1,24 @@
 from __future__ import annotations
 
+import argparse
+import csv
 from datetime import datetime
+import json
 from pathlib import Path
 from typing import Any
+
+try:
+    import pandas as pd  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover
+    pd = None
+
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+except ModuleNotFoundError:  # pragma: no cover
+    SimpleDocTemplate = None
 
 
 def _render_metric_block(name: str, metric: dict[str, Any]) -> list[str]:
@@ -105,283 +121,234 @@ def generate_markdown_report(metrics: dict[str, Any], output_path: str | Path) -
     output.write_text("\n".join(lines), encoding="utf-8")
     return output
 
-# ---------------------------------------------------------------------------
-# Performance / evidence PDF report generation
-# ---------------------------------------------------------------------------
+
+def _safe_float(value: Any) -> float:
+    if value in (None, ""):
+        return 0.0
+    return float(value)
 
 
-def _load_scanner_result(scanner_json_path: str | Path) -> dict[str, Any]:
-    import json
+def load_locust_metrics(csv_path: str | Path) -> dict[str, float]:
+    csv_file = Path(csv_path)
+    if pd is not None:
+        dataframe = pd.read_csv(csv_file)
+        if {"metric", "value"}.issubset(dataframe.columns):
+            metric_map = {
+                str(row["metric"]).strip(): _safe_float(row["value"])
+                for _, row in dataframe.iterrows()
+            }
+            return {
+                "total_requests": metric_map.get("total_requests", 0.0),
+                "failures": metric_map.get("failures", 0.0),
+                "error_rate": metric_map.get("error_rate", 0.0),
+                "average_latency_ms": metric_map.get("average_latency_ms", 0.0),
+                "p95_latency_ms": metric_map.get("p95_latency_ms", 0.0),
+                "requests_per_sec": metric_map.get("requests_per_sec", 0.0),
+            }
+        if {"Type", "Name", "Request Count", "Failure Count", "Average Response Time", "95%", "Requests/s"}.issubset(dataframe.columns):
+            aggregate = dataframe.iloc[0]
+            request_count = _safe_float(aggregate["Request Count"])
+            failure_count = _safe_float(aggregate["Failure Count"])
+            error_rate = 0.0 if request_count == 0 else (failure_count / request_count) * 100
+            return {
+                "total_requests": request_count,
+                "failures": failure_count,
+                "error_rate": error_rate,
+                "average_latency_ms": _safe_float(aggregate["Average Response Time"]),
+                "p95_latency_ms": _safe_float(aggregate["95%"]),
+                "requests_per_sec": _safe_float(aggregate["Requests/s"]),
+            }
 
-    path = Path(scanner_json_path)
-    if not path.exists():
-        return {
-            "status": "UNKNOWN",
-            "sensitive_findings_count": None,
-            "log_findings_count": None,
-            "db_findings_count": None,
-            "findings": [],
-            "missing_input": str(path),
+    with csv_file.open("r", encoding="utf-8", newline="") as file:
+        reader = csv.DictReader(file)
+        rows = list(reader)
+    if rows and {"metric", "value"}.issubset(rows[0].keys()):
+        metric_map = {
+            str(row["metric"]).strip(): _safe_float(row["value"])
+            for row in rows
         }
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def _find_locust_stats_csv(search_root: str | Path) -> Path | None:
-    root = Path(search_root)
-    candidates = sorted(root.rglob("*_stats.csv"), key=lambda item: item.stat().st_mtime, reverse=True)
-    for candidate in candidates:
-        if not candidate.name.endswith("_stats_history.csv") and not candidate.name.endswith("_failures.csv"):
-            return candidate
-    return None
-
-
-def _load_locust_metrics(locust_csv_path: str | Path | None, search_root: str | Path) -> dict[str, Any]:
-    if locust_csv_path is None:
-        locust_path = _find_locust_stats_csv(search_root)
-    else:
-        locust_path = Path(locust_csv_path)
-
-    if locust_path is None or not locust_path.exists():
         return {
-            "status": "UNKNOWN",
-            "csv_path": None if locust_path is None else str(locust_path),
-            "p95_latency_ms": None,
-            "tps": None,
-            "error_rate_percent": None,
-            "request_count": None,
-            "failure_count": None,
+            "total_requests": metric_map.get("total_requests", 0.0),
+            "failures": metric_map.get("failures", 0.0),
+            "error_rate": metric_map.get("error_rate", 0.0),
+            "average_latency_ms": metric_map.get("average_latency_ms", 0.0),
+            "p95_latency_ms": metric_map.get("p95_latency_ms", 0.0),
+            "requests_per_sec": metric_map.get("requests_per_sec", 0.0),
         }
+    raise ValueError("Unsupported Locust CSV format.")
 
-    try:
-        import pandas as pd
-    except ImportError as exc:
-        raise SystemExit("pandas is required. Install with: pip install pandas reportlab") from exc
 
-    frame = pd.read_csv(locust_path)
-    if frame.empty:
-        return {
-            "status": "UNKNOWN",
-            "csv_path": str(locust_path),
-            "p95_latency_ms": None,
-            "tps": None,
-            "error_rate_percent": None,
-            "request_count": None,
-            "failure_count": None,
-        }
-
-    name_column = "Name" if "Name" in frame.columns else None
-    if name_column and (frame[name_column] == "Aggregated").any():
-        row = frame.loc[frame[name_column] == "Aggregated"].iloc[0]
-    else:
-        row = frame.iloc[-1]
-
-    request_count = float(row.get("Request Count", 0) or 0)
-    failure_count = float(row.get("Failure Count", 0) or 0)
-    p95_column = "95%" if "95%" in frame.columns else "95"
-    p95_latency_ms = float(row.get(p95_column, 0) or 0) if p95_column in frame.columns else None
-    tps = float(row.get("Requests/s", 0) or 0) if "Requests/s" in frame.columns else None
-    error_rate = (failure_count / request_count * 100) if request_count else None
-
+def load_scanner_summary(scanner_json_path: str | Path) -> dict[str, Any]:
+    payload = json.loads(Path(scanner_json_path).read_text(encoding="utf-8"))
+    summary = payload.get("summary", {})
     return {
-        "status": "LOADED",
-        "csv_path": str(locust_path),
-        "p95_latency_ms": p95_latency_ms,
-        "tps": tps,
-        "error_rate_percent": error_rate,
-        "request_count": int(request_count),
-        "failure_count": int(failure_count),
+        "scanned_files": int(summary.get("scanned_files", 0)),
+        "sensitive_findings": int(summary.get("sensitive_findings", 0)),
     }
 
 
-def _pass_fail(value: bool | None) -> str:
-    if value is None:
-        return "UNKNOWN"
-    return "PASS" if value else "FAIL"
+def _criterion_status(value: float | int, threshold: float | int, *, comparator: str = "<=") -> str:
+    if comparator == "<=":
+        return "PASS" if value <= threshold else "FAIL"
+    return "PASS" if value >= threshold else "FAIL"
 
 
-def _build_performance_judgement(
-    scanner_result: dict[str, Any],
-    locust_metrics: dict[str, Any],
-    p95_threshold_ms: float,
-    error_rate_threshold_percent: float,
-) -> dict[str, Any]:
-    sensitive_count = scanner_result.get("sensitive_findings_count")
-    p95_latency = locust_metrics.get("p95_latency_ms")
-    error_rate = locust_metrics.get("error_rate_percent")
-
-    scanner_pass = None if sensitive_count is None else int(sensitive_count) == 0
-    latency_pass = None if p95_latency is None else float(p95_latency) <= p95_threshold_ms
-    error_rate_pass = None if error_rate is None else float(error_rate) <= error_rate_threshold_percent
-    overall_pass = all(item is True for item in [scanner_pass, latency_pass, error_rate_pass])
-
-    return {
-        "scanner_pass": scanner_pass,
-        "latency_pass": latency_pass,
-        "error_rate_pass": error_rate_pass,
-        "overall_status": "PASS" if overall_pass else "FAIL",
-        "p95_threshold_ms": p95_threshold_ms,
-        "error_rate_threshold_percent": error_rate_threshold_percent,
-    }
-
-
-def _register_pdf_font() -> str:
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-
-    candidates = [
-        Path("C:/Windows/Fonts/malgun.ttf"),
-        Path("C:/Windows/Fonts/NanumGothic.ttf"),
-        Path("/usr/share/fonts/truetype/nanum/NanumGothic.ttf"),
-        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
-    ]
-    for candidate in candidates:
-        if candidate.exists():
-            pdfmetrics.registerFont(TTFont("EvidenceFont", str(candidate)))
-            return "EvidenceFont"
-    return "Helvetica"
-
-
-def generate_performance_pdf_report(
-    scanner_json_path: str | Path = Path("reports") / "scanner_result.json",
-    locust_csv_path: str | Path | None = None,
-    output_path: str | Path = Path("reports") / "performance_report.pdf",
-    *,
-    p95_threshold_ms: float = 500.0,
-    error_rate_threshold_percent: float = 1.0,
-    search_root: str | Path = ".",
+def generate_performance_markdown(
+    locust_metrics: dict[str, float],
+    scanner_summary: dict[str, Any],
+    output_path: str | Path,
 ) -> Path:
-    try:
-        from reportlab.lib import colors
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import getSampleStyleSheet
-        from reportlab.lib.units import mm
-        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
-    except ImportError as exc:
-        raise SystemExit("reportlab is required. Install with: pip install pandas reportlab") from exc
-
-    scanner_result = _load_scanner_result(scanner_json_path)
-    locust_metrics = _load_locust_metrics(locust_csv_path, search_root)
-    judgement = _build_performance_judgement(
-        scanner_result,
-        locust_metrics,
-        p95_threshold_ms,
-        error_rate_threshold_percent,
-    )
-
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    font_name = _register_pdf_font()
-    styles = getSampleStyleSheet()
-    for style_name in ["Title", "Heading1", "Heading2", "BodyText"]:
-        styles[style_name].fontName = font_name
-    styles["Title"].fontSize = 18
-    styles["Heading1"].fontSize = 13
-    styles["BodyText"].fontSize = 9
-
-    doc = SimpleDocTemplate(str(output), pagesize=A4, rightMargin=16 * mm, leftMargin=16 * mm, topMargin=16 * mm, bottomMargin=16 * mm)
-    story: list[Any] = []
-
-    story.append(Paragraph("LLM Security Proxy MVP Performance Evidence Report", styles["Title"]))
-    story.append(Spacer(1, 6 * mm))
-    story.append(Paragraph(f"Generated at: {datetime.now().isoformat(timespec='seconds')}", styles["BodyText"]))
-    story.append(Paragraph(f"Overall Status: {judgement['overall_status']}", styles["Heading1"]))
-    story.append(Spacer(1, 4 * mm))
-
-    summary_rows = [
-        ["Check", "Measured Value", "Criteria", "Result"],
-        [
-            "Raw sensitive data in logs/DB",
-            str(scanner_result.get("sensitive_findings_count", "UNKNOWN")),
-            "0 findings",
-            _pass_fail(judgement["scanner_pass"]),
-        ],
-        [
-            "p95 latency",
-            "UNKNOWN" if locust_metrics.get("p95_latency_ms") is None else f"{locust_metrics['p95_latency_ms']:.2f} ms",
-            f"<= {p95_threshold_ms:.0f} ms",
-            _pass_fail(judgement["latency_pass"]),
-        ],
-        [
-            "Error rate",
-            "UNKNOWN" if locust_metrics.get("error_rate_percent") is None else f"{locust_metrics['error_rate_percent']:.2f}%",
-            f"<= {error_rate_threshold_percent:.2f}%",
-            _pass_fail(judgement["error_rate_pass"]),
-        ],
+    criteria = [
+        ("Error Rate <= 1.00%", f"{locust_metrics['error_rate']:.2f}%", "1.00%", _criterion_status(locust_metrics["error_rate"], 1.0)),
+        ("p95 Latency <= 500ms", f"{locust_metrics['p95_latency_ms']:.2f} ms", "500.00 ms", _criterion_status(locust_metrics["p95_latency_ms"], 500.0)),
+        ("Sensitive Findings == 0", str(scanner_summary["sensitive_findings"]), "0", "PASS" if scanner_summary["sensitive_findings"] == 0 else "FAIL"),
     ]
-    table = Table(summary_rows, colWidths=[48 * mm, 42 * mm, 38 * mm, 28 * mm])
-    table.setStyle(
+
+    lines = [
+        "# Performance Report",
+        "",
+        f"- Generated at: {datetime.now().isoformat(timespec='seconds')}",
+        "- Scope: current internal/local benchmark and evidence scan only. This does not guarantee production performance.",
+        "",
+        "## Summary Metrics",
+        "",
+        "| Metric | Value |",
+        "|---|---:|",
+        f"| Total Requests | {int(locust_metrics['total_requests'])} |",
+        f"| Failures | {int(locust_metrics['failures'])} |",
+        f"| Error Rate | {locust_metrics['error_rate']:.2f}% |",
+        f"| Average Latency | {locust_metrics['average_latency_ms']:.2f} ms |",
+        f"| p95 Latency | {locust_metrics['p95_latency_ms']:.2f} ms |",
+        f"| Requests/sec | {locust_metrics['requests_per_sec']:.2f} |",
+        f"| Scanned Files | {scanner_summary['scanned_files']} |",
+        f"| Sensitive Findings | {scanner_summary['sensitive_findings']} |",
+        "",
+        "## PASS / FAIL Criteria",
+        "",
+        "| Criterion | Actual | Threshold | Status |",
+        "|---|---:|---:|---|",
+    ]
+    for criterion, actual, threshold, status in criteria:
+        lines.append(f"| {criterion} | {actual} | {threshold} | {status} |")
+    lines.extend(
+        [
+            "",
+            "## Notes",
+            "",
+            "- Locust summary values come from `performance/proxy_load_stats.csv`.",
+            "- Sensitive findings come from the masked JSON output of `tools/scanner.py`.",
+            "- This report is intended for capstone presentation and local reproducibility evidence.",
+        ]
+    )
+    output.write_text("\n".join(lines), encoding="utf-8")
+    return output
+
+
+def generate_performance_pdf(
+    locust_metrics: dict[str, float],
+    scanner_summary: dict[str, Any],
+    output_path: str | Path,
+) -> Path:
+    if SimpleDocTemplate is None:
+        raise ModuleNotFoundError("reportlab is required to generate PDF performance reports.")
+
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    doc = SimpleDocTemplate(str(output), pagesize=A4)
+    styles = getSampleStyleSheet()
+
+    criteria_rows = [
+        ["Criterion", "Actual", "Threshold", "Status"],
+        ["Error Rate <= 1.00%", f"{locust_metrics['error_rate']:.2f}%", "1.00%", _criterion_status(locust_metrics["error_rate"], 1.0)],
+        ["p95 Latency <= 500ms", f"{locust_metrics['p95_latency_ms']:.2f} ms", "500.00 ms", _criterion_status(locust_metrics["p95_latency_ms"], 500.0)],
+        ["Sensitive Findings == 0", str(scanner_summary["sensitive_findings"]), "0", "PASS" if scanner_summary["sensitive_findings"] == 0 else "FAIL"],
+    ]
+    summary_rows = [
+        ["Metric", "Value"],
+        ["Total Requests", str(int(locust_metrics["total_requests"]))],
+        ["Failures", str(int(locust_metrics["failures"]))],
+        ["Error Rate", f"{locust_metrics['error_rate']:.2f}%"],
+        ["Average Latency", f"{locust_metrics['average_latency_ms']:.2f} ms"],
+        ["p95 Latency", f"{locust_metrics['p95_latency_ms']:.2f} ms"],
+        ["Requests/sec", f"{locust_metrics['requests_per_sec']:.2f}"],
+        ["Scanned Files", str(scanner_summary["scanned_files"])],
+        ["Sensitive Findings", str(scanner_summary["sensitive_findings"])],
+    ]
+
+    story = [
+        Paragraph("Performance Report", styles["Title"]),
+        Spacer(1, 12),
+        Paragraph("Current internal/local benchmark and evidence scan only. This does not guarantee production performance.", styles["BodyText"]),
+        Spacer(1, 12),
+        Paragraph("Summary Metrics", styles["Heading2"]),
+        Spacer(1, 6),
+    ]
+
+    summary_table = Table(summary_rows, hAlign="LEFT")
+    summary_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f4e5f")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, -1), font_name),
-                ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#f7fafb")),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#d7f3ee")),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
             ]
         )
     )
-    story.append(table)
-    story.append(Spacer(1, 7 * mm))
+    story.append(summary_table)
+    story.extend([Spacer(1, 14), Paragraph("PASS / FAIL Criteria", styles["Heading2"]), Spacer(1, 6)])
 
-    story.append(Paragraph("Scanner Evidence", styles["Heading1"]))
-    story.append(Paragraph(f"Scanner JSON: {scanner_json_path}", styles["BodyText"]))
-    story.append(Paragraph(f"Log findings: {scanner_result.get('log_findings_count', 'UNKNOWN')}", styles["BodyText"]))
-    story.append(Paragraph(f"DB findings: {scanner_result.get('db_findings_count', 'UNKNOWN')}", styles["BodyText"]))
-
-    findings = scanner_result.get("findings") or []
-    if findings:
-        finding_rows = [["Source", "Location", "Pattern", "Excerpt"]]
-        for finding in findings[:10]:
-            finding_rows.append(
-                [
-                    str(finding.get("source", "")),
-                    f"{finding.get('path', '')}:{finding.get('line', '')}",
-                    str(finding.get("pattern", "")),
-                    str(finding.get("excerpt", ""))[:80],
-                ]
-            )
-        finding_table = Table(finding_rows, colWidths=[22 * mm, 46 * mm, 34 * mm, 54 * mm])
-        finding_table.setStyle(TableStyle([("FONTNAME", (0, 0), (-1, -1), font_name), ("GRID", (0, 0), (-1, -1), 0.25, colors.grey), ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#8a1f1f")), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white)]))
-        story.append(Spacer(1, 3 * mm))
-        story.append(finding_table)
-    else:
-        story.append(Paragraph("No unmasked sensitive values were found in scanned targets.", styles["BodyText"]))
-
-    story.append(Spacer(1, 7 * mm))
-    story.append(Paragraph("Locust Evidence", styles["Heading1"]))
-    story.append(Paragraph(f"Locust CSV: {locust_metrics.get('csv_path') or 'not found'}", styles["BodyText"]))
-    story.append(Paragraph(f"TPS: {locust_metrics.get('tps', 'UNKNOWN')}", styles["BodyText"]))
-    story.append(Paragraph(f"Requests / Failures: {locust_metrics.get('request_count', 'UNKNOWN')} / {locust_metrics.get('failure_count', 'UNKNOWN')}", styles["BodyText"]))
-
+    criteria_table = Table(criteria_rows, hAlign="LEFT")
+    criteria_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#efe6d8")),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ]
+        )
+    )
+    story.append(criteria_table)
     doc.build(story)
     return output
 
 
-def _main() -> int:
-    import argparse
+def generate_performance_reports(
+    scanner_json_path: str | Path,
+    locust_csv_path: str | Path,
+    markdown_output_path: str | Path = "reports/performance_report.md",
+    pdf_output_path: str | Path = "reports/performance_report.pdf",
+) -> tuple[Path, Path]:
+    scanner_summary = load_scanner_summary(scanner_json_path)
+    locust_metrics = load_locust_metrics(locust_csv_path)
+    markdown_path = generate_performance_markdown(locust_metrics, scanner_summary, markdown_output_path)
+    pdf_path = generate_performance_pdf(locust_metrics, scanner_summary, pdf_output_path)
+    return markdown_path, pdf_path
 
-    parser = argparse.ArgumentParser(description="Generate PASS/FAIL PDF evidence report from scanner and Locust CSV outputs.")
-    parser.add_argument("--scanner-json", default=str(Path("reports") / "scanner_result.json"))
-    parser.add_argument("--locust-csv", default=None, help="Path to Locust *_stats.csv. If omitted, newest *_stats.csv is used.")
-    parser.add_argument("--output", default=str(Path("reports") / "performance_report.pdf"))
-    parser.add_argument("--p95-threshold-ms", type=float, default=500.0)
-    parser.add_argument("--error-rate-threshold-percent", type=float, default=1.0)
-    parser.add_argument("--search-root", default=".")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Generate markdown or performance evidence reports.")
+    parser.add_argument("--scanner-json", help="Path to scanner JSON summary for performance evidence report.")
+    parser.add_argument("--locust-csv", help="Path to Locust CSV summary for performance evidence report.")
+    parser.add_argument("--markdown-out", default="reports/performance_report.md", help="Output markdown report path.")
+    parser.add_argument("--pdf-out", default="reports/performance_report.pdf", help="Output PDF report path.")
     args = parser.parse_args()
 
-    output = generate_performance_pdf_report(
-        scanner_json_path=args.scanner_json,
-        locust_csv_path=args.locust_csv,
-        output_path=args.output,
-        p95_threshold_ms=args.p95_threshold_ms,
-        error_rate_threshold_percent=args.error_rate_threshold_percent,
-        search_root=args.search_root,
-    )
-    print(f"PDF report generated: {output}")
-    return 0
+    if args.scanner_json and args.locust_csv:
+        markdown_path, pdf_path = generate_performance_reports(
+            args.scanner_json,
+            args.locust_csv,
+            markdown_output_path=args.markdown_out,
+            pdf_output_path=args.pdf_out,
+        )
+        print(f"Markdown report saved to: {markdown_path}")
+        print(f"PDF report saved to: {pdf_path}")
+        return
+
+    parser.error("Provide both --scanner-json and --locust-csv to generate performance reports.")
 
 
 if __name__ == "__main__":
-    raise SystemExit(_main())
+    main()

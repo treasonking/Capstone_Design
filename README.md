@@ -1,5 +1,7 @@
 # Capstone Design - LLM Security Proxy MVP
 
+[![CI](https://github.com/treasonking/Capstone_Design/actions/workflows/ci.yml/badge.svg)](https://github.com/treasonking/Capstone_Design/actions/workflows/ci.yml)
+
 동사무소/행정복지센터 등 주민 행정 업무 환경에서 LLM 사용 시 주민등록번호, 주소, 연락처,
 민원정보 유출과 프롬프트 인젝션을 줄이기 위한 정책/탐지 중심 MVP 코드베이스입니다.
 
@@ -28,6 +30,7 @@
 - Python: **3.10 ~ 3.12 지원** (프로젝트 기준: `>=3.10,<3.13`)
 - 권장: **Python 3.10 또는 3.12**
 - 목표 시연 환경: **Python 3.12.3**에서도 `pip install ".[dev]"`와 `pytest`가 통과하도록 구성
+- GitHub Actions CI: **Python 3.10 / 3.12 매트릭스**에서 `pytest`와 내부/외부 평가 명령을 자동 실행
 - 설치:
   - `pip install .`
   - 개발/테스트 포함: `pip install ".[dev]"`

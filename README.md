@@ -50,6 +50,17 @@
 > 따라서 실제 운영 성능을 주장하기보다는 MVP 수준의 회귀 테스트 및 시연 지표로 해석해야 한다.  
 > 향후 PromptBench, JailbreakBench, 공개 jailbreak prompt 목록, 공개 PII 샘플 등을 활용해 외부 검증 데이터셋을 추가할 예정이다.
 
+### 외부 스타일 샘플 검증
+
+`evaluation/external_validation_sample.json` 24건 기준:
+
+| 항목 | Precision | Recall | F1 | TP / FP / FN |
+|---|---:|---:|---:|---:|
+| PII Detection | 1.000 | 1.000 | 1.000 | 7 / 0 / 0 |
+| Prompt Injection Detection | 0.846 | 0.957 | 0.898 | 22 / 4 / 1 |
+
+내부 데이터셋과 달리 외부 스타일 샘플에서는 Injection 오탐/미탐이 발생했으며, 이는 향후 개선 대상으로 관리한다.
+
 ## API 데모 결과
 
 | 시나리오 | 입력 | 기대 결과 | 증빙 |
@@ -95,6 +106,7 @@ flowchart LR
 - 현재 저장소의 핵심 구현 범위는 **백엔드 보안 프록시, 정책 엔진, 감사 로그, 관리자 API, 평가 코드**다.
 - `frontend/`는 `src/.gitkeep`만 있는 placeholder 상태이며, **실사용 UI는 아직 구현되지 않았다.**
 - 발표/시연은 FastAPI API, curl, Swagger UI, 평가 리포트, 관리자 API 응답을 중심으로 진행하는 것을 전제로 한다.
+- 발표 보조용으로는 `frontend/demo.html` 정적 데모 페이지를 제공하며, 사용자 입력/정책 선택/관리자 요약 흐름을 빠르게 보여줄 수 있다.
 
 ## 프로젝트 구조
 
@@ -125,6 +137,8 @@ evaluation/
   external_validation_sample.json
   evaluate.py
   report_generator.py
+frontend/
+  demo.html
 ```
 
 ## 프록시 동작 흐름 (`backend/app/api/proxy.py`)
@@ -233,6 +247,11 @@ python -m uvicorn backend.app.api.proxy:app --host 127.0.0.1 --port 8000 --reloa
 ```bash
 python -m uvicorn tools.mock_llm:app --host 127.0.0.1 --port 8001 --app-dir .
 ```
+
+6. 정적 데모 페이지 열기
+
+`frontend/demo.html`은 별도 빌드 없이 브라우저에서 열 수 있는 발표용 보조 화면이다.  
+프록시 API가 `http://127.0.0.1:8000`에서 실행 중이면 입력 요청, 정책 선택, 관리자 요약을 한 화면에서 확인할 수 있다.
 
 ## 배포/시연 편의
 

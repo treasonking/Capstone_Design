@@ -36,6 +36,20 @@ def test_admin_endpoints_reject_invalid_token() -> None:
     assert response.json() == {"detail": "Unauthorized"}
 
 
+def test_admin_stats_without_token_denied() -> None:
+    response = client.get("/admin/stats")
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Unauthorized"}
+
+
+def test_admin_stats_with_wrong_token_denied() -> None:
+    response = client.get("/admin/stats", headers={"X-Admin-Token": "wrong-token"})
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Unauthorized"}
+
+
 def test_admin_stats_returns_aggregate_counts(tmp_path, monkeypatch) -> None:
     log_file = tmp_path / "logs" / "audit_log.jsonl"
     _write_logs(
@@ -95,6 +109,37 @@ def test_admin_stats_returns_aggregate_counts(tmp_path, monkeypatch) -> None:
     assert payload["allowed_requests"] == 1
     assert payload["detection_type_counts"]["pii"] == 1
     assert payload["detection_type_counts"]["injection"] == 1
+
+
+def test_admin_stats_with_valid_token_allowed(tmp_path, monkeypatch) -> None:
+    log_file = tmp_path / "logs" / "audit_log.jsonl"
+    _write_logs(
+        tmp_path,
+        [
+            {
+                "request_id": "req-1",
+                "user_id": "anonymous",
+                "timestamp": "2026-05-04T00:00:00Z",
+                "action": "WARN",
+                "reason_codes": ["INJ_RULE_DISCLOSURE_ATTEMPT"],
+                "pii_detected": False,
+                "injection_detected": True,
+                "latency_ms": 11,
+                "upstream_call": True,
+                "input_action": "WARN",
+                "output_action": "ALLOW",
+            }
+        ],
+    )
+    monkeypatch.setenv("ADMIN_API_TOKEN", "secret-admin-token")
+    monkeypatch.setattr(audit_service, "LOG_FILE", log_file)
+
+    response = client.get("/admin/stats", headers={"X-Admin-Token": "secret-admin-token"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total_requests"] == 1
+    assert payload["warned_requests"] == 1
 
 
 def test_admin_recent_blocks_returns_latest_first(tmp_path, monkeypatch) -> None:

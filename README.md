@@ -50,8 +50,8 @@
 > 따라서 실제 운영 성능을 주장하기보다는 MVP 수준의 회귀 테스트 및 시연 지표로 해석해야 한다.  
 > 향후 PromptBench, JailbreakBench, 공개 jailbreak prompt 목록, 공개 PII 샘플 등을 활용해 외부 검증 데이터셋을 추가할 예정이다.
 
+<<<<<<< HEAD
 > 성능 수치와 스캐너/리포트 결과도 현재 내부 테스트 및 로컬 환경 기준이며, 실제 운영 성능 보장을 의미하지 않는다.
-
 ### 외부 스타일 샘플 검증
 
 `evaluation/external_validation_sample.json` 24건 기준:
@@ -304,7 +304,6 @@ python -m evaluation.report_generator \
 - `tools/scanner.py`는 `logs/`, `proxy.db`, `performance/`의 `.log`, `.txt`, `.json`, `.jsonl`, `.csv` 파일을 검사한다.
 - 결과 JSON에는 원문 개인정보를 저장하지 않고, `masked_match`와 `masked_excerpt`만 남긴다.
 - `evaluation/report_generator.py`는 스캐너 결과와 Locust 지표를 종합해 Markdown/PDF 요약 리포트를 생성한다.
-
 ## 배포/시연 편의
 
 - Docker 실행

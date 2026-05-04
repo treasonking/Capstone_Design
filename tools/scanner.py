@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,7 @@ DEFAULT_EXCLUDED_PATHS = {
     PROJECT_ROOT / "reports" / "evaluation_report.md",
 }
 SUPPORTED_SUFFIXES = {".log", ".txt", ".json", ".jsonl", ".csv"}
+TEXTUAL_CSV_HINTS = ("prompt", "message", "content", "text", "body", "input", "output", "error", "exception")
 
 
 def _default_targets(include_reports: bool) -> list[Path]:
@@ -49,10 +51,59 @@ def _iter_candidate_files(include_reports: bool) -> list[Path]:
 
 
 def _read_text(path: Path) -> str:
+    if path.suffix.lower() == ".csv":
+        return _read_csv_text(path)
     try:
         return path.read_text(encoding="utf-8")
     except UnicodeDecodeError:
         return path.read_text(encoding="utf-8", errors="ignore")
+
+
+def _looks_numeric(value: str) -> bool:
+    stripped = value.strip()
+    if not stripped or stripped.upper() == "N/A":
+        return True
+    allowed = set("0123456789+-.:%")
+    return all(char in allowed for char in stripped)
+
+
+def _skip_locust_summary_row(row: dict[str, str]) -> bool:
+    row_type = str(row.get("Type", "") or "").strip()
+    row_name = str(row.get("Name", "") or "").strip().lower()
+    if row_name == "aggregated":
+        return True
+    if row_type.upper() in {"GET", "POST", "PUT", "PATCH", "DELETE"} and row_name.startswith("/"):
+        return True
+    return False
+
+
+def _read_csv_text(path: Path) -> str:
+    with path.open("r", encoding="utf-8", errors="ignore", newline="") as file:
+        reader = csv.DictReader(file)
+        if not reader.fieldnames:
+            return file.read()
+
+        fieldnames = [field or "" for field in reader.fieldnames]
+        preferred_fields = [
+            field for field in fieldnames if any(hint in field.lower() for hint in TEXTUAL_CSV_HINTS)
+        ]
+
+        chunks: list[str] = []
+        for row in reader:
+            if _skip_locust_summary_row(row):
+                continue
+            values: list[str] = []
+            candidate_fields = preferred_fields or fieldnames
+            for field in candidate_fields:
+                value = str(row.get(field, "") or "").strip()
+                if not value or _looks_numeric(value):
+                    continue
+                values.append(f"{field}: {value}")
+
+            if values:
+                chunks.append(" | ".join(values))
+
+        return "\n".join(chunks)
 
 
 def _masked_excerpt(text: str, start: int, end: int, window: int = 36) -> str:

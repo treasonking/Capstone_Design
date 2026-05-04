@@ -57,6 +57,24 @@ def test_scanner_masks_findings_in_json(tmp_path) -> None:
     assert "010-12**-****" in serialized
 
 
+def test_scanner_skips_numeric_only_locust_history_rows(tmp_path) -> None:
+    scanner_module = _load_scanner_module()
+    history_csv = tmp_path / "proxy_load_stats_history.csv"
+    history_csv.write_text(
+        "\n".join(
+            [
+                "Timestamp,User Count,Type,Name,Requests/s,Failures/s,Total Average Response Time",
+                "1777798464,0,,Aggregated,0.000000,0.000000,0.0",
+                "1777798465,5,,Aggregated,0.000000,0.000000,406.0575400071684",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    scanned_text = scanner_module._read_text(history_csv)
+    assert scanned_text == ""
+
+
 def test_performance_report_contains_pass_fail_table(tmp_path) -> None:
     scanner_json = tmp_path / "scanner_result.json"
     scanner_json.write_text(

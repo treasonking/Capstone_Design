@@ -1,6 +1,6 @@
 # Performance Report
 
-- Generated at: 2026-05-04T23:01:30
+- Generated at: 2026-05-05T00:11:55
 - Scope: current internal/local benchmark and evidence scan only. This does not guarantee production performance.
 
 ## Summary Metrics
@@ -13,7 +13,7 @@
 | Average Latency | 142.30 ms |
 | p95 Latency | 318.40 ms |
 | Requests/sec | 48.75 |
-| Scanned Files | 2 |
+| Scanned Files | 5 |
 | Sensitive Findings | 0 |
 
 ## PASS / FAIL Criteria

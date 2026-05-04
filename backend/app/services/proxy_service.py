@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import time
 import uuid
+from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from pathlib import Path
 import re
@@ -15,7 +17,7 @@ from backend.app.detection.pii_detector import detect_pii
 from backend.app.engine.policy_engine import evaluate_policy
 from backend.app.schemas.proxy import ProxyRequest, ProxyResponse
 from backend.app.services.audit_service import save_audit_log
-from backend.app.services.llm_service import UpstreamRequestError, UpstreamTimeoutError, call_upstream_llm
+from backend.app.services.llm_service import UpstreamRequestError, UpstreamTimeoutError, call_upstream_llm, stream_upstream_llm
 
 
 POLICY_DIR = Path(__file__).resolve().parents[3] / "policies"
@@ -129,6 +131,10 @@ def _response(
         content=content,
         audit_summary=audit_summary,
     )
+
+
+def _sse_event(event: str, data: dict[str, Any]) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
 async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
@@ -257,3 +263,122 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
         safe_content,
         audit_summary,
     )
+
+
+async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
+    started = time.perf_counter()
+    timestamp_utc = datetime.now(timezone.utc).isoformat()
+    request_id = str(uuid.uuid4())
+    policy_path = resolve_policy_path(req.policy_id)
+
+    input_detections = _merge_detections(req.message)
+    input_decision = evaluate_policy(req.message, input_detections, policy_path)
+    input_action = input_decision.final_action.value
+    input_audit = _audit_from_detections(input_action, input_decision.reasons, input_detections)
+    input_summary = {**input_decision.audit_summary, **input_audit}
+
+    yield _sse_event(
+        "policy",
+        {
+            "request_id": request_id,
+            "input_action": input_action,
+            "reasons": input_decision.reasons,
+        },
+    )
+
+    if input_action == PolicyAction.BLOCK.value:
+        audit_summary = _build_audit_summary(
+            timestamp_utc,
+            started,
+            final_action=PolicyAction.BLOCK.value,
+            reason_codes=input_decision.reasons,
+            input_action=input_action,
+            output_action=None,
+            input_summary=input_summary,
+            output_summary=None,
+            upstream_call=False,
+        )
+        response = _response(
+            req,
+            request_id,
+            PolicyAction.BLOCK.value,
+            input_decision.reasons,
+            input_action,
+            None,
+            None,
+            audit_summary,
+        )
+        yield _sse_event("done", response.model_dump())
+        return
+
+    processed_message = input_decision.masked_text or req.message
+    output_chunks: list[str] = []
+
+    try:
+        async for chunk in stream_upstream_llm(processed_message, model=req.model):
+            output_chunks.append(chunk)
+            yield _sse_event("token", {"request_id": request_id, "content": chunk})
+    except UpstreamTimeoutError:
+        reasons = ["TIMEOUT"]
+        audit_summary = _build_audit_summary(
+            timestamp_utc,
+            started,
+            final_action="ERROR",
+            reason_codes=reasons,
+            input_action=input_action,
+            output_action=None,
+            input_summary=input_summary,
+            output_summary=None,
+            upstream_call=True,
+        )
+        response = _response(req, request_id, "ERROR", reasons, input_action, None, None, audit_summary)
+        yield _sse_event("error", response.model_dump())
+        return
+    except UpstreamRequestError as exc:
+        reasons = [exc.reason_code]
+        audit_summary = _build_audit_summary(
+            timestamp_utc,
+            started,
+            final_action="ERROR",
+            reason_codes=reasons,
+            input_action=input_action,
+            output_action=None,
+            input_summary=input_summary,
+            output_summary=None,
+            upstream_call=True,
+        )
+        response = _response(req, request_id, "ERROR", reasons, input_action, None, None, audit_summary)
+        yield _sse_event("error", response.model_dump())
+        return
+
+    llm_content = "".join(output_chunks)
+    output_detections = _merge_detections(llm_content)
+    output_decision = evaluate_policy(llm_content, output_detections, policy_path)
+    output_action = output_decision.final_action.value
+    output_audit = _audit_from_detections(output_action, output_decision.reasons, output_detections)
+    output_summary = {**output_decision.audit_summary, **output_audit}
+
+    final_action = _final_action(input_action, output_action)
+    all_reasons = sorted(set(input_decision.reasons + output_decision.reasons))
+    audit_summary = _build_audit_summary(
+        timestamp_utc,
+        started,
+        final_action=final_action,
+        reason_codes=all_reasons,
+        input_action=input_action,
+        output_action=output_action,
+        input_summary=input_summary,
+        output_summary=output_summary,
+        upstream_call=True,
+    )
+    response = _response(
+        req,
+        request_id,
+        final_action,
+        all_reasons,
+        input_action,
+        output_action,
+        output_decision.masked_text or llm_content,
+        audit_summary,
+    )
+    yield _sse_event("done", response.model_dump())

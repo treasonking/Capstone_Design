@@ -1,6 +1,8 @@
 ﻿from __future__ import annotations
 
+import json
 import os
+from collections.abc import AsyncIterator
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -159,7 +161,7 @@ def _with_query_param(url: str, key: str, value: str) -> str:
     )
 
 
-def _build_request(provider: str, message: str, model: str) -> tuple[str, dict[str, str], dict[str, Any]]:
+def _build_request(provider: str, message: str, model: str, *, stream: bool = False) -> tuple[str, dict[str, str], dict[str, Any]]:
     provider_urls = _provider_urls()
     url = provider_urls.get(provider) or provider_urls["mock"]
     headers: dict[str, str] = {"Content-Type": "application/json"}
@@ -176,6 +178,8 @@ def _build_request(provider: str, message: str, model: str) -> tuple[str, dict[s
             )
         headers["Authorization"] = f"Bearer {api_key}"
         payload = {"model": upstream_model, "messages": [{"role": "user", "content": message}]}
+        if stream:
+            payload["stream"] = True
         return url, headers, payload
 
     if provider == "azure":
@@ -197,11 +201,13 @@ def _build_request(provider: str, message: str, model: str) -> tuple[str, dict[s
             )
         headers["api-key"] = api_key
         payload = {"messages": [{"role": "user", "content": message}]}
+        if stream:
+            payload["stream"] = True
         azure_url = _with_query_param(azure_url, "api-version", _default_azure_api_version())
         return azure_url, headers, payload
 
     if provider == "ollama":
-        payload = {"model": upstream_model, "messages": [{"role": "user", "content": message}], "stream": False}
+        payload = {"model": upstream_model, "messages": [{"role": "user", "content": message}], "stream": stream}
         return url, headers, payload
 
     payload = {"messages": [{"role": "user", "content": message}]}
@@ -276,3 +282,60 @@ async def call_upstream_llm(
     if last_timeout is not None:
         raise UpstreamTimeoutError(attempts=attempts) from last_timeout
     raise UpstreamRequestError(attempts=attempts, status_code=last_status_code) from last_error
+
+
+def _extract_openai_stream_delta(raw_line: str) -> str | None:
+    if not raw_line.startswith("data:"):
+        return None
+
+    data = raw_line.removeprefix("data:").strip()
+    if not data or data == "[DONE]":
+        return None
+
+    payload = json.loads(data)
+    delta = payload.get("choices", [{}])[0].get("delta", {})
+    content = delta.get("content")
+    return content if isinstance(content, str) and content else None
+
+
+def _extract_ollama_stream_delta(raw_line: str) -> str | None:
+    if not raw_line:
+        return None
+
+    payload = json.loads(raw_line)
+    message = payload.get("message", {})
+    content = message.get("content")
+    return content if isinstance(content, str) and content else None
+
+
+async def stream_upstream_llm(
+    message: str,
+    model: str = "mock",
+    timeout_seconds: float | None = None,
+) -> AsyncIterator[str]:
+    timeout_seconds = _default_timeout_seconds() if timeout_seconds is None else timeout_seconds
+    provider, _upstream_model = _split_model_target(model)
+
+    if provider == "mock":
+        content = await call_upstream_llm(message, model=model, timeout_seconds=timeout_seconds, retry_count=0)
+        yield content
+        return
+
+    url, headers, payload = _build_request(provider, message, model, stream=True)
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+            async with client.stream("POST", url, json=payload, headers=headers) as response:
+                response.raise_for_status()
+                async for raw_line in response.aiter_lines():
+                    if provider == "ollama":
+                        chunk = _extract_ollama_stream_delta(raw_line)
+                    else:
+                        chunk = _extract_openai_stream_delta(raw_line)
+                    if chunk:
+                        yield chunk
+    except httpx.TimeoutException as exc:
+        raise UpstreamTimeoutError(attempts=1) from exc
+    except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        status_code = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
+        raise UpstreamRequestError("Upstream stream failed.", attempts=1, status_code=status_code) from exc

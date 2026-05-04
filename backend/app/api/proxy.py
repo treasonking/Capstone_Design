@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import os
 
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.responses import StreamingResponse
 
 from backend.app.detection.models import PolicyAction
 from backend.app.engine.policy_engine import evaluate_policy
@@ -20,6 +21,7 @@ from backend.app.services.proxy_service import (
     _merge_detections,
     _resolve_reason_code,
     process_proxy_chat,
+    process_proxy_chat_stream,
 )
 
 # 사용자용 프록시 API와 관리자/데모용 API를 함께 제공하는 FastAPI 진입점입니다.
@@ -40,6 +42,11 @@ def _require_admin_token(x_admin_token: str | None = Header(default=None)) -> No
 @app.post("/proxy/chat")
 async def proxy_chat(req: ProxyRequest) -> ProxyResponse:
     return await process_proxy_chat(req)
+
+
+@app.post("/proxy/chat/stream")
+async def proxy_chat_stream(req: ProxyRequest) -> StreamingResponse:
+    return StreamingResponse(process_proxy_chat_stream(req), media_type="text/event-stream")
 
 
 @app.get("/admin/stats")

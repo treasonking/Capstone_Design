@@ -124,3 +124,29 @@ def test_call_upstream_llm_uses_openai_prefixed_model(monkeypatch) -> None:
     assert content == "openai ok"
     assert captured["json"]["model"] == "gpt-4o-mini"
     assert captured["headers"]["Authorization"] == "Bearer test-openai-key"
+
+
+def test_build_openai_stream_request_sets_stream_flag(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
+
+    _url, _headers, payload = llm_service._build_request(
+        "openai",
+        "hello",
+        "openai:gpt-4o-mini",
+        stream=True,
+    )
+
+    assert payload["stream"] is True
+
+
+def test_extract_openai_stream_delta() -> None:
+    line = 'data: {"choices":[{"delta":{"content":"hello"}}]}'
+
+    assert llm_service._extract_openai_stream_delta(line) == "hello"
+    assert llm_service._extract_openai_stream_delta("data: [DONE]") is None
+
+
+def test_extract_ollama_stream_delta() -> None:
+    line = '{"message":{"content":"hello"}}'
+
+    assert llm_service._extract_ollama_stream_delta(line) == "hello"

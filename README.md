@@ -38,9 +38,9 @@
 ## 벤치마크 요약
 
 <!-- BENCHMARK:START -->
-> `evaluation/sample_dataset.json` (총 108건) 기준 결과  
-> 생성 시각: 2026-04-28T21:29:43  
-> 상세 결과: `reports/evaluation_report.md`
+기준 데이터셋: `evaluation/sample_dataset.json` (총 108건)  
+생성 시각: `2026-04-28T21:29:43`  
+상세 결과: `reports/evaluation_report.md`
 
 | 항목 | Precision | Recall | F1 | TP / FP / FN |
 |---|---:|---:|---:|---:|
@@ -65,6 +65,8 @@
 내부 데이터셋과 달리 외부 스타일 샘플에서는 Injection 오탐/미탐이 발생했으며, 이는 향후 개선 대상으로 관리한다.
 
 ## API 데모 결과
+
+아래 표는 README에 포함된 대표 데모 시나리오 요약입니다.
 
 | 시나리오 | 입력 | 기대 결과 | 증빙 |
 |---|---|---|---|

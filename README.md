@@ -29,6 +29,7 @@
 
 - Python: **3.10 ~ 3.12 지원** (프로젝트 기준: `>=3.10,<3.13`)
 - 권장: **Python 3.10 또는 3.12**
+<<<<<<< HEAD
 - 목표 시연 환경: **Python 3.12.3**에서도 `python -m pip install -e ".[dev,perf]"`와 `pytest`가 통과하도록 구성
 - GitHub Actions CI: **Python 3.10**에서 `python -m pip install -e ".[dev,perf]"`, `pytest`, `compileall`, `scanner.py` smoke test를 자동 실행
 

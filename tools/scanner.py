@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from backend.app.detection.models import DetectionResult, DetectorType
+from backend.app.detection.models import DetectionResult
 from backend.app.detection.pii_detector import detect_pii
 from backend.app.engine.masking import apply_masking
 
@@ -123,13 +123,18 @@ def _masked_excerpt(text: str, start: int, end: int, window: int = 36) -> str:
 
 def _masked_match_text(detection: DetectionResult) -> str:
     normalized = DetectionResult(
-        detector_type=DetectorType.PII,
+        detector="PII_REGEX",
         category=detection.category,
+        label=detection.label,
+        confidence=detection.confidence,
         reason_code=detection.reason_code,
         start=0,
         end=len(detection.matched_text),
         matched_text=detection.matched_text,
-        score=detection.score,
+        masked_text=None,
+        severity=detection.severity,
+        source=detection.source,
+        metadata=dict(detection.metadata),
     )
     return apply_masking(detection.matched_text, [normalized])
 

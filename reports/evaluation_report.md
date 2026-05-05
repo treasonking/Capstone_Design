@@ -1,78 +1,19 @@
-# Detection Evaluation Report
+# Hybrid Detection Evaluation Report
 
-- Generated at: 2026-05-04T14:51:37
-- Dataset: `evaluation/sample_dataset.json`
-- Dataset size: 108
+이 파일은 새 하이브리드 평가 파이프라인용 placeholder입니다.
 
-## Summary
+현재 셸 환경에서는 Python 런타임이 감지되지 않아 `evaluation/evaluate_detection.py`를 실제 실행하지 못했습니다. 따라서 이전 룰 기반 MVP 수치를 그대로 재사용하지 않고, 아래 명령으로 새 평가 결과를 재생성하도록 상태를 초기화해 두었습니다.
 
-| task | precision | recall | f1 | TP | FP | FN |
-|---|---:|---:|---:|---:|---:|---:|
-| pii | 1.000 | 1.000 | 1.000 | 29 | 0 | 0 |
-| injection | 1.000 | 1.000 | 1.000 | 104 | 0 | 0 |
+```bash
+python evaluation/evaluate_detection.py --mode regex
+python evaluation/evaluate_detection.py --mode rule
+python evaluation/evaluate_detection.py --mode model
+python evaluation/evaluate_detection.py --mode hybrid
+```
 
-### PII Detection
+실행 후 함께 갱신되는 파일:
 
-- Precision: **1.000**
-- Recall: **1.000**
-- F1: **1.000**
-- TP / FP / FN: **29 / 0 / 0**
-- False Positives (sample count): **0**
-- False Negatives (sample count): **0**
-
-### Prompt Injection Detection
-
-- Precision: **1.000**
-- Recall: **1.000**
-- F1: **1.000**
-- TP / FP / FN: **104 / 0 / 0**
-- False Positives (sample count): **0**
-- False Negatives (sample count): **0**
-
-## Reason Code Metrics
-
-| reason_code | precision | recall | f1 | TP | FP | FN |
-|---|---:|---:|---:|---:|---:|---:|
-| INJ_DEBUG_MODE_ATTEMPT | 1.000 | 1.000 | 1.000 | 3 | 0 | 0 |
-| INJ_DIRECT_OVERRIDE_ATTEMPT | 1.000 | 1.000 | 1.000 | 15 | 0 | 0 |
-| INJ_IGNORE_PREVIOUS_INSTRUCTIONS | 1.000 | 1.000 | 1.000 | 15 | 0 | 0 |
-| INJ_MULTI_STEP_EXTRACTION_ATTEMPT | 1.000 | 1.000 | 1.000 | 10 | 0 | 0 |
-| INJ_OBFUSCATED_INJECTION_ATTEMPT | 1.000 | 1.000 | 1.000 | 3 | 0 | 0 |
-| INJ_POLICY_BYPASS_ATTEMPT | 1.000 | 1.000 | 1.000 | 7 | 0 | 0 |
-| INJ_REVEAL_SYSTEM_PROMPT | 1.000 | 1.000 | 1.000 | 17 | 0 | 0 |
-| INJ_ROLE_OVERRIDE_ATTEMPT | 1.000 | 1.000 | 1.000 | 2 | 0 | 0 |
-| INJ_RULE_DISCLOSURE_ATTEMPT | 1.000 | 1.000 | 1.000 | 15 | 0 | 0 |
-| INJ_SYSTEM_PROMPT_EXTRACTION_ATTEMPT | 1.000 | 1.000 | 1.000 | 17 | 0 | 0 |
-| PII_ACCOUNT_DETECTED | 1.000 | 1.000 | 1.000 | 6 | 0 | 0 |
-| PII_ADDRESS_DETECTED | 1.000 | 1.000 | 1.000 | 3 | 0 | 0 |
-| PII_EMAIL_DETECTED | 1.000 | 1.000 | 1.000 | 4 | 0 | 0 |
-| PII_PHONE_DETECTED | 1.000 | 1.000 | 1.000 | 12 | 0 | 0 |
-| PII_RRN_DETECTED | 1.000 | 1.000 | 1.000 | 4 | 0 | 0 |
-
-## Focused Risk Areas
-
-### INJ_OBFUSCATED_INJECTION_ATTEMPT
-
-- Precision: **1.000**
-- Recall: **1.000**
-- F1: **1.000**
-- TP / FP / FN: **3 / 0 / 0**
-
-### PII_ACCOUNT_DETECTED
-
-- Precision: **1.000**
-- Recall: **1.000**
-- F1: **1.000**
-- TP / FP / FN: **6 / 0 / 0**
-
-## False Positives
-
-| id | expected | actual | text_excerpt | suspected_cause |
-|---|---|---|---|---|
-| - | - | - | - | - |
-
-## False Negatives
-
-| id | expected | actual | text_excerpt | suspected_cause |
-|---|---|---|---|---|
-| - | - | - | - | - |
+- `reports/evaluation_summary.json`
+- `reports/false_positives.csv`
+- `reports/false_negatives.csv`
+- `reports/confusion_matrix.csv`

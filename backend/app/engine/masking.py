@@ -56,10 +56,30 @@ def _mask_address(value: str) -> str:
     return " ".join(masked_tail)
 
 
+def _mask_card(value: str) -> str:
+    digits = "".join(ch for ch in value if ch.isdigit())
+    if len(digits) < 12:
+        return "*" * len(value)
+    return f"{digits[:4]}-****-****-{digits[-4:]}"
+
+
+def _mask_ip(value: str) -> str:
+    parts = value.split(".")
+    if len(parts) != 4:
+        return "*" * len(value)
+    return ".".join(parts[:3] + ["***"])
+
+
+def _mask_name(value: str) -> str:
+    if len(value) <= 1:
+        return "*"
+    return value[0] + "*" * (len(value) - 1)
+
+
 def _mask_by_reason(reason_code: str, value: str) -> str:
     if reason_code == ReasonCode.PII_EMAIL_DETECTED.value:
         return _mask_email(value)
-    if reason_code == ReasonCode.PII_PHONE_DETECTED.value:
+    if reason_code in {ReasonCode.PII_PHONE_DETECTED.value, ReasonCode.PII_LANDLINE_DETECTED.value}:
         return _mask_phone(value)
     if reason_code == ReasonCode.PII_ADDRESS_DETECTED.value:
         return _mask_address(value)
@@ -67,6 +87,12 @@ def _mask_by_reason(reason_code: str, value: str) -> str:
         return _mask_rrn(value)
     if reason_code == ReasonCode.PII_ACCOUNT_DETECTED.value:
         return _mask_account(value)
+    if reason_code == ReasonCode.PII_CARD_DETECTED.value:
+        return _mask_card(value)
+    if reason_code == ReasonCode.PII_IP_DETECTED.value:
+        return _mask_ip(value)
+    if reason_code == ReasonCode.PII_NAME_CANDIDATE.value:
+        return _mask_name(value)
     return value
 
 

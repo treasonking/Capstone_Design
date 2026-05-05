@@ -14,7 +14,9 @@ from fastapi import HTTPException
 from backend.app.detection.injection_detector import detect_injection
 from backend.app.detection.models import DetectionResult, DetectorType, PolicyAction
 from backend.app.detection.pii_detector import detect_pii
+from backend.app.engine.masking import apply_masking
 from backend.app.engine.policy_engine import evaluate_policy
+from backend.app.models.lightweight_classifier import detect_model_risk
 from backend.app.schemas.proxy import ProxyRequest, ProxyResponse
 from backend.app.services.audit_service import save_audit_log
 from backend.app.services.llm_service import UpstreamRequestError, UpstreamTimeoutError, call_upstream_llm, stream_upstream_llm
@@ -28,19 +30,46 @@ ALLOWED_POLICY_IDS = {
     "strict": STRICT_POLICY_PATH,
 }
 POLICY_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
+_SECRET_PATTERNS = (
+    re.compile(r"authorization\s*:\s*bearer\s+[A-Za-z0-9._\-]+", re.IGNORECASE),
+    re.compile(r"api[-_ ]?key\s*[:=]\s*[A-Za-z0-9._\-]+", re.IGNORECASE),
+    re.compile(r"cookie\s*:\s*[^;\n]+", re.IGNORECASE),
+)
 
 
 def _merge_detections(text: str) -> list[DetectionResult]:
-    # PII 탐지와 프롬프트 인젝션 탐지를 각각 실행한 뒤,
-    # 정책 엔진이 한 번에 판단할 수 있도록 위치 기준으로 합칩니다.
+    # 정규식, 룰, 경량 모델 결과를 합쳐 정책 엔진으로 보냅니다.
     return sorted(
-        [*detect_pii(text), *detect_injection(text)],
-        key=lambda item: (item.start, item.end),
+        [*detect_pii(text), *detect_injection(text), *detect_model_risk(text)],
+        key=lambda item: (
+            item.start if item.start is not None else 10**9,
+            item.end if item.end is not None else 10**9,
+            item.reason_code,
+        ),
     )
 
 
 def _resolve_reason_code(reasons: list[str]) -> str | None:
     return reasons[0] if reasons else None
+
+
+def _sanitize_secret_preview(text: str) -> str:
+    sanitized = text
+    for pattern in _SECRET_PATTERNS:
+        sanitized = pattern.sub("[REDACTED]", sanitized)
+    return sanitized
+
+
+def _preview_text(text: str, detections: list[DetectionResult]) -> str:
+    pii_detections = [
+        item
+        for item in detections
+        if item.detector_type == DetectorType.PII and item.start is not None and item.end is not None and item.matched_text
+    ]
+    preview = apply_masking(text, pii_detections) if pii_detections else text
+    preview = _sanitize_secret_preview(preview)
+    preview = re.sub(r"\s+", " ", preview).strip()
+    return preview[:160]
 
 
 def _severity(action: str) -> int:
@@ -62,12 +91,20 @@ def _audit_from_detections(
     reasons: list[str],
     detections: list[DetectionResult],
 ) -> dict[str, Any]:
+    pii_types = sorted({item.label for item in detections if item.detector_type == DetectorType.PII})
     return {
         "action": action,
         "reasons": reasons,
         "pii_detected": any(item.detector_type == DetectorType.PII for item in detections),
         "injection_detected": any(item.detector_type == DetectorType.INJECTION for item in detections),
+        "model_detected": any(item.detector_type == DetectorType.MODEL for item in detections),
         "total_detections": len(detections),
+        "pii_types": pii_types,
+        "detector_counts": {
+            "pii": sum(1 for item in detections if item.detector_type == DetectorType.PII),
+            "injection": sum(1 for item in detections if item.detector_type == DetectorType.INJECTION),
+            "model": sum(1 for item in detections if item.detector_type == DetectorType.MODEL),
+        },
     }
 
 
@@ -93,6 +130,8 @@ def _build_audit_summary(
         "input_action": input_action,
         "output_action": output_action,
         "upstream_call": upstream_call,
+        "policy_version": (input_summary or {}).get("policy_version") or (output_summary or {}).get("policy_version"),
+        "model_version": (input_summary or {}).get("model_version") or (output_summary or {}).get("model_version"),
         "input": input_summary,
         "output": output_summary,
     }
@@ -148,7 +187,11 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
     input_decision = evaluate_policy(req.message, input_detections, policy_path)
     input_action = input_decision.final_action.value
     input_audit = _audit_from_detections(input_action, input_decision.reasons, input_detections)
-    input_summary = {**input_decision.audit_summary, **input_audit}
+    input_summary = {
+        **input_decision.audit_summary,
+        **input_audit,
+        "masked_preview": _preview_text(req.message, input_detections),
+    }
 
     if input_action == PolicyAction.BLOCK.value:
         audit_summary = _build_audit_summary(
@@ -212,7 +255,11 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
     output_decision = evaluate_policy(llm_content, output_detections, policy_path)
     output_action = output_decision.final_action.value
     output_audit = _audit_from_detections(output_action, output_decision.reasons, output_detections)
-    output_summary = {**output_decision.audit_summary, **output_audit}
+    output_summary = {
+        **output_decision.audit_summary,
+        **output_audit,
+        "masked_preview": _preview_text(llm_content, output_detections),
+    }
 
     if output_action == PolicyAction.BLOCK.value:
         audit_summary = _build_audit_summary(
@@ -275,7 +322,11 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
     input_decision = evaluate_policy(req.message, input_detections, policy_path)
     input_action = input_decision.final_action.value
     input_audit = _audit_from_detections(input_action, input_decision.reasons, input_detections)
-    input_summary = {**input_decision.audit_summary, **input_audit}
+    input_summary = {
+        **input_decision.audit_summary,
+        **input_audit,
+        "masked_preview": _preview_text(req.message, input_detections),
+    }
 
     yield _sse_event(
         "policy",
@@ -356,7 +407,11 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
     output_decision = evaluate_policy(llm_content, output_detections, policy_path)
     output_action = output_decision.final_action.value
     output_audit = _audit_from_detections(output_action, output_decision.reasons, output_detections)
-    output_summary = {**output_decision.audit_summary, **output_audit}
+    output_summary = {
+        **output_decision.audit_summary,
+        **output_audit,
+        "masked_preview": _preview_text(llm_content, output_detections),
+    }
 
     final_action = _final_action(input_action, output_action)
     all_reasons = sorted(set(input_decision.reasons + output_decision.reasons))

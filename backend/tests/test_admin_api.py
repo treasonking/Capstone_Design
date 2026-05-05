@@ -21,7 +21,17 @@ def _write_logs(tmp_path, entries: list[dict]) -> None:
             file.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
-@pytest.mark.parametrize("path", ["/admin/stats", "/admin/recent-blocks", "/admin/reason-codes", "/admin/upstream-config"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/admin/stats",
+        "/admin/recent-blocks",
+        "/admin/reason-codes",
+        "/admin/upstream-config",
+        "/admin/policy-config",
+        "/admin/audit-logs",
+    ],
+)
 def test_admin_endpoints_require_token(path: str) -> None:
     response = client.get(path)
 

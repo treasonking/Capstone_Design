@@ -1,0 +1,5 @@
+{
+  "status": "pending-regeneration",
+  "note": "Run evaluation/evaluate_detection.py for regex, rule, model, and hybrid modes once a Python runtime is available.",
+  "modes": {}
+}

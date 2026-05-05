@@ -1,4 +1,6 @@
 default_action: ALLOW
+policy_version: hybrid-strict-v1
+model_version: lightweight-tfidf-logreg-v1
 rules:
   PII_EMAIL_DETECTED:
     action: MASK
@@ -7,74 +9,149 @@ rules:
     description: "Mask email address before forwarding to model."
   PII_PHONE_DETECTED:
     action: MASK
-    priority: 70
-    threshold: 0.7
-    description: "Mask phone number for privacy."
+    priority: 72
+    threshold: 0.75
+    description: "Mask mobile phone numbers for privacy."
+  PII_LANDLINE_DETECTED:
+    action: MASK
+    priority: 68
+    threshold: 0.8
+    description: "Mask landline numbers when a reliable contact number pattern is detected."
   PII_ADDRESS_DETECTED:
     action: MASK
-    priority: 82
+    priority: 84
     threshold: 0.8
     description: "Mask address details that frequently appear in civil-service requests."
   PII_RRN_DETECTED:
     action: BLOCK
     priority: 100
-    threshold: 0.8
+    threshold: 0.9
     description: "Block resident registration number exposure."
   PII_ACCOUNT_DETECTED:
     action: MASK
-    priority: 55
-    threshold: 0.75
+    priority: 62
+    threshold: 0.7
     description: "Mask account-number candidate values in strict mode."
-  INJ_IGNORE_PREVIOUS_INSTRUCTIONS:
+  PII_CARD_DETECTED:
+    action: MASK
+    priority: 80
+    threshold: 0.78
+    description: "Mask probable card numbers."
+  PII_IP_DETECTED:
+    action: WARN
+    priority: 46
+    threshold: 0.78
+    description: "Warn when IP addresses appear in user-entered content."
+  PII_NAME_CANDIDATE:
+    action: WARN
+    priority: 38
+    threshold: 0.62
+    description: "Warn on context-supported personal name candidates."
+  INJ_DIRECT_OVERRIDE:
     action: BLOCK
-    priority: 90
-    threshold: 5.0
-    description: "Legacy alias for INJ_DIRECT_OVERRIDE_ATTEMPT. Kept for backward compatibility."
-  INJ_REVEAL_SYSTEM_PROMPT:
-    action: BLOCK
-    priority: 98
-    threshold: 5.0
-    description: "Block attempts to reveal system prompt."
+    priority: 96
+    threshold: 0.75
+    description: "Block attempts to override previous or higher-priority instructions."
   INJ_DIRECT_OVERRIDE_ATTEMPT:
     action: BLOCK
     priority: 96
-    threshold: 5.0
-    description: "Block attempts to override previous or higher-priority instructions."
+    threshold: 0.75
+    description: "Backward-compatible alias for direct-override prompt injection."
+  INJ_IGNORE_PREVIOUS_INSTRUCTIONS:
+    action: BLOCK
+    priority: 90
+    threshold: 0.75
+    description: "Legacy alias kept for older tests and reports."
+  INJ_SYSTEM_PROMPT_LEAK:
+    action: BLOCK
+    priority: 98
+    threshold: 0.75
+    description: "Block attempts to reveal system prompts or hidden instructions."
   INJ_SYSTEM_PROMPT_EXTRACTION_ATTEMPT:
     action: BLOCK
     priority: 98
-    threshold: 5.0
-    description: "Block attempts to reveal system prompts or hidden instructions."
+    threshold: 0.75
+    description: "Backward-compatible alias for system prompt leak attempts."
+  INJ_REVEAL_SYSTEM_PROMPT:
+    action: BLOCK
+    priority: 98
+    threshold: 0.75
+    description: "Legacy alias for system prompt extraction."
   INJ_RULE_DISCLOSURE_ATTEMPT:
     action: BLOCK
     priority: 88
-    threshold: 3.0
+    threshold: 0.6
     description: "Block internal rule disclosure attempts in strict mode."
+  INJ_ROLE_PLAY_BYPASS:
+    action: BLOCK
+    priority: 94
+    threshold: 0.7
+    description: "Block role-play jailbreak attempts."
   INJ_ROLE_OVERRIDE_ATTEMPT:
     action: BLOCK
     priority: 94
-    threshold: 5.0
-    description: "Block attempts to redefine the assistant role."
+    threshold: 0.7
+    description: "Backward-compatible alias for role-play jailbreak attempts."
   INJ_POLICY_BYPASS_ATTEMPT:
     action: BLOCK
-    priority: 90
-    threshold: 5.0
+    priority: 92
+    threshold: 0.75
     description: "Block policy bypass attempts."
   INJ_DEBUG_MODE_ATTEMPT:
     action: BLOCK
     priority: 93
-    threshold: 5.0
+    threshold: 0.75
     description: "Block attempts to enable debug, developer, admin, or audit modes."
+  INJ_DATA_EXFILTRATION:
+    action: BLOCK
+    priority: 95
+    threshold: 0.75
+    description: "Block requests to reveal raw, unmasked, or logged content."
+  INJ_DATA_EXFILTRATION_ATTEMPT:
+    action: BLOCK
+    priority: 95
+    threshold: 0.75
+    description: "Backward-compatible alias for data exfiltration attempts."
+  INJ_MULTI_STEP:
+    action: BLOCK
+    priority: 86
+    threshold: 0.6
+    description: "Block suspicious multi-step extraction prompts in strict mode."
   INJ_MULTI_STEP_EXTRACTION_ATTEMPT:
     action: BLOCK
     priority: 86
-    threshold: 3.0
-    description: "Block multi-step hidden-rule extraction attempts in strict mode."
+    threshold: 0.6
+    description: "Backward-compatible alias for multi-step extraction prompts."
+  INJ_OBFUSCATED:
+    action: BLOCK
+    priority: 99
+    threshold: 0.6
+    description: "Block obfuscated prompt injection attempts."
   INJ_OBFUSCATED_INJECTION_ATTEMPT:
     action: BLOCK
     priority: 99
-    threshold: 3.0
-    description: "Block obfuscated prompt injection attempts, including leetspeak or spaced system/hidden instruction terms."
+    threshold: 0.6
+    description: "Backward-compatible alias for obfuscated prompt injection attempts."
+  MODEL_PII_RISK:
+    action: WARN
+    priority: 52
+    threshold: 0.9
+    description: "Warn when the lightweight classifier sees contextual PII risk."
+  MODEL_INJECTION_RISK:
+    action: WARN
+    priority: 66
+    threshold: 0.9
+    description: "Warn when the lightweight classifier sees contextual injection risk."
+  MODEL_MIXED_RISK:
+    action: WARN
+    priority: 68
+    threshold: 0.88
+    description: "Warn when both PII and injection context look risky."
+  MODEL_EDGE_CASE:
+    action: WARN
+    priority: 40
+    threshold: 0.85
+    description: "Warn on ambiguous edge cases that merit review."
   SAFE_INPUT:
     action: ALLOW
     priority: 0

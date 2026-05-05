@@ -9,11 +9,19 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import StreamingResponse
 
 from backend.app.detection.models import PolicyAction
+from backend.app.engine.policy_engine import load_policy
 from backend.app.engine.policy_engine import evaluate_policy
-from backend.app.schemas.admin import AdminStatsResponse, ReasonCodeStatItem, RecentBlockItem
+from backend.app.schemas.admin import (
+    AdminStatsResponse,
+    AuditLogItem,
+    PolicyConfigResponse,
+    PolicyRuleView,
+    ReasonCodeStatItem,
+    RecentBlockItem,
+)
 from backend.app.schemas.proxy import ChatCompletionRequest, ProxyRequest, ProxyResponse
 from backend.app.schemas.upstream import UpstreamConfigResponse
-from backend.app.services.audit_service import get_admin_stats, get_reason_code_stats, get_recent_block_history
+from backend.app.services.audit_service import get_admin_stats, get_audit_log_history, get_reason_code_stats, get_recent_block_history
 from backend.app.services.llm_service import get_upstream_config_summary
 from backend.app.services.proxy_service import (
     POLICY_PATH,
@@ -71,6 +79,40 @@ async def admin_reason_codes(x_admin_token: str | None = Header(default=None)) -
 async def admin_upstream_config(x_admin_token: str | None = Header(default=None)) -> UpstreamConfigResponse:
     _require_admin_token(x_admin_token)
     return UpstreamConfigResponse(**get_upstream_config_summary())
+
+
+@app.get("/admin/policy-config")
+async def admin_policy_config(
+    policy_id: str = "default",
+    x_admin_token: str | None = Header(default=None),
+) -> PolicyConfigResponse:
+    _require_admin_token(x_admin_token)
+    policy_path = resolve_policy_path(policy_id)
+    policy_data = load_policy(policy_path)
+    rules = [
+        PolicyRuleView(
+            reason_code=reason_code,
+            action=str(rule.get("action", "ALLOW")),
+            priority=int(rule.get("priority", 0)),
+            threshold=float(rule.get("threshold", 0.0)),
+            description=str(rule.get("description", "")),
+            enabled=str(rule.get("action", "ALLOW")).upper() != "ALLOW",
+        )
+        for reason_code, rule in sorted((policy_data.get("rules") or {}).items())
+    ]
+    return PolicyConfigResponse(
+        policy_id=policy_id,
+        default_action=str(policy_data.get("default_action", "ALLOW")),
+        policy_version=str(policy_data.get("policy_version", "default-policy-v2")),
+        model_version=str(policy_data.get("model_version", "lightweight-tfidf-logreg-v1")),
+        rules=rules,
+    )
+
+
+@app.get("/admin/audit-logs")
+async def admin_audit_logs(limit: int = 20, x_admin_token: str | None = Header(default=None)) -> list[AuditLogItem]:
+    _require_admin_token(x_admin_token)
+    return [AuditLogItem(**entry) for entry in get_audit_log_history(limit=limit)]
 
 
 @app.post("/v1/chat/completions")

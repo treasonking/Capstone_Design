@@ -125,3 +125,13 @@ def test_korean_international_phone_false_positive_guards() -> None:
         results = detect_pii(text)
         reason_codes = {item.reason_code for item in results}
         assert ReasonCode.PII_PHONE_DETECTED.value not in reason_codes
+
+
+def test_detect_card_ip_and_name_candidates() -> None:
+    text = "담당자 김민수의 카드번호는 5555-5555-5555-4444이고 접속 IP는 10.20.30.40 입니다."
+    results = detect_pii(text)
+    reason_codes = {item.reason_code for item in results}
+
+    assert ReasonCode.PII_CARD_DETECTED.value in reason_codes
+    assert ReasonCode.PII_IP_DETECTED.value in reason_codes
+    assert ReasonCode.PII_NAME_CANDIDATE.value in reason_codes

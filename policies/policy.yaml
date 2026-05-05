@@ -25,7 +25,7 @@ rules:
     priority: 50
     threshold: 0.75
     description: "Account-number candidate. Context validation is applied because false positives are possible."
-  PII_MODEL_RISK_DETECTED:
+  MODEL_PII_RISK:
     action: WARN
     priority: 45
     threshold: 0.6
@@ -80,7 +80,7 @@ rules:
     priority: 99
     threshold: 3.0
     description: "Block obfuscated prompt injection attempts, including leetspeak or spaced system/hidden instruction terms."
-  INJ_MODEL_RISK_DETECTED:
+  MODEL_INJECTION_RISK:
     action: WARN
     priority: 70
     threshold: 0.6

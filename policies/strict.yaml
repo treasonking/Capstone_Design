@@ -25,7 +25,7 @@ rules:
     priority: 55
     threshold: 0.75
     description: "Mask account-number candidate values in strict mode."
-  PII_MODEL_RISK_DETECTED:
+  MODEL_PII_RISK:
     action: MASK
     priority: 52
     threshold: 0.6
@@ -80,7 +80,7 @@ rules:
     priority: 99
     threshold: 3.0
     description: "Block obfuscated prompt injection attempts, including leetspeak or spaced system/hidden instruction terms."
-  INJ_MODEL_RISK_DETECTED:
+  MODEL_INJECTION_RISK:
     action: BLOCK
     priority: 85
     threshold: 0.6

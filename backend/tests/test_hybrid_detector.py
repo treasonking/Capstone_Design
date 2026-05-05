@@ -9,6 +9,7 @@ def test_lightweight_classifier_is_safe_when_artifacts_are_missing() -> None:
 
     assert isinstance(status.enabled, bool)
     assert results.fallback_used is (not status.enabled)
+    assert hasattr(results.model_prediction, "source")
 
 
 def test_hybrid_detector_keeps_existing_rule_and_regex_results() -> None:
@@ -19,3 +20,10 @@ def test_hybrid_detector_keeps_existing_rule_and_regex_results() -> None:
     assert ReasonCode.INJ_DIRECT_OVERRIDE_ATTEMPT.value in result.reason_codes
     assert ReasonCode.INJ_SYSTEM_PROMPT_EXTRACTION_ATTEMPT.value in result.reason_codes
     assert result.risk_score > 0.0
+
+
+def test_hybrid_detector_returns_model_prediction_even_in_fallback_mode() -> None:
+    result = detect_hybrid("주민등록번호는 900101-1234567 입니다.")
+
+    assert result.model_prediction.source in {"fallback_disabled", "lightweight_model"}
+    assert ReasonCode.PII_RRN_DETECTED.value in result.reason_codes

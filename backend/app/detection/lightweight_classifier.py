@@ -15,37 +15,9 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency
 
 
 _MODEL_DIR = Path(__file__).resolve().parents[3] / "models" / "lightweight"
-_PII_TERMS = (
-    "주민등록번호",
-    "주소",
-    "연락처",
-    "전화",
-    "휴대폰",
-    "계좌",
-    "이메일",
-    "rrn",
-    "phone",
-    "address",
-    "account",
-    "email",
-)
-_INJECTION_TERMS = (
-    "ignore previous",
-    "system prompt",
-    "hidden prompt",
-    "hidden instruction",
-    "internal rule",
-    "bypass",
-    "developer mode",
-    "admin mode",
-    "이전 지시",
-    "시스템 프롬프트",
-    "숨겨진 지시",
-    "내부 규칙",
-    "우회",
-    "개발자 모드",
-)
 _SAFE_LABELS = {"safe", "benign", "normal", "allow", "none"}
+_SOURCE_MODEL = "lightweight_model"
+_SOURCE_FALLBACK = "fallback_disabled"
 
 
 @dataclass(slots=True)
@@ -56,12 +28,17 @@ class LightweightModelStatus:
     classifier_path: Path
 
 
-class LightweightClassifier:
-    """Optional TF-IDF + Logistic Regression adapter.
+@dataclass(slots=True)
+class LightweightPrediction:
+    detected: bool
+    confidence: float
+    reason_code: str | None
+    label: str
+    source: str
 
-    If the serialized vectorizer/classifier pair is missing, the detector stays
-    disabled and callers should continue using deterministic regex/rule results.
-    """
+
+class LightweightClassifier:
+    """Optional TF-IDF + Logistic Regression adapter with safe fallback."""
 
     def __init__(
         self,
@@ -78,6 +55,10 @@ class LightweightClassifier:
         self._classifier: Any | None = None
         self._disabled_reason = "Model load not attempted."
 
+    @property
+    def enabled(self) -> bool:
+        return self._vectorizer is not None and self._classifier is not None
+
     def status(self) -> LightweightModelStatus:
         self._ensure_loaded()
         return LightweightModelStatus(
@@ -87,9 +68,56 @@ class LightweightClassifier:
             classifier_path=self.classifier_path,
         )
 
-    @property
-    def enabled(self) -> bool:
-        return self._vectorizer is not None and self._classifier is not None
+    def classify(self, text: str) -> LightweightPrediction:
+        if not text.strip():
+            return LightweightPrediction(
+                detected=False,
+                confidence=0.0,
+                reason_code=None,
+                label="empty",
+                source=_SOURCE_FALLBACK,
+            )
+
+        self._ensure_loaded()
+        if not self.enabled:
+            return LightweightPrediction(
+                detected=False,
+                confidence=0.0,
+                reason_code=None,
+                label="unavailable",
+                source=_SOURCE_FALLBACK,
+            )
+
+        try:
+            features = self._vectorizer.transform([text])
+            predicted_label = str(self._classifier.predict(features)[0]).strip().lower()
+            confidence = round(self._confidence(features, predicted_label), 3)
+        except Exception:  # pragma: no cover - depends on external artifact implementation
+            return LightweightPrediction(
+                detected=False,
+                confidence=0.0,
+                reason_code=None,
+                label="error",
+                source=_SOURCE_FALLBACK,
+            )
+
+        mapped = _map_label(predicted_label)
+        if predicted_label in _SAFE_LABELS or mapped is None or confidence < self.threshold:
+            return LightweightPrediction(
+                detected=False,
+                confidence=confidence,
+                reason_code=None,
+                label=predicted_label,
+                source=_SOURCE_MODEL,
+            )
+
+        return LightweightPrediction(
+            detected=True,
+            confidence=confidence,
+            reason_code=mapped.reason_code,
+            label=mapped.label,
+            source=_SOURCE_MODEL,
+        )
 
     def _ensure_loaded(self) -> None:
         if self._load_attempted:
@@ -112,40 +140,6 @@ class LightweightClassifier:
             self._classifier = None
             self._disabled_reason = f"Model artifact load failed: {exc.__class__.__name__}"
 
-    def predict(self, text: str) -> DetectionResult | None:
-        if not text.strip():
-            return None
-
-        self._ensure_loaded()
-        if not self.enabled:
-            return None
-
-        try:
-            features = self._vectorizer.transform([text])
-            predicted_label = str(self._classifier.predict(features)[0]).strip().lower()
-            confidence = self._confidence(features, predicted_label)
-        except Exception:  # pragma: no cover - depends on external artifact implementation
-            return None
-
-        if predicted_label in _SAFE_LABELS or confidence < self.threshold:
-            return None
-
-        mapped = _map_label(predicted_label)
-        if mapped is None:
-            return None
-
-        detector_type, category, reason_code = mapped
-        evidence_terms = _extract_evidence(text, detector_type)
-        return DetectionResult(
-            detector_type=detector_type,
-            category=category,
-            reason_code=reason_code,
-            start=0,
-            end=0,
-            matched_text=", ".join(evidence_terms) if evidence_terms else predicted_label,
-            score=round(confidence, 3),
-        )
-
     def _confidence(self, features: Any, predicted_label: str) -> float:
         if hasattr(self._classifier, "predict_proba"):
             probabilities = self._classifier.predict_proba(features)[0]
@@ -165,19 +159,45 @@ class LightweightClassifier:
         return 1.0
 
 
-def _map_label(label: str) -> tuple[DetectorType, str, str] | None:
+@dataclass(frozen=True, slots=True)
+class _LabelMapping:
+    detector_type: DetectorType
+    label: str
+    reason_code: str
+
+
+def _map_label(label: str) -> _LabelMapping | None:
     normalized = label.lower()
     if "pii" in normalized or "privacy" in normalized:
-        return (DetectorType.PII, "MODEL_PII", ReasonCode.PII_MODEL_RISK_DETECTED.value)
+        return _LabelMapping(DetectorType.PII, "pii_risk", ReasonCode.MODEL_PII_RISK.value)
     if "inj" in normalized or "prompt" in normalized or "jailbreak" in normalized:
-        return (DetectorType.INJECTION, "MODEL_INJECTION", ReasonCode.INJ_MODEL_RISK_DETECTED.value)
+        return _LabelMapping(DetectorType.INJECTION, "injection_risk", ReasonCode.MODEL_INJECTION_RISK.value)
     return None
 
 
-def _extract_evidence(text: str, detector_type: DetectorType) -> list[str]:
-    lowered = text.lower()
-    candidate_terms = _PII_TERMS if detector_type == DetectorType.PII else _INJECTION_TERMS
-    return [term for term in candidate_terms if term.lower() in lowered][:5]
+def prediction_to_detection(prediction: LightweightPrediction) -> DetectionResult | None:
+    if not prediction.detected or not prediction.reason_code:
+        return None
+
+    mapping = _map_label(prediction.label)
+    if mapping is None:
+        if prediction.reason_code == ReasonCode.MODEL_PII_RISK.value:
+            mapping = _LabelMapping(DetectorType.PII, "pii_risk", prediction.reason_code)
+        elif prediction.reason_code == ReasonCode.MODEL_INJECTION_RISK.value:
+            mapping = _LabelMapping(DetectorType.INJECTION, "injection_risk", prediction.reason_code)
+        else:
+            return None
+
+    category = "MODEL_PII" if mapping.detector_type == DetectorType.PII else "MODEL_INJECTION"
+    return DetectionResult(
+        detector_type=mapping.detector_type,
+        category=category,
+        reason_code=mapping.reason_code,
+        start=0,
+        end=0,
+        matched_text=f"{prediction.source}:{prediction.label}",
+        score=prediction.confidence,
+    )
 
 
 _DEFAULT_CLASSIFIER = LightweightClassifier()
@@ -187,7 +207,6 @@ def get_lightweight_classifier() -> LightweightClassifier:
     return _DEFAULT_CLASSIFIER
 
 
-def detect_lightweight(text: str, classifier: LightweightClassifier | None = None) -> list[DetectionResult]:
+def detect_lightweight(text: str, classifier: LightweightClassifier | None = None) -> LightweightPrediction:
     detector = classifier or get_lightweight_classifier()
-    result = detector.predict(text)
-    return [result] if result is not None else []
+    return detector.classify(text)

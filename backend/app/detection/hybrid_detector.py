@@ -3,7 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .injection_detector import detect_injection
-from .lightweight_classifier import LightweightClassifier, detect_lightweight, get_lightweight_classifier
+from .lightweight_classifier import (
+    LightweightClassifier,
+    LightweightPrediction,
+    detect_lightweight,
+    get_lightweight_classifier,
+    prediction_to_detection,
+)
 from .models import DetectionResult, DetectorType
 from .pii_detector import detect_pii
 
@@ -16,6 +22,7 @@ class HybridDetectionSummary:
     risk_score: float
     classifier_enabled: bool
     fallback_used: bool
+    model_prediction: LightweightPrediction
 
 
 def _normalized_score(detection: DetectionResult) -> float:
@@ -51,11 +58,12 @@ def detect_hybrid(text: str, classifier: LightweightClassifier | None = None) ->
     pii_detections = detect_pii(text)
     rule_detections = detect_injection(text)
     active_classifier = classifier or get_lightweight_classifier()
-    model_detections = detect_lightweight(text, active_classifier)
+    model_prediction = detect_lightweight(text, active_classifier)
+    model_detection = prediction_to_detection(model_prediction)
     classifier_status = active_classifier.status()
     combined = _dedupe(
         sorted(
-            [*pii_detections, *rule_detections, *model_detections],
+            [*pii_detections, *rule_detections, *([model_detection] if model_detection else [])],
             key=lambda item: (item.start, item.end, item.category, item.reason_code),
         )
     )
@@ -67,6 +75,7 @@ def detect_hybrid(text: str, classifier: LightweightClassifier | None = None) ->
         risk_score=max((_normalized_score(item) for item in combined), default=0.0),
         classifier_enabled=classifier_status.enabled,
         fallback_used=not classifier_status.enabled,
+        model_prediction=model_prediction,
     )
 
 

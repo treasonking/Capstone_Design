@@ -72,6 +72,7 @@
 - `backend/app/detection/lightweight_classifier.py`는 **TF-IDF + Logistic Regression** 계열 직렬화 모델을 읽는 선택형 보조 탐지기로 동작한다.
 - 현재 경량 모델은 **선택형 보조 탐지기**로 설계되며, 모델 파일이 없는 경우 기존 룰 기반 탐지로 fallback된다.
 - 모델 artifact(`models/lightweight/vectorizer.joblib`, `models/lightweight/classifier.joblib`) 또는 선택 의존성(`joblib`, `scikit-learn`)이 없으면 프록시는 중단되지 않고 기존 regex/rule detector만 사용한다.
+- 경량 분류기 반환값은 `detected`, `confidence`, `reason_code`, `label`, `source` 필드를 포함하며, 보조 reason으로 `MODEL_INJECTION_RISK`, `MODEL_PII_RISK`를 사용한다.
 - `backend/app/detection/hybrid_detector.py`는 regex/rule 결과와 모델 결과를 합쳐 최종 `risk_score`, 대표 `reason_code`, 합산 detection 목록을 반환한다.
 
 ## API 데모 결과
@@ -145,6 +146,8 @@ backend/
       masking.py
       policy_engine.py
   tests/
+    test_lightweight_classifier.py
+    test_hybrid_detector.py
     test_pii_detector.py
     test_injection_detector.py
     test_masking.py
@@ -278,6 +281,8 @@ python -m evaluation.baseline_compare \
 - Rule Only
 - Lightweight Model Only
 - Hybrid
+
+모델 artifact가 없으면 `Lightweight Model Only`는 보고서에서 `unavailable (fallback)`로 표시되고, `Hybrid`는 `fallback to regex/rule` 상태로 평가된다.
 
 3-3. README/문서 벤치마크 표 자동 동기화
 

@@ -93,6 +93,7 @@ def _evaluate(dataset: list[dict[str, Any]], detector: DetectorFunc) -> dict[str
 
 def _render_report(
     comparisons: dict[str, dict[str, Any]],
+    statuses: dict[str, str],
     *,
     dataset_path: str,
     output_path: Path,
@@ -105,14 +106,14 @@ def _render_report(
         f"- Lightweight model enabled: `{classifier_status.enabled}`",
         f"- Lightweight model status: {classifier_status.reason}",
         "",
-        "| mode | task | precision | recall | f1 | accuracy | TP | FP | FN | TN |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| mode | status | task | precision | recall | f1 | accuracy | TP | FP | FN | TN |",
+        "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for mode, tasks in comparisons.items():
         for task in ("pii", "injection"):
             metric = tasks[task]
             lines.append(
-                f"| {mode} | {task} | {metric['precision']:.3f} | {metric['recall']:.3f} | "
+                f"| {mode} | {statuses[mode]} | {task} | {metric['precision']:.3f} | {metric['recall']:.3f} | "
                 f"{metric['f1']:.3f} | {metric['accuracy']:.3f} | {metric['tp']} | {metric['fp']} | "
                 f"{metric['fn']} | {metric['tn']} |"
             )
@@ -128,13 +129,20 @@ def main() -> None:
     args = parser.parse_args()
 
     dataset = json.loads(Path(args.dataset).read_text(encoding="utf-8"))
+    classifier_status = get_lightweight_classifier().status()
     comparisons = {
         "Regex Only": _evaluate(dataset, _regex_only),
         "Rule Only": _evaluate(dataset, _rule_only),
         "Lightweight Model Only": _evaluate(dataset, _model_only),
         "Hybrid": _evaluate(dataset, _hybrid),
     }
-    output_path = _render_report(comparisons, dataset_path=args.dataset, output_path=Path(args.report))
+    statuses = {
+        "Regex Only": "available",
+        "Rule Only": "available",
+        "Lightweight Model Only": "available" if classifier_status.enabled else "unavailable (fallback)",
+        "Hybrid": "available" if classifier_status.enabled else "fallback to regex/rule",
+    }
+    output_path = _render_report(comparisons, statuses, dataset_path=args.dataset, output_path=Path(args.report))
     print(f"Baseline comparison saved to: {output_path}")
 
 

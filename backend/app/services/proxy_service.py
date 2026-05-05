@@ -11,9 +11,8 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from backend.app.detection.injection_detector import detect_injection
+from backend.app.detection.hybrid_detector import detect_hybrid_detections
 from backend.app.detection.models import DetectionResult, DetectorType, PolicyAction
-from backend.app.detection.pii_detector import detect_pii
 from backend.app.engine.policy_engine import evaluate_policy
 from backend.app.schemas.proxy import ProxyRequest, ProxyResponse
 from backend.app.services.audit_service import save_audit_log
@@ -31,12 +30,9 @@ POLICY_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 def _merge_detections(text: str) -> list[DetectionResult]:
-    # PII 탐지와 프롬프트 인젝션 탐지를 각각 실행한 뒤,
-    # 정책 엔진이 한 번에 판단할 수 있도록 위치 기준으로 합칩니다.
-    return sorted(
-        [*detect_pii(text), *detect_injection(text)],
-        key=lambda item: (item.start, item.end),
-    )
+    # 하이브리드 탐지는 regex/rule 결과를 기본으로 유지하고,
+    # 선택형 경량 모델 신호가 있을 때만 보조 탐지 결과를 함께 합칩니다.
+    return sorted(detect_hybrid_detections(text), key=lambda item: (item.start, item.end))
 
 
 def _resolve_reason_code(reasons: list[str]) -> str | None:

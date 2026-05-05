@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
-from backend.app.detection.injection_detector import detect_injection
+from backend.app.detection.hybrid_detector import detect_hybrid_detections
 from backend.app.detection.models import DetectionResult
-from backend.app.detection.pii_detector import detect_pii
+from backend.app.detection.models import DetectorType
 from evaluation.report_generator import generate_markdown_report
 
 
@@ -124,8 +124,14 @@ def run_evaluation(dataset_path: str | Path) -> dict[str, Any]:
     pii_rows = [row for row in dataset if row.get("task") == "pii"]
     inj_rows = [row for row in dataset if row.get("task") == "injection"]
 
-    pii = _evaluate_records(pii_rows, detect_pii)
-    injection = _evaluate_records(inj_rows, detect_injection)
+    pii = _evaluate_records(
+        pii_rows,
+        lambda text: [item for item in detect_hybrid_detections(text) if item.detector_type == DetectorType.PII],
+    )
+    injection = _evaluate_records(
+        inj_rows,
+        lambda text: [item for item in detect_hybrid_detections(text) if item.detector_type == DetectorType.INJECTION],
+    )
     reason_code_metrics = _merge_label_metrics(pii, injection)
     return {
         "meta": {"dataset_size": len(dataset), "dataset": str(dataset_path)},

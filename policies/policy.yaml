@@ -25,6 +25,11 @@ rules:
     priority: 50
     threshold: 0.75
     description: "Account-number candidate. Context validation is applied because false positives are possible."
+  PII_MODEL_RISK_DETECTED:
+    action: WARN
+    priority: 45
+    threshold: 0.6
+    description: "Optional lightweight model flagged contextual PII risk. Falls back to deterministic detectors when model artifacts are absent."
   INJ_IGNORE_PREVIOUS_INSTRUCTIONS:
     action: BLOCK
     priority: 90
@@ -75,6 +80,11 @@ rules:
     priority: 99
     threshold: 3.0
     description: "Block obfuscated prompt injection attempts, including leetspeak or spaced system/hidden instruction terms."
+  INJ_MODEL_RISK_DETECTED:
+    action: WARN
+    priority: 70
+    threshold: 0.6
+    description: "Optional lightweight model flagged contextual prompt-injection risk. Falls back to rule detection when model artifacts are absent."
   SAFE_INPUT:
     action: ALLOW
     priority: 0

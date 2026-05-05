@@ -54,7 +54,10 @@ def _dedupe(detections: list[DetectionResult]) -> list[DetectionResult]:
     return deduped
 
 
-def detect_hybrid(text: str, classifier: LightweightClassifier | None = None) -> HybridDetectionSummary:
+def detect_hybrid(
+    text: str,
+    classifier: LightweightClassifier | None = None,
+) -> HybridDetectionSummary:
     pii_detections = detect_pii(text)
     rule_detections = detect_injection(text)
     active_classifier = classifier or get_lightweight_classifier()
@@ -79,5 +82,8 @@ def detect_hybrid(text: str, classifier: LightweightClassifier | None = None) ->
     )
 
 
-def detect_hybrid_detections(text: str, classifier: LightweightClassifier | None = None) -> list[DetectionResult]:
+def detect_hybrid_detections(
+    text: str,
+    classifier: LightweightClassifier | None = None,
+) -> list[DetectionResult]:
     return detect_hybrid(text, classifier).detections

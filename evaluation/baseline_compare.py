@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import Any, Callable
 
 from backend.app.detection.hybrid_detector import detect_hybrid
+from backend.app.detection.injection_detector import detect_injection
 from backend.app.detection.lightweight_classifier import get_lightweight_classifier
 from backend.app.detection.models import DetectionResult, DetectorType
-from backend.app.detection.injection_detector import detect_injection
 from backend.app.detection.pii_detector import detect_pii
 
 
@@ -59,7 +59,11 @@ def _rule_only(text: str, task: str) -> list[DetectionResult]:
 def _model_only(text: str, task: str) -> list[DetectionResult]:
     summary = detect_hybrid(text)
     target_type = _task_detector_type(task)
-    return [item for item in summary.detections if item.category.startswith("MODEL_") and item.detector_type == target_type]
+    return [
+        item
+        for item in summary.detections
+        if item.category.startswith("MODEL_") and item.detector_type == target_type
+    ]
 
 
 def _hybrid(text: str, task: str) -> list[DetectionResult]:
@@ -123,9 +127,15 @@ def _render_report(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Compare regex, rule, model, and hybrid detector baselines.")
+    parser = argparse.ArgumentParser(
+        description="Compare regex, rule, model, and hybrid detector baselines."
+    )
     parser.add_argument("--dataset", default="evaluation/sample_dataset.json", help="Path to JSON dataset.")
-    parser.add_argument("--report", default="reports/baseline_compare_report.md", help="Output markdown report path.")
+    parser.add_argument(
+        "--report",
+        default="reports/baseline_compare_report.md",
+        help="Output markdown report path.",
+    )
     args = parser.parse_args()
 
     dataset = json.loads(Path(args.dataset).read_text(encoding="utf-8"))
@@ -139,10 +149,17 @@ def main() -> None:
     statuses = {
         "Regex Only": "available",
         "Rule Only": "available",
-        "Lightweight Model Only": "available" if classifier_status.enabled else "unavailable (fallback)",
+        "Lightweight Model Only": (
+            "available" if classifier_status.enabled else "unavailable (fallback)"
+        ),
         "Hybrid": "available" if classifier_status.enabled else "fallback to regex/rule",
     }
-    output_path = _render_report(comparisons, statuses, dataset_path=args.dataset, output_path=Path(args.report))
+    output_path = _render_report(
+        comparisons,
+        statuses,
+        dataset_path=args.dataset,
+        output_path=Path(args.report),
+    )
     print(f"Baseline comparison saved to: {output_path}")
 
 

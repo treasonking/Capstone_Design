@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -47,8 +47,16 @@ class LightweightClassifier:
         classifier_path: str | Path | None = None,
         threshold: float = 0.6,
     ) -> None:
-        self.vectorizer_path = Path(vectorizer_path) if vectorizer_path else _MODEL_DIR / "vectorizer.joblib"
-        self.classifier_path = Path(classifier_path) if classifier_path else _MODEL_DIR / "classifier.joblib"
+        self.vectorizer_path = (
+            Path(vectorizer_path)
+            if vectorizer_path
+            else _MODEL_DIR / "vectorizer.joblib"
+        )
+        self.classifier_path = (
+            Path(classifier_path)
+            if classifier_path
+            else _MODEL_DIR / "classifier.joblib"
+        )
         self.threshold = threshold
         self._load_attempted = False
         self._vectorizer: Any | None = None
@@ -169,9 +177,17 @@ class _LabelMapping:
 def _map_label(label: str) -> _LabelMapping | None:
     normalized = label.lower()
     if "pii" in normalized or "privacy" in normalized:
-        return _LabelMapping(DetectorType.PII, "pii_risk", ReasonCode.MODEL_PII_RISK.value)
+        return _LabelMapping(
+            DetectorType.PII,
+            "pii_risk",
+            ReasonCode.MODEL_PII_RISK.value,
+        )
     if "inj" in normalized or "prompt" in normalized or "jailbreak" in normalized:
-        return _LabelMapping(DetectorType.INJECTION, "injection_risk", ReasonCode.MODEL_INJECTION_RISK.value)
+        return _LabelMapping(
+            DetectorType.INJECTION,
+            "injection_risk",
+            ReasonCode.MODEL_INJECTION_RISK.value,
+        )
     return None
 
 

@@ -295,6 +295,7 @@ python tools/sync_benchmark_docs.py --dataset evaluation/sample_dataset.json
 - `2026-05-05` 현재 이 작업 셸에서는 `python` 명령이 존재하지 않았고, `py -0` 결과도 `No Installed Pythons Found!`였다.
 - Docker 클라이언트는 존재했지만 `com.docker.service`를 시작할 수 없어 컨테이너 기반 검증도 수행하지 못했다.
 - 따라서 `python -m pytest -q`, `python -m evaluation.evaluate ...`, `python -m evaluation.baseline_compare ...`는 이 환경에서 재실행 검증하지 못했다.
+- 다만 GitHub Actions CI 배지 기준으로 현재 `master`의 `ci.yml` 워크플로 상태는 `passing`으로 표시된다.
 - `reports/evaluation_report.md`, `reports/external_validation_report.md`, `reports/baseline_compare_report.md`는 저장소 기준 보고서 경로이며, 실제 최종 제출 전에는 Python 또는 Docker 실행 환경에서 한 번 더 재생성하는 것을 권장한다.
 
 4. FastAPI 프록시 실행

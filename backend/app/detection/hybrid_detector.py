@@ -33,12 +33,17 @@ def _normalized_score(detection: DetectionResult) -> float:
 
 def _priority_key(detection: DetectionResult) -> tuple[float, int, str]:
     source_bias = 0 if detection.category.startswith("MODEL_") else 1
-    return (_normalized_score(detection), source_bias, detection.reason_code)
+    return (
+        _normalized_score(detection),
+        source_bias,
+        detection.reason_code,
+    )
 
 
 def _dedupe(detections: list[DetectionResult]) -> list[DetectionResult]:
     deduped: list[DetectionResult] = []
     seen: set[tuple[str, str, int, int, str]] = set()
+
     for item in detections:
         key = (
             item.detector_type.value,
@@ -51,6 +56,7 @@ def _dedupe(detections: list[DetectionResult]) -> list[DetectionResult]:
             continue
         seen.add(key)
         deduped.append(item)
+
     return deduped
 
 
@@ -64,18 +70,32 @@ def detect_hybrid(
     model_prediction = detect_lightweight(text, active_classifier)
     model_detection = prediction_to_detection(model_prediction)
     classifier_status = active_classifier.status()
+
     combined = _dedupe(
         sorted(
-            [*pii_detections, *rule_detections, *([model_detection] if model_detection else [])],
-            key=lambda item: (item.start, item.end, item.category, item.reason_code),
+            [
+                *pii_detections,
+                *rule_detections,
+                *([model_detection] if model_detection else []),
+            ],
+            key=lambda item: (
+                item.start,
+                item.end,
+                item.category,
+                item.reason_code,
+            ),
         )
     )
     primary = max(combined, key=_priority_key) if combined else None
+
     return HybridDetectionSummary(
         detections=combined,
         reason_codes=sorted({item.reason_code for item in combined}),
         primary_reason_code=primary.reason_code if primary else None,
-        risk_score=max((_normalized_score(item) for item in combined), default=0.0),
+        risk_score=max(
+            (_normalized_score(item) for item in combined),
+            default=0.0,
+        ),
         classifier_enabled=classifier_status.enabled,
         fallback_used=not classifier_status.enabled,
         model_prediction=model_prediction,

@@ -10,7 +10,7 @@ from .reason_codes import ReasonCode
 
 try:
     import joblib  # type: ignore
-except ModuleNotFoundError:  # pragma: no cover - optional dependency
+except ModuleNotFoundError:  # pragma: no cover
     joblib = None
 
 
@@ -38,8 +38,6 @@ class LightweightPrediction:
 
 
 class LightweightClassifier:
-    """Optional TF-IDF + Logistic Regression adapter with safe fallback."""
-
     def __init__(
         self,
         *,
@@ -98,9 +96,16 @@ class LightweightClassifier:
 
         try:
             features = self._vectorizer.transform([text])
-            predicted_label = str(self._classifier.predict(features)[0]).strip().lower()
-            confidence = round(self._confidence(features, predicted_label), 3)
-        except Exception:  # pragma: no cover - depends on external artifact implementation
+            predicted_label = (
+                str(self._classifier.predict(features)[0])
+                .strip()
+                .lower()
+            )
+            confidence = round(
+                self._confidence(features, predicted_label),
+                3,
+            )
+        except Exception:  # pragma: no cover
             return LightweightPrediction(
                 detected=False,
                 confidence=0.0,
@@ -110,7 +115,11 @@ class LightweightClassifier:
             )
 
         mapped = _map_label(predicted_label)
-        if predicted_label in _SAFE_LABELS or mapped is None or confidence < self.threshold:
+        if (
+            predicted_label in _SAFE_LABELS
+            or mapped is None
+            or confidence < self.threshold
+        ):
             return LightweightPrediction(
                 detected=False,
                 confidence=confidence,
@@ -130,12 +139,16 @@ class LightweightClassifier:
     def _ensure_loaded(self) -> None:
         if self._load_attempted:
             return
+
         self._load_attempted = True
 
         if joblib is None:
             self._disabled_reason = "Optional dependency 'joblib' is not installed."
             return
-        if not self.vectorizer_path.exists() or not self.classifier_path.exists():
+        if (
+            not self.vectorizer_path.exists()
+            or not self.classifier_path.exists()
+        ):
             self._disabled_reason = "Model artifact files are missing."
             return
 
@@ -143,15 +156,20 @@ class LightweightClassifier:
             self._vectorizer = joblib.load(self.vectorizer_path)
             self._classifier = joblib.load(self.classifier_path)
             self._disabled_reason = "Model loaded."
-        except Exception as exc:  # pragma: no cover - defensive for arbitrary artifact issues
+        except Exception as exc:  # pragma: no cover
             self._vectorizer = None
             self._classifier = None
-            self._disabled_reason = f"Model artifact load failed: {exc.__class__.__name__}"
+            self._disabled_reason = (
+                f"Model artifact load failed: {exc.__class__.__name__}"
+            )
 
     def _confidence(self, features: Any, predicted_label: str) -> float:
         if hasattr(self._classifier, "predict_proba"):
             probabilities = self._classifier.predict_proba(features)[0]
-            classes = [str(item).strip().lower() for item in getattr(self._classifier, "classes_", [])]
+            classes = [
+                str(item).strip().lower()
+                for item in getattr(self._classifier, "classes_", [])
+            ]
             if predicted_label in classes:
                 return float(probabilities[classes.index(predicted_label)])
             return float(max(probabilities))
@@ -159,7 +177,9 @@ class LightweightClassifier:
         if hasattr(self._classifier, "decision_function"):
             margin = self._classifier.decision_function(features)
             if hasattr(margin, "__len__"):
-                value = float(margin[0] if len(margin) == 1 else max(margin[0]))
+                value = float(
+                    margin[0] if len(margin) == 1 else max(margin[0])
+                )
             else:
                 value = float(margin)
             return 1.0 / (1.0 + math.exp(-value))
@@ -182,7 +202,11 @@ def _map_label(label: str) -> _LabelMapping | None:
             "pii_risk",
             ReasonCode.MODEL_PII_RISK.value,
         )
-    if "inj" in normalized or "prompt" in normalized or "jailbreak" in normalized:
+    if (
+        "inj" in normalized
+        or "prompt" in normalized
+        or "jailbreak" in normalized
+    ):
         return _LabelMapping(
             DetectorType.INJECTION,
             "injection_risk",
@@ -191,20 +215,34 @@ def _map_label(label: str) -> _LabelMapping | None:
     return None
 
 
-def prediction_to_detection(prediction: LightweightPrediction) -> DetectionResult | None:
+def prediction_to_detection(
+    prediction: LightweightPrediction,
+) -> DetectionResult | None:
     if not prediction.detected or not prediction.reason_code:
         return None
 
     mapping = _map_label(prediction.label)
     if mapping is None:
         if prediction.reason_code == ReasonCode.MODEL_PII_RISK.value:
-            mapping = _LabelMapping(DetectorType.PII, "pii_risk", prediction.reason_code)
+            mapping = _LabelMapping(
+                DetectorType.PII,
+                "pii_risk",
+                prediction.reason_code,
+            )
         elif prediction.reason_code == ReasonCode.MODEL_INJECTION_RISK.value:
-            mapping = _LabelMapping(DetectorType.INJECTION, "injection_risk", prediction.reason_code)
+            mapping = _LabelMapping(
+                DetectorType.INJECTION,
+                "injection_risk",
+                prediction.reason_code,
+            )
         else:
             return None
 
-    category = "MODEL_PII" if mapping.detector_type == DetectorType.PII else "MODEL_INJECTION"
+    category = (
+        "MODEL_PII"
+        if mapping.detector_type == DetectorType.PII
+        else "MODEL_INJECTION"
+    )
     return DetectionResult(
         detector_type=mapping.detector_type,
         category=category,
@@ -223,6 +261,9 @@ def get_lightweight_classifier() -> LightweightClassifier:
     return _DEFAULT_CLASSIFIER
 
 
-def detect_lightweight(text: str, classifier: LightweightClassifier | None = None) -> LightweightPrediction:
+def detect_lightweight(
+    text: str,
+    classifier: LightweightClassifier | None = None,
+) -> LightweightPrediction:
     detector = classifier or get_lightweight_classifier()
     return detector.classify(text)

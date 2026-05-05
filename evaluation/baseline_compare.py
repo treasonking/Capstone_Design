@@ -7,7 +7,9 @@ from typing import Any, Callable
 
 from backend.app.detection.hybrid_detector import detect_hybrid
 from backend.app.detection.injection_detector import detect_injection
-from backend.app.detection.lightweight_classifier import get_lightweight_classifier
+from backend.app.detection.lightweight_classifier import (
+    get_lightweight_classifier,
+)
 from backend.app.detection.models import DetectionResult, DetectorType
 from backend.app.detection.pii_detector import detect_pii
 
@@ -62,17 +64,25 @@ def _model_only(text: str, task: str) -> list[DetectionResult]:
     return [
         item
         for item in summary.detections
-        if item.category.startswith("MODEL_") and item.detector_type == target_type
+        if item.category.startswith("MODEL_")
+        and item.detector_type == target_type
     ]
 
 
 def _hybrid(text: str, task: str) -> list[DetectionResult]:
     summary = detect_hybrid(text)
     target_type = _task_detector_type(task)
-    return [item for item in summary.detections if item.detector_type == target_type]
+    return [
+        item
+        for item in summary.detections
+        if item.detector_type == target_type
+    ]
 
 
-def _evaluate(dataset: list[dict[str, Any]], detector: DetectorFunc) -> dict[str, Any]:
+def _evaluate(
+    dataset: list[dict[str, Any]],
+    detector: DetectorFunc,
+) -> dict[str, Any]:
     task_rows = {"pii": [], "injection": []}
     for row in dataset:
         task_rows[str(row.get("task", ""))].append(row)
@@ -81,7 +91,9 @@ def _evaluate(dataset: list[dict[str, Any]], detector: DetectorFunc) -> dict[str
     for task in ("pii", "injection"):
         tp = fp = fn = tn = 0
         for row in task_rows[task]:
-            predicted_positive = bool(detector(str(row.get("text", "")), task))
+            predicted_positive = bool(
+                detector(str(row.get("text", "")), task)
+            )
             expected_positive = _expected_positive(row)
             if predicted_positive and expected_positive:
                 tp += 1
@@ -91,7 +103,9 @@ def _evaluate(dataset: list[dict[str, Any]], detector: DetectorFunc) -> dict[str
                 fn += 1
             else:
                 tn += 1
+
         result[task] = _metric(tp, fp, fn, tn)
+
     return result
 
 
@@ -113,14 +127,18 @@ def _render_report(
         "| mode | status | task | precision | recall | f1 | accuracy | TP | FP | FN | TN |",
         "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
+
     for mode, tasks in comparisons.items():
         for task in ("pii", "injection"):
             metric = tasks[task]
             lines.append(
-                f"| {mode} | {statuses[mode]} | {task} | {metric['precision']:.3f} | {metric['recall']:.3f} | "
-                f"{metric['f1']:.3f} | {metric['accuracy']:.3f} | {metric['tp']} | {metric['fp']} | "
-                f"{metric['fn']} | {metric['tn']} |"
+                f"| {mode} | {statuses[mode]} | {task} | "
+                f"{metric['precision']:.3f} | {metric['recall']:.3f} | "
+                f"{metric['f1']:.3f} | {metric['accuracy']:.3f} | "
+                f"{metric['tp']} | {metric['fp']} | {metric['fn']} | "
+                f"{metric['tn']} |"
             )
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text("\n".join(lines), encoding="utf-8")
     return output_path
@@ -130,7 +148,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Compare regex, rule, model, and hybrid detector baselines."
     )
-    parser.add_argument("--dataset", default="evaluation/sample_dataset.json", help="Path to JSON dataset.")
+    parser.add_argument(
+        "--dataset",
+        default="evaluation/sample_dataset.json",
+        help="Path to JSON dataset.",
+    )
     parser.add_argument(
         "--report",
         default="reports/baseline_compare_report.md",
@@ -150,9 +172,15 @@ def main() -> None:
         "Regex Only": "available",
         "Rule Only": "available",
         "Lightweight Model Only": (
-            "available" if classifier_status.enabled else "unavailable (fallback)"
+            "available"
+            if classifier_status.enabled
+            else "unavailable (fallback)"
         ),
-        "Hybrid": "available" if classifier_status.enabled else "fallback to regex/rule",
+        "Hybrid": (
+            "available"
+            if classifier_status.enabled
+            else "fallback to regex/rule"
+        ),
     }
     output_path = _render_report(
         comparisons,

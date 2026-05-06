@@ -34,6 +34,7 @@ class HybridDetectionResult:
     model_prediction: LightweightPrediction | None = None
     detector_results: list[DetectorRunSummary] = field(default_factory=list)
     detector_counts: dict[str, int] = field(default_factory=dict)
+    detectors_invoked: list[str] = field(default_factory=list)
     action: str = "ALLOW"
     pii_detected: bool = False
     injection_detected: bool = False
@@ -146,6 +147,7 @@ def detect_hybrid(
     reason_codes = ordered_reason_codes([item.reason_code for item in combined])
     final_action = action_for_reasons(reason_codes) if reason_codes else "ALLOW"
     detector_counts = _detector_counts(detector_results)
+    detectors_invoked = [result.detector for result in detector_results]
 
     final_result = HybridDetectionResult(
         detections=combined,
@@ -164,6 +166,7 @@ def detect_hybrid(
         model_prediction=model_result.model_prediction,
         detector_results=detector_results,
         detector_counts=detector_counts,
+        detectors_invoked=detectors_invoked,
         action=final_action,
         pii_detected=any(item.detector_type.value == "PII" for item in combined),
         injection_detected=any(item.detector_type.value == "INJECTION" for item in combined),

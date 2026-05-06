@@ -106,16 +106,22 @@ def _audit_from_detections(
         "injection_detected": injection_detected,
         "total_detections": total_detections,
         "detector_counts": detector_counts,
+        "detector_count_basis": "matched_detectors",
+        "matched_detector_count": len(detector_counts),
         "applied_rule_count": len([reason for reason in reasons if reason != "SAFE_INPUT"]),
     }
     if detector_results:
         summary["detector_results"] = detector_results
     if hybrid_result is not None:
+        summary["detectors_invoked"] = hybrid_result.detectors_invoked
+        summary["detector_invocation_count"] = len(hybrid_result.detectors_invoked)
         hybrid_detection = {
             "model_enabled": hybrid_result.model_enabled,
             "model_status": hybrid_result.model_status,
             "fallback_used": hybrid_result.fallback_used,
         }
+        if hybrid_result.fallback_used:
+            hybrid_detection["fallback_reason"] = hybrid_result.model_status
         if hybrid_result.model_label is not None:
             hybrid_detection["model_label"] = hybrid_result.model_label
         if hybrid_result.model_confidence is not None:

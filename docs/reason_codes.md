@@ -63,6 +63,8 @@
 | `MODEL_DETECTOR_ERROR` | MODEL | WARN | MEDIUM | 모델 detector 실행 실패 | `model detector failure` | 낮음 |
 | `MODEL_DETECTOR_UNAVAILABLE` | MODEL | WARN | MEDIUM | 모델 detector가 요청되었지만 사용 불가 | `artifact missing` | 낮음 |
 
+`MODEL_*` reason code는 외부 대형 모델 사용을 전제하지 않는다. 현재 저장소에서는 `backend/app/detection/model_detector.py`가 선택형 경량 분류기 및 fallback heuristic 경로를 감싸는 detector 역할을 하며, artifact가 없으면 `artifact_missing` 상태와 함께 fallback 경로가 audit에 남는다.
+
 ## 6. Legacy / Alias Reason Codes
 
 `INJ_IGNORE_PREVIOUS_INSTRUCTIONS`는 legacy reason code다. 신규 정책에서는 `INJ_DIRECT_OVERRIDE_ATTEMPT`를 대표 code로 사용한다. 다만 기존 평가 데이터와 하위 호환성을 위해 두 code가 동시에 발화될 수 있다. 정책 엔진은 두 code를 동일한 DIRECT_OVERRIDE 위험군으로 처리한다.

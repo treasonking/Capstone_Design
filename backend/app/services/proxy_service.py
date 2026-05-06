@@ -11,7 +11,10 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from backend.app.detection.hybrid_detector import detect_hybrid_detections
+from backend.app.detection.hybrid_detector import (
+    HybridDetectionResult,
+    detect_hybrid,
+)
 from backend.app.detection.models import DetectionResult, DetectorType, PolicyAction
 from backend.app.engine.policy_engine import evaluate_policy
 from backend.app.schemas.proxy import ProxyRequest, ProxyResponse
@@ -29,10 +32,19 @@ ALLOWED_POLICY_IDS = {
 POLICY_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
+def _detect_text(text: str) -> HybridDetectionResult:
+    result = detect_hybrid(text)
+    result.detections = sorted(
+        result.detections,
+        key=lambda item: (item.start, item.end),
+    )
+    return result
+
+
 def _merge_detections(text: str) -> list[DetectionResult]:
     # 하이브리드 탐지는 regex/rule 결과를 기본으로 유지하고,
     # 선택형 경량 모델 신호가 있을 때만 보조 탐지 결과를 함께 합칩니다.
-    return sorted(detect_hybrid_detections(text), key=lambda item: (item.start, item.end))
+    return _detect_text(text).detections
 
 
 def _resolve_reason_code(reasons: list[str]) -> str | None:
@@ -57,14 +69,41 @@ def _audit_from_detections(
     action: str,
     reasons: list[str],
     detections: list[DetectionResult],
+    hybrid_result: HybridDetectionResult | None = None,
 ) -> dict[str, Any]:
-    return {
+    summary = {
         "action": action,
         "reasons": reasons,
         "pii_detected": any(item.detector_type == DetectorType.PII for item in detections),
         "injection_detected": any(item.detector_type == DetectorType.INJECTION for item in detections),
         "total_detections": len(detections),
     }
+    if hybrid_result is not None:
+        hybrid_detection = {
+            "model_enabled": hybrid_result.model_enabled,
+            "model_status": hybrid_result.model_status,
+            "fallback_used": hybrid_result.fallback_used,
+        }
+        if hybrid_result.model_label is not None:
+            hybrid_detection["model_label"] = hybrid_result.model_label
+        if hybrid_result.model_confidence is not None:
+            hybrid_detection["model_confidence"] = hybrid_result.model_confidence
+        summary["hybrid_detection"] = hybrid_detection
+    return summary
+
+
+def _top_level_hybrid_detection(
+    input_summary: dict[str, Any],
+    output_summary: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    hybrid_detection: dict[str, Any] = {}
+    input_hybrid = input_summary.get("hybrid_detection")
+    if input_hybrid is not None:
+        hybrid_detection["input"] = input_hybrid
+    output_hybrid = (output_summary or {}).get("hybrid_detection")
+    if output_hybrid is not None:
+        hybrid_detection["output"] = output_hybrid
+    return hybrid_detection or None
 
 
 def _build_audit_summary(
@@ -81,7 +120,7 @@ def _build_audit_summary(
 ) -> dict[str, Any]:
     # 감사 요약에는 보안 판단에 필요한 메타데이터만 남깁니다.
     # 원문 프롬프트와 원문 응답은 로그 저장 전에 의도적으로 제외합니다.
-    return {
+    audit_summary = {
         "timestamp_utc": timestamp_utc,
         "latency_ms": round((time.perf_counter() - started) * 1000, 2),
         "action": final_action,
@@ -92,6 +131,10 @@ def _build_audit_summary(
         "input": input_summary,
         "output": output_summary,
     }
+    hybrid_detection = _top_level_hybrid_detection(input_summary, output_summary)
+    if hybrid_detection is not None:
+        audit_summary["hybrid_detection"] = hybrid_detection
+    return audit_summary
 
 
 def resolve_policy_path(policy_id: str) -> Path:
@@ -140,10 +183,16 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
     policy_path = resolve_policy_path(req.policy_id)
 
     # 1단계: 외부 LLM을 호출하기 전에 입력 프롬프트를 먼저 검사합니다.
-    input_detections = _merge_detections(req.message)
+    input_hybrid = _detect_text(req.message)
+    input_detections = input_hybrid.detections
     input_decision = evaluate_policy(req.message, input_detections, policy_path)
     input_action = input_decision.final_action.value
-    input_audit = _audit_from_detections(input_action, input_decision.reasons, input_detections)
+    input_audit = _audit_from_detections(
+        input_action,
+        input_decision.reasons,
+        input_detections,
+        hybrid_result=input_hybrid,
+    )
     input_summary = {**input_decision.audit_summary, **input_audit}
 
     if input_action == PolicyAction.BLOCK.value:
@@ -204,10 +253,16 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
         return _response(req, request_id, "ERROR", reasons, input_action, None, None, audit_summary)
 
     # 2단계: 모델 응답도 신뢰하지 않고 다시 검사합니다.
-    output_detections = _merge_detections(llm_content)
+    output_hybrid = _detect_text(llm_content)
+    output_detections = output_hybrid.detections
     output_decision = evaluate_policy(llm_content, output_detections, policy_path)
     output_action = output_decision.final_action.value
-    output_audit = _audit_from_detections(output_action, output_decision.reasons, output_detections)
+    output_audit = _audit_from_detections(
+        output_action,
+        output_decision.reasons,
+        output_detections,
+        hybrid_result=output_hybrid,
+    )
     output_summary = {**output_decision.audit_summary, **output_audit}
 
     if output_action == PolicyAction.BLOCK.value:
@@ -267,10 +322,16 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
     request_id = str(uuid.uuid4())
     policy_path = resolve_policy_path(req.policy_id)
 
-    input_detections = _merge_detections(req.message)
+    input_hybrid = _detect_text(req.message)
+    input_detections = input_hybrid.detections
     input_decision = evaluate_policy(req.message, input_detections, policy_path)
     input_action = input_decision.final_action.value
-    input_audit = _audit_from_detections(input_action, input_decision.reasons, input_detections)
+    input_audit = _audit_from_detections(
+        input_action,
+        input_decision.reasons,
+        input_detections,
+        hybrid_result=input_hybrid,
+    )
     input_summary = {**input_decision.audit_summary, **input_audit}
 
     yield _sse_event(
@@ -348,11 +409,42 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
         return
 
     llm_content = "".join(output_chunks)
-    output_detections = _merge_detections(llm_content)
+    output_hybrid = _detect_text(llm_content)
+    output_detections = output_hybrid.detections
     output_decision = evaluate_policy(llm_content, output_detections, policy_path)
     output_action = output_decision.final_action.value
-    output_audit = _audit_from_detections(output_action, output_decision.reasons, output_detections)
+    output_audit = _audit_from_detections(
+        output_action,
+        output_decision.reasons,
+        output_detections,
+        hybrid_result=output_hybrid,
+    )
     output_summary = {**output_decision.audit_summary, **output_audit}
+
+    if output_action == PolicyAction.BLOCK.value:
+        audit_summary = _build_audit_summary(
+            timestamp_utc,
+            started,
+            final_action=PolicyAction.BLOCK.value,
+            reason_codes=output_decision.reasons,
+            input_action=input_action,
+            output_action=output_action,
+            input_summary=input_summary,
+            output_summary=output_summary,
+            upstream_call=True,
+        )
+        response = _response(
+            req,
+            request_id,
+            PolicyAction.BLOCK.value,
+            output_decision.reasons,
+            input_action,
+            output_action,
+            None,
+            audit_summary,
+        )
+        yield _sse_event("done", response.model_dump())
+        return
 
     final_action = _final_action(input_action, output_action)
     all_reasons = sorted(set(input_decision.reasons + output_decision.reasons))

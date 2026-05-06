@@ -56,6 +56,7 @@ def test_proxy_blocks_on_input_injection() -> None:
     assert "latency_ms" in result.audit_summary
     assert "timestamp_utc" in result.audit_summary
     assert result.audit_summary["input"]["injection_detected"] is True
+    assert "hybrid_detection" in result.audit_summary["input"]
 
 
 def test_proxy_masks_input_then_returns_output(monkeypatch) -> None:
@@ -72,6 +73,7 @@ def test_proxy_masks_input_then_returns_output(monkeypatch) -> None:
     assert result.content == "normal response"
     assert result.audit_summary["input"]["pii_detected"] is True
     assert result.audit_summary["output"]["pii_detected"] is False
+    assert "hybrid_detection" in result.audit_summary
 
 
 def test_proxy_blocks_on_output_injection(monkeypatch) -> None:
@@ -87,6 +89,7 @@ def test_proxy_blocks_on_output_injection(monkeypatch) -> None:
     assert result.output_action == "BLOCK"
     assert result.content is None
     assert result.audit_summary["output"]["injection_detected"] is True
+    assert "hybrid_detection" in result.audit_summary["output"]
 
 
 def test_proxy_returns_timeout_error(monkeypatch) -> None:

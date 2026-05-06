@@ -1,6 +1,8 @@
 # Detection Evaluation Report
 
-- Generated at: 2026-05-04T14:51:37
+> 이 리포트는 내부 회귀 테스트 데이터셋 기준 결과이다. 탐지 룰과 정책이 기존 테스트 케이스에서 정상 동작하는지 확인하기 위한 목적이며, 실제 운영 환경의 일반화 성능을 의미하지 않는다.
+
+- Generated at: 2026-05-06T16:05:56
 - Dataset: `evaluation/sample_dataset.json`
 - Dataset size: 108
 

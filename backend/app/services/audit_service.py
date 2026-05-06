@@ -20,7 +20,7 @@ def _build_log_entry(
     output_summary = audit_summary.get("output") or {}
 
     # 감사와 관리자 통계에 필요한 메타데이터만 저장합니다.
-    return {
+    entry = {
         "request_id": request_id,
         "user_id": user_id,
         "timestamp": audit_summary.get("timestamp_utc"),
@@ -33,6 +33,10 @@ def _build_log_entry(
         "input_action": audit_summary.get("input_action"),
         "output_action": audit_summary.get("output_action"),
     }
+    hybrid_detection = audit_summary.get("hybrid_detection")
+    if hybrid_detection is not None:
+        entry["hybrid_detection"] = hybrid_detection
+    return entry
 
 
 def save_audit_log(

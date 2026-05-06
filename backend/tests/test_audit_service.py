@@ -53,6 +53,13 @@ def test_build_log_entry_keeps_metadata_only() -> None:
         "upstream_call": True,
         "input_action": "MASK",
         "output_action": "ALLOW",
+        "hybrid_detection": {
+            "input": {
+                "model_enabled": False,
+                "model_status": "artifact_missing",
+                "fallback_used": True,
+            }
+        },
         "input": {
             "pii_detected": True,
             "injection_detected": False,
@@ -73,6 +80,7 @@ def test_build_log_entry_keeps_metadata_only() -> None:
     assert entry["reason_codes"] == ["PII_PHONE_DETECTED"]
     assert entry["pii_detected"] is True
     assert entry["injection_detected"] is False
+    assert entry["hybrid_detection"]["input"]["model_status"] == "artifact_missing"
     assert "raw_prompt" not in entry
     assert "raw_response" not in entry
 

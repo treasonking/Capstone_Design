@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -18,14 +19,21 @@ _MODEL_DIR = Path(__file__).resolve().parents[3] / "models" / "lightweight"
 _SAFE_LABELS = {"safe", "benign", "normal", "allow", "none"}
 _SOURCE_MODEL = "lightweight_model"
 _SOURCE_FALLBACK = "fallback_disabled"
+_MODEL_ENABLE_ENV = "LIGHTWEIGHT_MODEL_ENABLED"
+_FALSE_VALUES = {"0", "false", "off", "no"}
 
 
 @dataclass(slots=True)
 class LightweightModelStatus:
     enabled: bool
-    reason: str
+    status: str
+    note: str
     vectorizer_path: Path
     classifier_path: Path
+
+    @property
+    def reason(self) -> str:
+        return self.note
 
 
 @dataclass(slots=True)
@@ -59,17 +67,23 @@ class LightweightClassifier:
         self._load_attempted = False
         self._vectorizer: Any | None = None
         self._classifier: Any | None = None
-        self._disabled_reason = "Model load not attempted."
+        self._status_code = "disabled"
+        self._status_note = "Model load not attempted."
 
     @property
     def enabled(self) -> bool:
-        return self._vectorizer is not None and self._classifier is not None
+        return (
+            self._status_code == "enabled"
+            and self._vectorizer is not None
+            and self._classifier is not None
+        )
 
     def status(self) -> LightweightModelStatus:
         self._ensure_loaded()
         return LightweightModelStatus(
             enabled=self.enabled,
-            reason=self._disabled_reason,
+            status=self._status_code,
+            note=self._status_note,
             vectorizer_path=self.vectorizer_path,
             classifier_path=self.classifier_path,
         )
@@ -106,6 +120,10 @@ class LightweightClassifier:
                 3,
             )
         except Exception:  # pragma: no cover
+            self._vectorizer = None
+            self._classifier = None
+            self._status_code = "error"
+            self._status_note = "Lightweight model inference failed."
             return LightweightPrediction(
                 detected=False,
                 confidence=0.0,
@@ -142,24 +160,37 @@ class LightweightClassifier:
 
         self._load_attempted = True
 
+        config_value = os.getenv(_MODEL_ENABLE_ENV, "").strip().lower()
+        if config_value in _FALSE_VALUES:
+            self._status_code = "disabled"
+            self._status_note = (
+                "Lightweight model detector disabled by configuration."
+            )
+            return
         if joblib is None:
-            self._disabled_reason = "Optional dependency 'joblib' is not installed."
+            self._status_code = "dependency_missing"
+            self._status_note = (
+                "Optional dependency 'joblib' is not installed."
+            )
             return
         if (
             not self.vectorizer_path.exists()
             or not self.classifier_path.exists()
         ):
-            self._disabled_reason = "Model artifact files are missing."
+            self._status_code = "artifact_missing"
+            self._status_note = "Model artifact files are missing."
             return
 
         try:
             self._vectorizer = joblib.load(self.vectorizer_path)
             self._classifier = joblib.load(self.classifier_path)
-            self._disabled_reason = "Model loaded."
+            self._status_code = "enabled"
+            self._status_note = "Lightweight model loaded."
         except Exception as exc:  # pragma: no cover
             self._vectorizer = None
             self._classifier = None
-            self._disabled_reason = (
+            self._status_code = "error"
+            self._status_note = (
                 f"Model artifact load failed: {exc.__class__.__name__}"
             )
 

@@ -1,6 +1,8 @@
 # Detection Evaluation Report
 
-- Generated at: 2026-05-04T14:53:47
+> 이 리포트는 내부 데이터셋 과적합 가능성을 보완하기 위한 외부 스타일 검증 결과이다. 외부 표현, 우회 문장, 다양한 프롬프트 스타일에서 탐지 성능이 어떻게 달라지는지 확인하기 위한 목적이다.
+
+- Generated at: 2026-05-06T16:06:12
 - Dataset: `evaluation/external_validation_sample.json`
 - Dataset size: 24
 

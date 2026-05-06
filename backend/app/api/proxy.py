@@ -30,8 +30,8 @@ from backend.app.services.audit_service import (
 from backend.app.services.llm_service import get_upstream_config_summary
 from backend.app.services.proxy_service import (
     POLICY_PATH,
+    _detect_text,
     _audit_from_detections,
-    _merge_detections,
     _resolve_reason_code,
     process_proxy_chat,
     process_proxy_chat_stream,
@@ -128,15 +128,34 @@ async def chat_completions(req: ChatCompletionRequest) -> dict:
     ]
     message = "\n".join(user_messages)
 
-    detections = _merge_detections(message)
+    hybrid_result = _detect_text(message)
+    detections = hybrid_result.detections
     decision = evaluate_policy(message, detections, POLICY_PATH)
     action = decision.final_action.value
-    audit = _audit_from_detections(action, decision.reasons, detections)
+    audit = _audit_from_detections(
+        action,
+        decision.reasons,
+        detections,
+        hybrid_result=hybrid_result,
+    )
     content = (
         None
         if action == PolicyAction.BLOCK.value
         else decision.masked_text or "mock response"
     )
+
+    audit_summary = {
+        "timestamp_utc": timestamp_utc,
+        "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+        "input": {
+            **decision.audit_summary,
+            **audit,
+        },
+    }
+    if "hybrid_detection" in audit:
+        audit_summary["hybrid_detection"] = {
+            "input": audit["hybrid_detection"],
+        }
 
     return {
         "id": request_id,
@@ -159,12 +178,5 @@ async def chat_completions(req: ChatCompletionRequest) -> dict:
                 ),
             }
         ],
-        "audit_summary": {
-            "timestamp_utc": timestamp_utc,
-            "latency_ms": round((time.perf_counter() - started) * 1000, 2),
-            "input": {
-                **decision.audit_summary,
-                **audit,
-            },
-        },
+        "audit_summary": audit_summary,
     }

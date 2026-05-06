@@ -5,6 +5,21 @@ from pathlib import Path
 from typing import Any
 
 
+def _dataset_notice(dataset_path: str) -> list[str]:
+    dataset_name = Path(dataset_path).name.lower()
+    if dataset_name == "sample_dataset.json":
+        return [
+            "> 이 리포트는 내부 회귀 테스트 데이터셋 기준 결과이다. 탐지 룰과 정책이 기존 테스트 케이스에서 정상 동작하는지 확인하기 위한 목적이며, 실제 운영 환경의 일반화 성능을 의미하지 않는다.",
+            "",
+        ]
+    if dataset_name == "external_validation_sample.json":
+        return [
+            "> 이 리포트는 내부 데이터셋 과적합 가능성을 보완하기 위한 외부 스타일 검증 결과이다. 외부 표현, 우회 문장, 다양한 프롬프트 스타일에서 탐지 성능이 어떻게 달라지는지 확인하기 위한 목적이다.",
+            "",
+        ]
+    return []
+
+
 def _render_metric_block(name: str, metric: dict[str, Any]) -> list[str]:
     return [
         f"### {name}",
@@ -84,6 +99,10 @@ def generate_markdown_report(metrics: dict[str, Any], output_path: str | Path) -
     lines = [
         "# Detection Evaluation Report",
         "",
+    ]
+    lines.extend(_dataset_notice(str(metrics["meta"].get("dataset", ""))))
+    lines.extend(
+        [
         f"- Generated at: {datetime.now().isoformat(timespec='seconds')}",
         f"- Dataset: `{metrics['meta'].get('dataset', '')}`",
         f"- Dataset size: {metrics['meta']['dataset_size']}",
@@ -95,7 +114,8 @@ def generate_markdown_report(metrics: dict[str, Any], output_path: str | Path) -
         _metric_row("pii", metrics["pii"]),
         _metric_row("injection", metrics["injection"]),
         "",
-    ]
+        ]
+    )
     lines.extend(_render_metric_block("PII Detection", metrics["pii"]))
     lines.extend(_render_metric_block("Prompt Injection Detection", metrics["injection"]))
     lines.extend(_render_reason_code_metrics(metrics))

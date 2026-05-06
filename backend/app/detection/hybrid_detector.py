@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .injection_detector import detect_injection
 from .lightweight_classifier import (
@@ -15,14 +15,24 @@ from .pii_detector import detect_pii
 
 
 @dataclass(slots=True)
-class HybridDetectionSummary:
+class HybridDetectionResult:
     detections: list[DetectionResult]
-    reason_codes: list[str]
-    primary_reason_code: str | None
-    risk_score: float
-    classifier_enabled: bool
+    model_enabled: bool
+    model_status: str
     fallback_used: bool
-    model_prediction: LightweightPrediction
+    model_label: str | None = None
+    model_confidence: float | None = None
+    reason_codes: list[str] = field(default_factory=list)
+    primary_reason_code: str | None = None
+    risk_score: float = 0.0
+    model_prediction: LightweightPrediction | None = None
+
+    @property
+    def classifier_enabled(self) -> bool:
+        return self.model_enabled
+
+
+HybridDetectionSummary = HybridDetectionResult
 
 
 def _normalized_score(detection: DetectionResult) -> float:
@@ -63,13 +73,13 @@ def _dedupe(detections: list[DetectionResult]) -> list[DetectionResult]:
 def detect_hybrid(
     text: str,
     classifier: LightweightClassifier | None = None,
-) -> HybridDetectionSummary:
+) -> HybridDetectionResult:
     pii_detections = detect_pii(text)
     rule_detections = detect_injection(text)
     active_classifier = classifier or get_lightweight_classifier()
     model_prediction = detect_lightweight(text, active_classifier)
-    model_detection = prediction_to_detection(model_prediction)
     classifier_status = active_classifier.status()
+    model_detection = prediction_to_detection(model_prediction)
 
     combined = _dedupe(
         sorted(
@@ -88,16 +98,27 @@ def detect_hybrid(
     )
     primary = max(combined, key=_priority_key) if combined else None
 
-    return HybridDetectionSummary(
+    model_label = (
+        model_prediction.label
+        if model_prediction.source == "lightweight_model"
+        else None
+    )
+    model_confidence = (
+        round(model_prediction.confidence, 3)
+        if model_prediction.source == "lightweight_model"
+        else None
+    )
+
+    return HybridDetectionResult(
         detections=combined,
+        model_enabled=classifier_status.enabled,
+        model_status=classifier_status.status,
+        model_label=model_label,
+        model_confidence=model_confidence,
+        fallback_used=classifier_status.status != "enabled",
         reason_codes=sorted({item.reason_code for item in combined}),
         primary_reason_code=primary.reason_code if primary else None,
-        risk_score=max(
-            (_normalized_score(item) for item in combined),
-            default=0.0,
-        ),
-        classifier_enabled=classifier_status.enabled,
-        fallback_used=not classifier_status.enabled,
+        risk_score=max((_normalized_score(item) for item in combined), default=0.0),
         model_prediction=model_prediction,
     )
 

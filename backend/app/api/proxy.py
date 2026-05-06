@@ -1,4 +1,5 @@
 from __future__ import annotations
+from fastapi.middleware.cors import CORSMiddleware
 
 import os
 import time
@@ -39,6 +40,16 @@ from backend.app.services.proxy_service import (
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+    ],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def _admin_api_token() -> str:
     return os.getenv("ADMIN_API_TOKEN", "dev-admin-token")

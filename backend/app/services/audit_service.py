@@ -32,6 +32,10 @@ def _build_log_entry(
         "upstream_call": bool(audit_summary.get("upstream_call")),
         "input_action": audit_summary.get("input_action"),
         "output_action": audit_summary.get("output_action"),
+        "detector_counts": {
+            "input": input_summary.get("detector_counts", {}),
+            "output": output_summary.get("detector_counts", {}),
+        },
     }
     hybrid_detection = audit_summary.get("hybrid_detection")
     if hybrid_detection is not None:

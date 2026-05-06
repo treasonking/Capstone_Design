@@ -9,7 +9,15 @@ from typing import Any, Callable
 from backend.app.detection.hybrid_detector import detect_hybrid_detections
 from backend.app.detection.models import DetectionResult
 from backend.app.detection.models import DetectorType
+from backend.app.engine.policy_engine import evaluate_policy
+from backend.app.services.proxy_service import POLICY_PATH
 from evaluation.report_generator import generate_markdown_report
+
+
+_CANONICAL_REASON_CODES = {
+    "INJ_POLICY_BYPASS": "INJ_POLICY_BYPASS_ATTEMPT",
+    "INJ_DIRECT_OVERRIDE": "INJ_DIRECT_OVERRIDE_ATTEMPT",
+}
 
 
 def _safe_div(numerator: float, denominator: float) -> float:
@@ -53,8 +61,8 @@ def _evaluate_records(
     for row in records:
         sample_id = str(row["id"])
         text = str(row.get("text", ""))
-        true_labels = set(row.get("labels", []))
-        predicted = {item.reason_code for item in detector(text)}
+        true_labels = {_CANONICAL_REASON_CODES.get(label, label) for label in row.get("labels", [])}
+        predicted = {_CANONICAL_REASON_CODES.get(item.reason_code, item.reason_code) for item in detector(text)}
 
         tp_labels = predicted & true_labels
         fp_labels = predicted - true_labels
@@ -119,10 +127,61 @@ def _merge_label_metrics(*sections: dict[str, Any]) -> dict[str, Any]:
     return {label: _metric(counts["tp"], counts["fp"], counts["fn"]) for label, counts in sorted(merged.items())}
 
 
+def _evaluate_hybrid_records(records: list[dict[str, Any]]) -> dict[str, Any]:
+    cases: list[dict[str, Any]] = []
+    passed = 0
+    failed = 0
+
+    for row in records:
+        text = str(row.get("text", ""))
+        expected_action = str(row.get("expected_action", "ALLOW"))
+        expected_reasons = set(row.get("expected_reasons", []))
+        expected_pii = bool(row.get("expected_pii_detected", False))
+        expected_injection = bool(row.get("expected_injection_detected", False))
+
+        hybrid = detect_hybrid_detections(text)
+        decision = evaluate_policy(text, hybrid, POLICY_PATH)
+        actual_reasons = set(decision.reasons)
+        actual_action = decision.final_action.value
+        actual_pii = any(item.detector_type == DetectorType.PII for item in hybrid)
+        actual_injection = any(item.detector_type == DetectorType.INJECTION for item in hybrid)
+
+        is_pass = (
+            actual_action == expected_action
+            and expected_reasons.issubset(actual_reasons)
+            and actual_pii == expected_pii
+            and actual_injection == expected_injection
+        )
+        if is_pass:
+            passed += 1
+        else:
+            failed += 1
+
+        cases.append(
+            {
+                "id": str(row.get("id", "")),
+                "text": text,
+                "expected_action": expected_action,
+                "actual_action": actual_action,
+                "expected_reasons": sorted(expected_reasons),
+                "actual_reasons": sorted(actual_reasons),
+                "result": "PASS" if is_pass else "FAIL",
+            }
+        )
+
+    return {
+        "total": len(records),
+        "passed": passed,
+        "failed": failed,
+        "cases": cases,
+    }
+
+
 def run_evaluation(dataset_path: str | Path) -> dict[str, Any]:
     dataset = json.loads(Path(dataset_path).read_text(encoding="utf-8"))
     pii_rows = [row for row in dataset if row.get("task") == "pii"]
     inj_rows = [row for row in dataset if row.get("task") == "injection"]
+    hybrid_rows = [row for row in dataset if row.get("task") == "hybrid"]
 
     pii = _evaluate_records(
         pii_rows,
@@ -137,6 +196,7 @@ def run_evaluation(dataset_path: str | Path) -> dict[str, Any]:
         "meta": {"dataset_size": len(dataset), "dataset": str(dataset_path)},
         "pii": pii,
         "injection": injection,
+        "hybrid": _evaluate_hybrid_records(hybrid_rows),
         "reason_code_metrics": reason_code_metrics,
         "focused_risk_areas": {
             "INJ_OBFUSCATED_INJECTION_ATTEMPT": reason_code_metrics.get("INJ_OBFUSCATED_INJECTION_ATTEMPT", _metric(0, 0, 0)),

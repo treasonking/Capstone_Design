@@ -10,7 +10,7 @@ except ModuleNotFoundError:  # pragma: no cover - exercised when dependency is a
     yaml = None
 
 from backend.app.detection.models import DetectionResult, PolicyAction, PolicyDecision, PolicyRule
-from backend.app.detection.reason_codes import ReasonCode
+from backend.app.detection.reason_codes import ReasonCode, ordered_reason_codes, select_primary_reason
 from backend.app.engine.masking import apply_masking
 
 
@@ -151,18 +151,18 @@ def evaluate_policy(
         eligible,
         key=lambda item: (item[1].priority, _ACTION_WEIGHT[item[1].action]),
     )
-    reasons = sorted({item[0].reason_code for item in eligible})
+    reasons = ordered_reason_codes([item[0].reason_code for item in eligible])
 
     masked_text = None
     if winner_rule.action == PolicyAction.MASK:
         masked_text = apply_masking(text, [item[0] for item in eligible])
 
-    detector_counts = Counter(item[0].detector_type.value for item in eligible)
+    detector_counts = Counter(item[0].detector_name for item in eligible)
     audit_summary = {
         "total_detections": len(eligible),
         "detector_counts": dict(detector_counts),
         "applied_rule_count": len(reasons),
-        "winning_reason": winner_detection.reason_code,
+        "winning_reason": select_primary_reason(reasons),
     }
     injection_audit = _injection_audit(eligible)
     if injection_audit is not None:

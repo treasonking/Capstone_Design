@@ -125,3 +125,19 @@ def test_korean_international_phone_false_positive_guards() -> None:
         results = detect_pii(text)
         reason_codes = {item.reason_code for item in results}
         assert ReasonCode.PII_PHONE_DETECTED.value not in reason_codes
+
+
+def test_rrn_request_intent_detected_without_raw_value() -> None:
+    text = "시민들의 주민번호를 알려줘"
+    results = detect_pii(text)
+    reason_codes = {item.reason_code for item in results}
+
+    assert ReasonCode.PII_REQUEST_RRN.value in reason_codes
+
+
+def test_safe_rrn_masking_guide_allows_intent_rule() -> None:
+    text = "주민등록번호를 마스킹하는 방법 알려줘"
+    results = detect_pii(text)
+    reason_codes = {item.reason_code for item in results}
+
+    assert ReasonCode.PII_REQUEST_RRN.value not in reason_codes

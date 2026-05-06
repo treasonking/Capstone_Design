@@ -1,6 +1,7 @@
 from __future__ import annotations
 from fastapi.middleware.cors import CORSMiddleware
 
+import logging
 import os
 import time
 import uuid
@@ -9,6 +10,7 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import StreamingResponse
 
+from backend.app.config import get_detection_settings
 from backend.app.detection.models import PolicyAction
 from backend.app.engine.policy_engine import evaluate_policy
 from backend.app.schemas.admin import (
@@ -39,6 +41,7 @@ from backend.app.services.proxy_service import (
 
 
 app = FastAPI()
+logger = logging.getLogger(__name__)
 
 app.add_middleware(
     CORSMiddleware,
@@ -50,6 +53,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def log_detection_configuration() -> None:
+    settings = get_detection_settings()
+    logger.info("Detection mode: %s", settings.detection_mode)
+    logger.info("Model detector enabled: %s", settings.enable_model_detector)
 
 def _admin_api_token() -> str:
     return os.getenv("ADMIN_API_TOKEN", "dev-admin-token")
@@ -147,9 +157,23 @@ async def chat_completions(req: ChatCompletionRequest) -> dict:
     audit_summary = {
         "timestamp_utc": timestamp_utc,
         "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+        "action": action,
+        "reason_codes": decision.reasons,
+        "input_action": action,
+        "output_action": PolicyAction.BLOCK.value if action == PolicyAction.BLOCK.value else PolicyAction.ALLOW.value,
+        "upstream_call": False,
         "input": {
             **decision.audit_summary,
             **audit,
+        },
+        "output": {
+            "total_detections": 0,
+            "detector_counts": {},
+            "applied_rule_count": 0,
+            "action": "SKIPPED",
+            "reasons": ["UPSTREAM_NOT_CALLED"],
+            "pii_detected": False,
+            "injection_detected": False,
         },
     }
     if "hybrid_detection" in audit:

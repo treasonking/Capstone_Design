@@ -19,7 +19,7 @@ from backend.app.detection.hybrid_detector import (
 from backend.app.detection.models import DetectionResult, DetectorType, PolicyAction
 from backend.app.detection.reason_codes import ordered_reason_codes, select_primary_reason
 from backend.app.engine.policy_engine import evaluate_policy
-from backend.app.schemas.proxy import ProxyRequest, ProxyResponse
+from backend.app.schemas.proxy import DetectionPreviewItem, ProxyAnalyzeResponse, ProxyRequest, ProxyResponse
 from backend.app.services.audit_service import save_audit_log
 from backend.app.services.llm_service import UpstreamRequestError, UpstreamTimeoutError, call_upstream_llm, stream_upstream_llm
 
@@ -224,6 +224,91 @@ def _response(
 
 def _sse_event(event: str, data: dict[str, Any]) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+def _recommendation(
+    action: str,
+    *,
+    pii_detected: bool,
+    injection_detected: bool,
+) -> str:
+    if action == PolicyAction.BLOCK.value:
+        if injection_detected:
+            return "프롬프트 인젝션 위험이 있어 AI로 전송하지 않는 것을 권장합니다."
+        return "차단 정책에 해당하므로 내용을 수정한 뒤 다시 검사하는 것을 권장합니다."
+    if action == PolicyAction.MASK.value:
+        return "민감정보가 포함되어 있어 마스킹된 문장으로 전송하는 것을 권장합니다."
+    if action == PolicyAction.WARN.value:
+        return "주의가 필요한 요청입니다. 담당자가 내용을 확인한 뒤 전송하는 것을 권장합니다."
+    if pii_detected:
+        return "민감정보 가능성이 있으므로 전송 전 내용을 한 번 더 확인하는 것을 권장합니다."
+    return "안전한 요청으로 판단됩니다."
+
+
+def _preview_items(detections: list[DetectionResult]) -> list[DetectionPreviewItem]:
+    return [
+        DetectionPreviewItem(
+            detector_type=item.detector_type.value,
+            category=item.category,
+            reason_code=item.reason_code,
+            detector_source=item.detector_name,
+            confidence=round(min(item.score, 1.0), 3),
+            start=item.start,
+            end=item.end,
+        )
+        for item in detections
+    ]
+
+
+async def process_proxy_analyze(req: ProxyRequest) -> ProxyAnalyzeResponse:
+    started = time.perf_counter()
+    timestamp_utc = datetime.now(timezone.utc).isoformat()
+    request_id = str(uuid.uuid4())
+    policy_path = resolve_policy_path(req.policy_id)
+
+    input_hybrid = _detect_text(req.message)
+    input_detections = input_hybrid.detections
+    input_decision = evaluate_policy(req.message, input_detections, policy_path)
+    input_action = input_decision.final_action.value
+    input_audit = _audit_from_detections(
+        input_action,
+        input_decision.reasons,
+        input_detections,
+        hybrid_result=input_hybrid,
+    )
+    input_summary = {**input_decision.audit_summary, **input_audit}
+    audit_summary = _build_audit_summary(
+        timestamp_utc,
+        started,
+        final_action=input_action,
+        reason_codes=input_decision.reasons,
+        input_action=input_action,
+        output_action="SKIPPED",
+        input_summary=input_summary,
+        output_summary=_skipped_output_summary(),
+        upstream_call=False,
+    )
+    pii_detected = bool(input_summary.get("pii_detected", False))
+    injection_detected = bool(input_summary.get("injection_detected", False))
+
+    return ProxyAnalyzeResponse(
+        request_id=request_id,
+        action=input_action,
+        reason_code=_resolve_reason_code(input_decision.reasons),
+        reasons=input_decision.reasons,
+        pii_detected=pii_detected,
+        injection_detected=injection_detected,
+        masked_text=input_decision.masked_text,
+        should_call_llm=input_action != PolicyAction.BLOCK.value,
+        upstream_call=False,
+        recommendation=_recommendation(
+            input_action,
+            pii_detected=pii_detected,
+            injection_detected=injection_detected,
+        ),
+        detector_results=_preview_items(input_detections),
+        audit_summary=audit_summary,
+    )
 
 
 async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:

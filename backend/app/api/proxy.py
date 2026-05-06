@@ -20,6 +20,7 @@ from backend.app.schemas.admin import (
 )
 from backend.app.schemas.proxy import (
     ChatCompletionRequest,
+    ProxyAnalyzeResponse,
     ProxyRequest,
     ProxyResponse,
 )
@@ -35,6 +36,7 @@ from backend.app.services.proxy_service import (
     _detect_text,
     _audit_from_detections,
     _resolve_reason_code,
+    process_proxy_analyze,
     process_proxy_chat,
     process_proxy_chat_stream,
 )
@@ -77,6 +79,11 @@ def _require_admin_token(
 @app.post("/proxy/chat")
 async def proxy_chat(req: ProxyRequest) -> ProxyResponse:
     return await process_proxy_chat(req)
+
+
+@app.post("/proxy/analyze")
+async def proxy_analyze(req: ProxyRequest) -> ProxyAnalyzeResponse:
+    return await process_proxy_analyze(req)
 
 
 @app.post("/proxy/chat/stream")

@@ -25,6 +25,31 @@ class ProxyResponse(BaseModel):
     audit_summary: dict[str, Any] = Field(default_factory=dict)
 
 
+class DetectionPreviewItem(BaseModel):
+    detector_type: str
+    category: str
+    reason_code: str
+    detector_source: str
+    confidence: float
+    start: int
+    end: int
+
+
+class ProxyAnalyzeResponse(BaseModel):
+    request_id: str
+    action: str
+    reason_code: str | None
+    reasons: list[str] = Field(default_factory=list)
+    pii_detected: bool
+    injection_detected: bool
+    masked_text: str | None = None
+    should_call_llm: bool
+    upstream_call: bool = False
+    recommendation: str
+    detector_results: list[DetectionPreviewItem] = Field(default_factory=list)
+    audit_summary: dict[str, Any] = Field(default_factory=dict)
+
+
 class ChatMessage(BaseModel):
     role: str
     content: str

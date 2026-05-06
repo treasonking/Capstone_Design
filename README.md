@@ -122,6 +122,8 @@ flowchart LR
    향후 추가 예정입니다.
    한글 숫자 PII, 띄어쓰기 우회, 주소/이름 등 비정형 PII, 공공기관 민원 문장, 간접 프롬프트 인젝션, hard negative를 포함합니다.
 
+현재 내부 회귀 데이터셋 `evaluation/sample_dataset.json`은 총 113건이며 `pii` 43건, `injection` 65건, `hybrid` 5건으로 구성됩니다. 외부 스타일 검증 데이터셋 `evaluation/external_validation_sample.json`은 총 24건이며 `pii` 8건, `injection` 16건으로 구성됩니다.
+
 확장 난이도 데이터셋 예시는 다음과 같습니다.
 
 ```json
@@ -382,9 +384,11 @@ Invoke-RestMethod `
 - `docs/policy_guide.md`
 - `docs/reason_codes.md`
 - `docs/demo_scenario.md`
+- `docs/demo_runbook.md`
 - `docs/logging_policy.md`
 - `docs/evaluation_method.md`
 - `docs/evaluation_limitations.md`
+- `docs/security_limitations.md`
 - `docs/presentation_qna.md`
 - `docs/team_roles.md`
 - `reports/evaluation_report.md`

@@ -148,6 +148,95 @@ _ADDRESS_EXCLUSION_CONTEXT_TERMS = (
     "지도",
 )
 _ADDRESS_TOKEN_SUFFIXES = ("로", "길", "동", "가", "읍", "면")
+_REQUEST_VERBS = (
+    "줘",
+    "알려줘",
+    "출력",
+    "출력해",
+    "공개",
+    "공개해",
+    "제공",
+    "제공해",
+    "보여줘",
+    "찾아줘",
+    "넘겨줘",
+    "목록",
+    "리스트",
+    "다운로드",
+    "show",
+    "print",
+    "reveal",
+    "provide",
+    "list",
+    "download",
+)
+_SAFE_EDUCATIONAL_CONTEXT = (
+    "설명",
+    "방법",
+    "이유",
+    "방어",
+    "예방",
+    "마스킹",
+    "비식별화",
+    "익명화",
+    "수집하면 안",
+    "저장하면 안",
+    "보호",
+    "정책 설명",
+    "가이드",
+    "explain",
+    "how to",
+    "mask",
+    "masking",
+    "anonymize",
+    "anonymization",
+    "defense",
+    "prevention",
+    "should not",
+    "must not",
+    "do not collect",
+    "do not store",
+)
+_HARD_ATTACK_CONTEXT = (
+    "무시하고",
+    "우회해서",
+    "끄고",
+    "해제하고",
+    "따르지 말고",
+    "원문 보여줘",
+    "목록 제공",
+    "리스트 넘겨줘",
+    "실제 값",
+    "시민들의 주민번호",
+    "show the original",
+    "actual value",
+    "ignore previous",
+    "bypass",
+)
+_RRN_REQUEST_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"(주민\s*번호|주민등록\s*번호|rrn|resident\s*registration\s*number)"
+        r".{0,40}(줘|알려줘|출력|출력해|공개|공개해|제공|제공해|보여줘|찾아줘|넘겨줘|목록|리스트|show|print|reveal|provide|list)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(show|print|reveal|provide|list).{0,40}"
+        r"(resident\s*registration\s*number|resident\s*registration\s*numbers|rrn|rrns)",
+        re.IGNORECASE,
+    ),
+)
+_PII_EXFILTRATION_REQUEST_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"(개인\s*정보|민감\s*정보|시민\s*정보|고객\s*정보|사용자\s*정보|직원\s*정보|원문\s*데이터|private\s*data|personal\s*data|customer\s*data|citizen(?:s)?['’]?\s*(?:private\s*)?data)"
+        r".{0,40}(줘|알려줘|출력|출력해|공개|공개해|제공|제공해|보여줘|찾아줘|넘겨줘|목록|리스트|다운로드|show|print|reveal|provide|list|download)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(show|print|reveal|provide|list|download).{0,40}"
+        r"(private\s*data|personal\s*data|customer\s*data|citizen(?:s)?['’]?\s*(?:private\s*)?data)",
+        re.IGNORECASE,
+    ),
+)
 
 
 def _overlaps(existing: list[DetectionResult], start: int, end: int) -> bool:
@@ -163,6 +252,57 @@ def _context(text: str, start: int, end: int, window: int = 24) -> str:
 
 def _has_any(context: str, terms: tuple[str, ...]) -> bool:
     return any(term.lower() in context for term in terms)
+
+
+def _normalized_text(text: str) -> str:
+    return re.sub(r"\s+", " ", text.lower()).strip()
+
+
+def _is_safe_request_context(text: str) -> bool:
+    normalized = _normalized_text(text)
+    has_safe_term = any(term in normalized for term in _SAFE_EDUCATIONAL_CONTEXT)
+    has_hard_attack = any(term in normalized for term in _HARD_ATTACK_CONTEXT)
+    return has_safe_term and not has_hard_attack
+
+
+def _intent_detections(text: str) -> list[DetectionResult]:
+    if _is_safe_request_context(text):
+        return []
+
+    results: list[DetectionResult] = []
+    for pattern in _RRN_REQUEST_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            results.append(
+                DetectionResult(
+                    detector_type=DetectorType.PII,
+                    category="RRN_REQUEST",
+                    reason_code=ReasonCode.PII_REQUEST_RRN.value,
+                    start=0,
+                    end=0,
+                    matched_text=match.group(0),
+                    score=0.99,
+                )
+            )
+            break
+
+    for pattern in _PII_EXFILTRATION_REQUEST_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            results.append(
+                DetectionResult(
+                    detector_type=DetectorType.PII,
+                    category="PII_EXFILTRATION_REQUEST",
+                    reason_code=ReasonCode.PII_EXFILTRATION_REQUEST.value,
+                    start=0,
+                    end=0,
+                    matched_text=match.group(0),
+                    score=0.96,
+                )
+            )
+            break
+
+    return results
 
 
 def _looks_like_math_expression(candidate: str, context: str) -> bool:
@@ -225,6 +365,7 @@ def detect_pii(text: str) -> list[DetectionResult]:
         return []
 
     results: list[DetectionResult] = []
+    results.extend(_intent_detections(text))
     for category, reason_code, pattern, score in _PII_PATTERNS:
         for match in pattern.finditer(text):
             matched_text = match.group(0)

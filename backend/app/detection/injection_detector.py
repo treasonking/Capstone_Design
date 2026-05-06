@@ -44,6 +44,29 @@ _KOREAN_DIRECT_OVERRIDE_PATTERNS: tuple[re.Pattern[str], ...] = (
         r"(보다|대신)\s*(내|사용자|새로운)\s*(지시|명령)"
     ),
 )
+_POLICY_BYPASS_REQUEST_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"(모든\s*)?(정책|규칙|지침|가이드라인|보안\s*정책|시스템\s*정책|필터|제한|검열)(을|를)?\s*"
+        r"(무시하고|무시한\s*뒤|우회해서|우회하고|끄고|꺼|비활성화하고|비활성화해|해제하고|따르지\s*말고)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(bypass|disable|ignore).{0,40}(policy|policies|filter|filters|restriction|restrictions|safety\s*policy|safety\s*filter)",
+        re.IGNORECASE,
+    ),
+)
+_DIRECT_OVERRIDE_REQUEST_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"(이전|앞선|앞의|기존|상위)\s*(지시|지침|정책|규칙).{0,20}"
+        r"(무시하고|따르지\s*말고|잊고).{0,40}"
+        r"(줘|알려줘|출력|공개|제공|보여줘|넘겨줘)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(ignore|override|do\s*not\s*follow).{0,40}(instruction|instructions|policy|policies)",
+        re.IGNORECASE,
+    ),
+)
 _DEFENSIVE_TERMS = (
     "do not",
     "don't",
@@ -346,6 +369,8 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "no restrictions",
         ),
     ),
+    "POLICY_BYPASS_REQUEST": _CategoryRule(5),
+    "DIRECT_OVERRIDE_REQUEST": _CategoryRule(5),
     "MULTI_STEP": _CategoryRule(
         2,
         (
@@ -413,11 +438,13 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
 
 
 _CATEGORY_REASON_CODES = {
+    "DIRECT_OVERRIDE_REQUEST": ReasonCode.INJ_DIRECT_OVERRIDE.value,
     "DIRECT_OVERRIDE": ReasonCode.INJ_DIRECT_OVERRIDE_ATTEMPT.value,
     "SYSTEM_PROMPT": ReasonCode.INJ_SYSTEM_PROMPT_EXTRACTION_ATTEMPT.value,
     "RULE_DISCLOSURE": ReasonCode.INJ_RULE_DISCLOSURE_ATTEMPT.value,
     "ROLE_OVERRIDE": ReasonCode.INJ_ROLE_OVERRIDE_ATTEMPT.value,
     "DEBUG_MODE": ReasonCode.INJ_DEBUG_MODE_ATTEMPT.value,
+    "POLICY_BYPASS_REQUEST": ReasonCode.INJ_POLICY_BYPASS.value,
     "POLICY_BYPASS": ReasonCode.INJ_POLICY_BYPASS_ATTEMPT.value,
     "MULTI_STEP": ReasonCode.INJ_MULTI_STEP_EXTRACTION_ATTEMPT.value,
     "OBFUSCATED": ReasonCode.INJ_OBFUSCATED_INJECTION_ATTEMPT.value,
@@ -446,6 +473,41 @@ _SAFE_CONTEXT_TERMS = (
     "일반적인",
     "기능 요구사항",
     "설계 원칙",
+)
+_SAFE_EDUCATIONAL_CONTEXT_TERMS = (
+    "설명",
+    "방법",
+    "이유",
+    "방어",
+    "예방",
+    "마스킹",
+    "비식별화",
+    "익명화",
+    "수집하면 안",
+    "저장하면 안",
+    "보호",
+    "정책 설명",
+    "가이드",
+    "explain",
+    "how to",
+    "mask",
+    "masking",
+    "anonymize",
+    "anonymization",
+    "defense",
+    "prevention",
+    "why",
+    "guide",
+)
+_SAFE_NEGATION_TERMS = (
+    "무시하면 안",
+    "무시하면 안 되는",
+    "우회하면 안",
+    "우회하면 안 되는",
+    "정책을 무시하면 안",
+    "do not bypass",
+    "should not bypass",
+    "must not bypass",
 )
 
 
@@ -540,6 +602,14 @@ def _is_defensive_boundary_context(text: str, normalized_text: str) -> bool:
     return has_defensive and has_sensitive and not has_strong_attack
 
 
+def _is_safe_educational_context(text: str, normalized_text: str) -> bool:
+    combined = f"{text.lower()} {normalized_text}"
+    has_safe_term = any(term in combined for term in _SAFE_EDUCATIONAL_CONTEXT_TERMS)
+    has_negation = any(term in combined for term in _SAFE_NEGATION_TERMS)
+    has_hard_attack = any(term in combined for term in _STRONG_ATTACK_TERMS)
+    return (has_safe_term or has_negation) and not has_hard_attack
+
+
 def _apply_pattern_signals(text: str, normalized: str, matches: dict[str, list[str]]) -> None:
     for pattern in _KOREAN_DIRECT_OVERRIDE_PATTERNS:
         match = pattern.search(text)
@@ -550,6 +620,23 @@ def _apply_pattern_signals(text: str, normalized: str, matches: dict[str, list[s
     risk_target_count = _count_terms(normalized, _RISK_TARGET_TERMS)
     if (multi_step_count >= 2 and risk_target_count >= 1) or (multi_step_count >= 1 and risk_target_count >= 2):
         _add_match(matches, "MULTI_STEP", "multi-step-risk-target")
+
+
+def _apply_request_intent_signals(text: str, normalized: str, matches: dict[str, list[str]]) -> None:
+    if _is_safe_educational_context(text, normalized):
+        return
+
+    for pattern in _POLICY_BYPASS_REQUEST_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            _add_match(matches, "POLICY_BYPASS_REQUEST", match.group(0))
+            _add_match(matches, "POLICY_BYPASS", match.group(0))
+
+    for pattern in _DIRECT_OVERRIDE_REQUEST_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            _add_match(matches, "DIRECT_OVERRIDE_REQUEST", match.group(0))
+            _add_match(matches, "DIRECT_OVERRIDE", match.group(0))
 
 
 def _is_multi_step_extraction_context(normalized: str) -> bool:
@@ -614,6 +701,7 @@ def detect_injection(text: str) -> list[DetectionResult]:
     normalized_matches = _find_category_matches(normalized)
     matches = _merge_matches(raw_matches, normalized_matches)
     _apply_pattern_signals(text, signal_text, matches)
+    _apply_request_intent_signals(text, signal_text, matches)
     matched_categories = set(matches)
     obfuscated = _has_obfuscation_signal(text, normalized)
 
@@ -628,7 +716,15 @@ def detect_injection(text: str) -> list[DetectionResult]:
         for category in ("SYSTEM_PROMPT", "RULE_DISCLOSURE", "EXFILTRATION_VERB", "OBFUSCATED"):
             matches.pop(category, None)
             matched_categories.discard(category)
-        if not {"DIRECT_OVERRIDE", "POLICY_BYPASS", "ROLE_OVERRIDE", "DEBUG_MODE", "MULTI_STEP"} & matched_categories:
+        if not {
+            "DIRECT_OVERRIDE",
+            "DIRECT_OVERRIDE_REQUEST",
+            "POLICY_BYPASS",
+            "POLICY_BYPASS_REQUEST",
+            "ROLE_OVERRIDE",
+            "DEBUG_MODE",
+            "MULTI_STEP",
+        } & matched_categories:
             return []
 
     if "MULTI_STEP" in matched_categories and not _is_multi_step_extraction_context(signal_text):
@@ -688,11 +784,13 @@ def detect_injection(text: str) -> list[DetectionResult]:
         results = [item for item in results if item.category != "MULTI_STEP"]
 
     fallback_categories = {
+        "DIRECT_OVERRIDE_REQUEST",
         "DIRECT_OVERRIDE",
         "SYSTEM_PROMPT",
         "RULE_DISCLOSURE",
         "ROLE_OVERRIDE",
         "DEBUG_MODE",
+        "POLICY_BYPASS_REQUEST",
         "POLICY_BYPASS",
         "OBFUSCATED",
     }

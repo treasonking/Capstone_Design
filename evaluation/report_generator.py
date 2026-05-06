@@ -93,6 +93,31 @@ def _render_error_table(title: str, sections: list[dict[str, Any]], key: str) ->
     return lines
 
 
+def _render_hybrid_cases(metrics: dict[str, Any]) -> list[str]:
+    hybrid = metrics.get("hybrid", {})
+    if not hybrid:
+        return []
+
+    lines = [
+        "## Hybrid Attack Detection",
+        "",
+        f"- Passed: **{hybrid.get('passed', 0)} / {hybrid.get('total', 0)}**",
+        f"- Failed: **{hybrid.get('failed', 0)}**",
+        "",
+        "| Case | Text | Expected | Actual | Result |",
+        "|---|---|---|---|---|",
+    ]
+    for row in hybrid.get("cases", []):
+        text = str(row.get("text", "")).replace("|", "\\|")
+        lines.append(
+            f"| {row.get('id', '')} | {text} | {row.get('expected_action', '')} | {row.get('actual_action', '')} | {row.get('result', '')} |"
+        )
+    if not hybrid.get("cases"):
+        lines.append("| - | - | - | - | - |")
+    lines.append("")
+    return lines
+
+
 def generate_markdown_report(metrics: dict[str, Any], output_path: str | Path) -> Path:
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -118,6 +143,7 @@ def generate_markdown_report(metrics: dict[str, Any], output_path: str | Path) -
     )
     lines.extend(_render_metric_block("PII Detection", metrics["pii"]))
     lines.extend(_render_metric_block("Prompt Injection Detection", metrics["injection"]))
+    lines.extend(_render_hybrid_cases(metrics))
     lines.extend(_render_reason_code_metrics(metrics))
     lines.extend(_render_focused_risk_areas(metrics))
     lines.extend(_render_error_table("False Positives", [metrics["pii"], metrics["injection"]], "false_positives"))

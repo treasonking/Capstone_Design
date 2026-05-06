@@ -21,6 +21,7 @@ def test_hybrid_detector_keeps_existing_rule_and_regex_results() -> None:
     assert ReasonCode.PII_PHONE_DETECTED.value in result.reason_codes
     assert ReasonCode.INJ_DIRECT_OVERRIDE_ATTEMPT.value in result.reason_codes
     assert ReasonCode.INJ_SYSTEM_PROMPT_EXTRACTION_ATTEMPT.value in result.reason_codes
+    assert result.action == "BLOCK"
     assert result.risk_score > 0.0
 
 

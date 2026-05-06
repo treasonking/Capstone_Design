@@ -20,6 +20,16 @@ rules:
     priority: 100
     threshold: 0.8
     description: "Block resident registration number exposure."
+  PII_REQUEST_RRN:
+    action: BLOCK
+    priority: 101
+    threshold: 0.8
+    description: "Block requests asking for resident registration numbers even when no raw number is present."
+  PII_EXFILTRATION_REQUEST:
+    action: BLOCK
+    priority: 95
+    threshold: 0.8
+    description: "Block requests asking for private or citizen data in original form."
   PII_ACCOUNT_DETECTED:
     action: MASK
     priority: 55
@@ -35,6 +45,11 @@ rules:
     priority: 90
     threshold: 5.0
     description: "Legacy alias for INJ_DIRECT_OVERRIDE_ATTEMPT. Kept for backward compatibility."
+  INJ_DIRECT_OVERRIDE:
+    action: BLOCK
+    priority: 97
+    threshold: 0.8
+    description: "Block direct override requests that pair instruction-bypass phrasing with an exfiltration command."
   INJ_REVEAL_SYSTEM_PROMPT:
     action: BLOCK
     priority: 98
@@ -60,6 +75,11 @@ rules:
     priority: 94
     threshold: 5.0
     description: "Block attempts to redefine the assistant role."
+  INJ_POLICY_BYPASS:
+    action: BLOCK
+    priority: 99
+    threshold: 0.8
+    description: "Block policy-bypass wording even when no explicit hidden-prompt term is present."
   INJ_POLICY_BYPASS_ATTEMPT:
     action: BLOCK
     priority: 90
@@ -85,6 +105,16 @@ rules:
     priority: 85
     threshold: 0.6
     description: "Optional lightweight model flagged contextual prompt-injection risk in strict mode."
+  MODEL_DETECTOR_ERROR:
+    action: BLOCK
+    priority: 84
+    threshold: 0.0
+    description: "Model detector execution failed in strict mode."
+  MODEL_DETECTOR_UNAVAILABLE:
+    action: WARN
+    priority: 63
+    threshold: 0.0
+    description: "Model detector was requested but unavailable."
   SAFE_INPUT:
     action: ALLOW
     priority: 0

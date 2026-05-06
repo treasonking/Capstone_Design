@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -16,6 +17,7 @@ from backend.app.detection.hybrid_detector import (
     detect_hybrid,
 )
 from backend.app.detection.models import DetectionResult, DetectorType, PolicyAction
+from backend.app.detection.reason_codes import ordered_reason_codes, select_primary_reason
 from backend.app.engine.policy_engine import evaluate_policy
 from backend.app.schemas.proxy import ProxyRequest, ProxyResponse
 from backend.app.services.audit_service import save_audit_log
@@ -30,6 +32,7 @@ ALLOWED_POLICY_IDS = {
     "strict": STRICT_POLICY_PATH,
 }
 POLICY_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
+logger = logging.getLogger(__name__)
 
 
 def _detect_text(text: str) -> HybridDetectionResult:
@@ -48,7 +51,7 @@ def _merge_detections(text: str) -> list[DetectionResult]:
 
 
 def _resolve_reason_code(reasons: list[str]) -> str | None:
-    return reasons[0] if reasons else None
+    return select_primary_reason(reasons) if reasons else None
 
 
 def _severity(action: str) -> int:
@@ -71,13 +74,42 @@ def _audit_from_detections(
     detections: list[DetectionResult],
     hybrid_result: HybridDetectionResult | None = None,
 ) -> dict[str, Any]:
+    detector_results: list[dict[str, Any]] = []
+    detector_counts: dict[str, int] = {}
+    total_detections = len(detections)
+    pii_detected = any(item.detector_type == DetectorType.PII for item in detections)
+    injection_detected = any(item.detector_type == DetectorType.INJECTION for item in detections)
+
+    if hybrid_result is not None:
+        detector_counts = dict(hybrid_result.detector_counts)
+        total_detections = len([item for item in hybrid_result.detector_results if item.reasons])
+        pii_detected = hybrid_result.pii_detected
+        injection_detected = hybrid_result.injection_detected
+        detector_results = []
+        for result in hybrid_result.detector_results:
+            if result.action == "SKIPPED":
+                continue
+            item: dict[str, Any] = {
+                "detector": result.detector,
+                "action": result.action,
+                "reasons": result.reasons,
+                "status": result.status,
+            }
+            if result.confidence is not None:
+                item["confidence"] = round(result.confidence, 3)
+            detector_results.append(item)
+
     summary = {
         "action": action,
         "reasons": reasons,
-        "pii_detected": any(item.detector_type == DetectorType.PII for item in detections),
-        "injection_detected": any(item.detector_type == DetectorType.INJECTION for item in detections),
-        "total_detections": len(detections),
+        "pii_detected": pii_detected,
+        "injection_detected": injection_detected,
+        "total_detections": total_detections,
+        "detector_counts": detector_counts,
+        "applied_rule_count": len([reason for reason in reasons if reason != "SAFE_INPUT"]),
     }
+    if detector_results:
+        summary["detector_results"] = detector_results
     if hybrid_result is not None:
         hybrid_detection = {
             "model_enabled": hybrid_result.model_enabled,
@@ -90,6 +122,18 @@ def _audit_from_detections(
             hybrid_detection["model_confidence"] = hybrid_result.model_confidence
         summary["hybrid_detection"] = hybrid_detection
     return summary
+
+
+def _skipped_output_summary() -> dict[str, Any]:
+    return {
+        "total_detections": 0,
+        "detector_counts": {},
+        "applied_rule_count": 0,
+        "action": "SKIPPED",
+        "reasons": ["UPSTREAM_NOT_CALLED"],
+        "pii_detected": False,
+        "injection_detected": False,
+    }
 
 
 def _top_level_hybrid_detection(
@@ -202,9 +246,9 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
             final_action=PolicyAction.BLOCK.value,
             reason_codes=input_decision.reasons,
             input_action=input_action,
-            output_action=None,
+            output_action=PolicyAction.BLOCK.value,
             input_summary=input_summary,
-            output_summary=None,
+            output_summary=_skipped_output_summary(),
             upstream_call=False,
         )
         return _response(
@@ -213,7 +257,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
             PolicyAction.BLOCK.value,
             input_decision.reasons,
             input_action,
-            None,
+            PolicyAction.BLOCK.value,
             None,
             audit_summary,
         )
@@ -291,7 +335,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
     # 입력과 출력에 각각 정책 결과가 있으면 더 강한 조치를 최종 action으로 반환합니다.
     safe_content = output_decision.masked_text or llm_content
     final_action = _final_action(input_action, output_action)
-    all_reasons = sorted(set(input_decision.reasons + output_decision.reasons))
+    all_reasons = ordered_reason_codes(input_decision.reasons + output_decision.reasons)
     audit_summary = _build_audit_summary(
         timestamp_utc,
         started,
@@ -350,9 +394,9 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
             final_action=PolicyAction.BLOCK.value,
             reason_codes=input_decision.reasons,
             input_action=input_action,
-            output_action=None,
+            output_action=PolicyAction.BLOCK.value,
             input_summary=input_summary,
-            output_summary=None,
+            output_summary=_skipped_output_summary(),
             upstream_call=False,
         )
         response = _response(
@@ -361,7 +405,7 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
             PolicyAction.BLOCK.value,
             input_decision.reasons,
             input_action,
-            None,
+            PolicyAction.BLOCK.value,
             None,
             audit_summary,
         )
@@ -447,7 +491,7 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
         return
 
     final_action = _final_action(input_action, output_action)
-    all_reasons = sorted(set(input_decision.reasons + output_decision.reasons))
+    all_reasons = ordered_reason_codes(input_decision.reasons + output_decision.reasons)
     audit_summary = _build_audit_summary(
         timestamp_utc,
         started,

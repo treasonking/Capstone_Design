@@ -16,6 +16,12 @@ from backend.app.detection.pii_detector import detect_pii
 from scripts.dataset_common import VALID_LABELS, counter_to_dict, labels_for_task, load_dataset
 
 
+_CANONICAL_REASON_CODES = {
+    "INJ_POLICY_BYPASS": "INJ_POLICY_BYPASS_ATTEMPT",
+    "INJ_DIRECT_OVERRIDE": "INJ_DIRECT_OVERRIDE_ATTEMPT",
+}
+
+
 def _safe_div(numerator: float, denominator: float) -> float:
     return numerator / denominator if denominator else 0.0
 
@@ -39,9 +45,9 @@ def _metric(tp: int, fp: int, fn: int) -> dict[str, Any]:
 
 def _predict(task: str, text: str) -> set[str]:
     if task == "pii":
-        return {item.reason_code for item in detect_pii(text)}
+        return {_CANONICAL_REASON_CODES.get(item.reason_code, item.reason_code) for item in detect_pii(text)}
     if task == "injection":
-        return {item.reason_code for item in detect_injection(text)}
+        return {_CANONICAL_REASON_CODES.get(item.reason_code, item.reason_code) for item in detect_injection(text)}
     return set()
 
 
@@ -74,7 +80,7 @@ def evaluate(path: str | Path) -> dict[str, Any]:
         sample_id = str(row["id"])
         task = str(row["task"])
         text = str(row["text"])
-        expected = set(row.get("labels", []))
+        expected = {_CANONICAL_REASON_CODES.get(label, label) for label in row.get("labels", [])}
         predicted = _predict(task, text)
         labels_to_score = labels_for_task(task)
 

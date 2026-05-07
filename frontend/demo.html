@@ -171,7 +171,7 @@
 
     .cards {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: 12px;
       margin-bottom: 14px;
     }
@@ -239,6 +239,12 @@
       font-size: 0.92rem;
     }
 
+    .helper {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
     .list {
       display: grid;
       gap: 10px;
@@ -254,6 +260,15 @@
     .list-item strong {
       display: block;
       margin-bottom: 6px;
+    }
+
+    .chip.READY {
+      color: #475467;
+      background: #eceff3;
+    }
+
+    .footer {
+      margin-top: 18px;
     }
 
     @media (max-width: 920px) {
@@ -272,7 +287,7 @@
   <div class="shell">
     <section class="hero">
       <h1>LLM Security Proxy Demo</h1>
-      <p>백엔드 보안 프록시의 사용자 입력 흐름과 관리자 요약을 한 화면에서 보여주는 발표용 정적 데모 페이지입니다. FastAPI 프록시가 <code>http://127.0.0.1:8000</code>에서 실행 중일 때 사용할 수 있습니다.</p>
+      <p>백엔드 보안 프록시의 사용자 입력 흐름과 관리자 요약을 한 화면에서 보여주는 발표용 정적 데모 페이지입니다. FastAPI 프록시가 <code>http://127.0.0.1:8000</code>에서 실행 중일 때 사용할 수 있으며, API 호출까지 함께 확인하려면 <code>http://127.0.0.1:5500/demo.html</code>로 서빙하는 구성을 권장합니다.</p>
     </section>
 
     <section class="grid">
@@ -304,24 +319,46 @@
             <button class="secondary" id="applyMaskBtn" disabled>마스킹 적용</button>
             <button class="primary" id="sendBtn">Proxy 요청 보내기</button>
             <button class="secondary" id="fillSafeBtn">안전 예시 채우기</button>
-            <button class="secondary" id="fillBlockBtn">차단 예시 채우기</button>
+            <button class="secondary" id="fillPiiBtn">개인정보 예시 채우기</button>
+            <button class="secondary" id="fillBlockBtn">프롬프트 인젝션 예시 채우기</button>
           </div>
         </div>
       </article>
 
       <article class="panel">
         <h2>결과 화면</h2>
-        <p>프록시의 최종 action과 reason_code, 응답 본문, audit 요약을 확인합니다.</p>
+        <p>프록시의 최종 action, reason_code, content와 audit_summary JSON을 확인합니다.</p>
         <div class="stack">
           <div class="chip-row" id="resultChips">
-            <span class="chip ALLOW">READY</span>
+            <span class="chip READY">READY</span>
           </div>
           <div class="meta" id="resultMeta">아직 요청이 실행되지 않았습니다.</div>
-          <pre id="resultJson">{
-  "action": "ALLOW | MASK | WARN | BLOCK | ERROR",
-  "reason_code": null,
-  "content": null
-}</pre>
+          <div class="cards">
+            <div class="card">
+              <div class="meta">action</div>
+              <strong id="resultAction">-</strong>
+            </div>
+            <div class="card">
+              <div class="meta">reason_code</div>
+              <strong id="resultReason">-</strong>
+            </div>
+            <div class="card">
+              <div class="meta">input_action</div>
+              <strong id="resultInputAction">-</strong>
+            </div>
+            <div class="card">
+              <div class="meta">output_action</div>
+              <strong id="resultOutputAction">-</strong>
+            </div>
+          </div>
+          <div>
+            <label for="resultContent">content</label>
+            <pre id="resultContent">null</pre>
+          </div>
+          <div>
+            <label for="auditSummaryJson">audit_summary JSON</label>
+            <pre id="auditSummaryJson">{}</pre>
+          </div>
         </div>
       </article>
     </section>
@@ -335,6 +372,7 @@
             <div>
               <label for="adminToken">X-Admin-Token</label>
               <input id="adminToken" value="dev-admin-token">
+              <div class="helper">개발/발표용 기본 토큰입니다. localStorage에 저장하지 않습니다.</div>
             </div>
             <div style="display:flex; align-items:end;">
               <button class="primary" id="refreshAdminBtn" style="width:100%;">관리자 요약 새로고침</button>
@@ -347,8 +385,24 @@
               <strong id="totalRequests">-</strong>
             </div>
             <div class="card">
-              <div class="meta">차단 / 마스킹 / 경고</div>
-              <strong id="actionSummary">-</strong>
+              <div class="meta">차단</div>
+              <strong id="blockedRequests">-</strong>
+            </div>
+            <div class="card">
+              <div class="meta">마스킹</div>
+              <strong id="maskedRequests">-</strong>
+            </div>
+            <div class="card">
+              <div class="meta">경고</div>
+              <strong id="warnedRequests">-</strong>
+            </div>
+            <div class="card">
+              <div class="meta">허용</div>
+              <strong id="allowedRequests">-</strong>
+            </div>
+            <div class="card">
+              <div class="meta">오류</div>
+              <strong id="errorRequests">-</strong>
             </div>
           </div>
 
@@ -363,12 +417,17 @@
 
       <article class="panel">
         <h2>최근 차단 이력</h2>
-        <p>최근 차단된 요청의 request_id와 reason_codes를 빠르게 확인합니다.</p>
+        <p>최근 차단된 요청의 request_id, reason_codes, timestamp를 빠르게 확인합니다.</p>
         <div class="list" id="recentBlocks">
           <div class="list-item">아직 조회되지 않았습니다.</div>
         </div>
       </article>
     </section>
+
+    <footer class="panel footer">
+      <h2>사용 주의</h2>
+      <p>본 페이지는 캡스톤 발표 및 로컬 검증용 정적 데모 페이지이며, 운영용 관리자 콘솔이 아니다. API Key, Authorization 헤더, 원문 로그 저장 기능은 포함하지 않으며, 관리자 토큰은 브라우저 저장소에 저장하지 않습니다.</p>
+    </footer>
   </div>
 
   <script>
@@ -376,11 +435,20 @@
     const policyId = document.getElementById("policyId");
     const message = document.getElementById("message");
     const adminToken = document.getElementById("adminToken");
-    const resultJson = document.getElementById("resultJson");
     const resultMeta = document.getElementById("resultMeta");
     const resultChips = document.getElementById("resultChips");
+    const resultAction = document.getElementById("resultAction");
+    const resultReason = document.getElementById("resultReason");
+    const resultInputAction = document.getElementById("resultInputAction");
+    const resultOutputAction = document.getElementById("resultOutputAction");
+    const resultContent = document.getElementById("resultContent");
+    const auditSummaryJson = document.getElementById("auditSummaryJson");
     const totalRequests = document.getElementById("totalRequests");
-    const actionSummary = document.getElementById("actionSummary");
+    const blockedRequests = document.getElementById("blockedRequests");
+    const maskedRequests = document.getElementById("maskedRequests");
+    const warnedRequests = document.getElementById("warnedRequests");
+    const allowedRequests = document.getElementById("allowedRequests");
+    const errorRequests = document.getElementById("errorRequests");
     const reasonList = document.getElementById("reasonList");
     const recentBlocks = document.getElementById("recentBlocks");
     const sendBtn = document.getElementById("sendBtn");
@@ -397,7 +465,14 @@
     function setResult(payload, status, mode = "응답") {
       renderChips(payload.action || "ERROR", payload.input_action, payload.output_action);
       resultMeta.textContent = `${mode} · HTTP ${status} · reason_code=${payload.reason_code ?? "null"}`;
-      resultJson.textContent = JSON.stringify(payload, null, 2);
+      resultAction.textContent = payload.action ?? "ERROR";
+      resultReason.textContent = payload.reason_code ?? "null";
+      resultInputAction.textContent = payload.input_action ?? "-";
+      resultOutputAction.textContent = payload.output_action ?? "-";
+      resultContent.textContent = typeof payload.content === "string"
+        ? payload.content
+        : JSON.stringify(payload.content ?? null, null, 2);
+      auditSummaryJson.textContent = JSON.stringify(payload.audit_summary ?? {}, null, 2);
     }
 
     function updatePreflightControls(payload) {
@@ -414,7 +489,7 @@
 
     async function analyzeProxyRequest() {
       resultMeta.textContent = "사전 검사 중...";
-      renderChips("ALLOW");
+      renderChips("READY");
       try {
         const response = await fetch(`${apiBase.value}/proxy/analyze`, {
           method: "POST",
@@ -431,13 +506,18 @@
         resetPreflightControls();
         renderChips("ERROR");
         resultMeta.textContent = "사전 검사 실패";
-        resultJson.textContent = JSON.stringify({ error: String(error) }, null, 2);
+        resultAction.textContent = "ERROR";
+        resultReason.textContent = "analyze_failed";
+        resultInputAction.textContent = "-";
+        resultOutputAction.textContent = "-";
+        resultContent.textContent = "null";
+        auditSummaryJson.textContent = JSON.stringify({ error: String(error) }, null, 2);
       }
     }
 
     async function sendProxyRequest() {
       resultMeta.textContent = "요청 중...";
-      renderChips("ALLOW");
+      renderChips("READY");
       try {
         const response = await fetch(`${apiBase.value}/proxy/chat`, {
           method: "POST",
@@ -452,7 +532,12 @@
       } catch (error) {
         renderChips("ERROR");
         resultMeta.textContent = "요청 실패";
-        resultJson.textContent = JSON.stringify({ error: String(error) }, null, 2);
+        resultAction.textContent = "ERROR";
+        resultReason.textContent = "request_failed";
+        resultInputAction.textContent = "-";
+        resultOutputAction.textContent = "-";
+        resultContent.textContent = "null";
+        auditSummaryJson.textContent = JSON.stringify({ error: String(error) }, null, 2);
       }
     }
 
@@ -474,7 +559,11 @@
         const blocks = await blocksResp.json();
 
         totalRequests.textContent = String(stats.total_requests);
-        actionSummary.textContent = `${stats.blocked_requests} / ${stats.masked_requests} / ${stats.warned_requests}`;
+        blockedRequests.textContent = String(stats.blocked_requests);
+        maskedRequests.textContent = String(stats.masked_requests);
+        warnedRequests.textContent = String(stats.warned_requests);
+        allowedRequests.textContent = String(stats.allowed_requests);
+        errorRequests.textContent = String(stats.error_requests ?? 0);
 
         reasonList.innerHTML = reasons.length
           ? reasons.slice(0, 5).map((item) => `
@@ -489,32 +578,42 @@
           ? blocks.map((item) => `
               <div class="list-item">
                 <strong>${item.request_id}</strong>
+                <div class="meta">timestamp=${item.timestamp ?? "unknown"}</div>
                 <div class="meta">action=${item.action} · reason_codes=${(item.reason_codes || []).join(", ") || "none"}</div>
               </div>
             `).join("")
           : `<div class="list-item">최근 차단 이력이 없습니다.</div>`;
       } catch (error) {
         totalRequests.textContent = "!";
-        actionSummary.textContent = "관리자 토큰 또는 서버 상태를 확인하세요.";
+        blockedRequests.textContent = "!";
+        maskedRequests.textContent = "!";
+        warnedRequests.textContent = "!";
+        allowedRequests.textContent = "!";
+        errorRequests.textContent = "!";
         reasonList.innerHTML = `<div class="list-item">${String(error)}</div>`;
         recentBlocks.innerHTML = `<div class="list-item">${String(error)}</div>`;
       }
     }
 
     document.getElementById("analyzeBtn").addEventListener("click", analyzeProxyRequest);
-    sendBtn.addEventListener("click", sendProxyRequest);
-    applyMaskBtn.addEventListener("click", () => {
+    document.getElementById("sendBtn").addEventListener("click", sendProxyRequest);
+    document.getElementById("applyMaskBtn").addEventListener("click", () => {
       if (latestMaskedText) {
         message.value = latestMaskedText;
         resetPreflightControls();
       }
     });
+    document.getElementById("refreshAdminBtn").addEventListener("click", refreshAdmin);
     message.addEventListener("input", resetPreflightControls);
     policyId.addEventListener("change", resetPreflightControls);
-    document.getElementById("refreshAdminBtn").addEventListener("click", refreshAdmin);
     document.getElementById("fillSafeBtn").addEventListener("click", () => {
       policyId.value = "default";
       message.value = "개인정보보호법 제29조의 안전조치 의무를 설명해줘.";
+      resetPreflightControls();
+    });
+    document.getElementById("fillPiiBtn").addEventListener("click", () => {
+      policyId.value = "default";
+      message.value = "민원인 연락처는 010-1234-5678이고 이메일은 user@example.com 입니다. 요약해줘.";
       resetPreflightControls();
     });
     document.getElementById("fillBlockBtn").addEventListener("click", () => {

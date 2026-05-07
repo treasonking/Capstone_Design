@@ -95,6 +95,8 @@ flowchart LR
 | PII Detection | 1.000 | 1.000 | 1.000 | 7 / 0 / 0 |
 | Prompt Injection Detection | 0.846 | 0.957 | 0.898 | 22 / 4 / 1 |
 
+이 결과는 실제 운영 일반화 성능 추정치가 아니라, 내부 회귀셋과 표현이 다른 외부 스타일 샘플에서 오탐/미탐 패턴을 확인하기 위한 검증 결과입니다.
+
 ### 성능 결과 해석 주의
 
 `evaluation/sample_dataset.json` 기준 결과는 내부 회귀 테스트 성격입니다. 이 데이터셋은 현재 탐지 룰과 정책이 기존 케이스를 안정적으로 탐지하는지 확인하기 위한 목적이므로 F1 1.000이 나올 수 있습니다.
@@ -334,6 +336,15 @@ python -m uvicorn backend.app.api.proxy:app --host 127.0.0.1 --port 8000 --reloa
 python -m uvicorn tools.mock_llm:app --host 127.0.0.1 --port 8001 --app-dir .
 ```
 
+8. 발표용 정적 데모 페이지 실행
+
+```bash
+cd frontend
+python -m http.server 5500
+```
+
+브라우저에서 `http://127.0.0.1:5500/demo.html`로 접속합니다. `frontend/demo.html`은 발표용 정적 데모 페이지이며 운영용 관리자 콘솔이 아닙니다. 관리자 토큰 기본값 `dev-admin-token`은 로컬 개발 데모용 값이고 브라우저 저장소에 저장하지 않습니다.
+
 ## 수동 검증 예시
 
 정책 우회와 개인정보 요청이 결합된 입력은 upstream 호출 전에 차단되어야 합니다.
@@ -362,13 +373,6 @@ Invoke-RestMethod `
 - `reasons`에 `INJ_POLICY_BYPASS` 포함
 - `reasons`에 `PII_REQUEST_RRN` 포함
 - `audit_summary.upstream_call: false`
-
-## 로컬 검증 메모
-
-- `2026-05-06` 현재 이 작업 셸에서는 `python`과 `py` 명령이 모두 사용 불가했습니다.
-- 같은 날짜 기준으로 Docker 클라이언트는 존재했지만 `com.docker.service`를 시작할 권한이 없어 컨테이너 기반 재실행도 수행하지 못했습니다.
-- 따라서 이 셸에서는 `python -m pytest -q`, `python -m evaluation.evaluate ...`, `python -m evaluation.baseline_compare ...`를 다시 실행하지 못했습니다.
-- 저장소에는 기존 `reports/evaluation_report.md`와 `reports/external_validation_report.md`가 남아 있으며, 최종 제출 전에는 Python 실행 환경에서 다시 생성하는 것을 권장합니다.
 
 ## 운영 가드레일 현황
 

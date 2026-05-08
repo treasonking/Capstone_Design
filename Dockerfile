@@ -7,14 +7,14 @@ ENV PYTHONUNBUFFERED=1
 
 COPY pyproject.toml README.md /app/
 COPY backend /app/backend
+COPY models /app/models
 COPY policies /app/policies
 COPY evaluation /app/evaluation
 COPY docs /app/docs
 COPY tools /app/tools
 
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir ".[perf]"
 
 EXPOSE 8000
 
 CMD ["python", "-m", "uvicorn", "backend.app.api.proxy:app", "--host", "0.0.0.0", "--port", "8000"]
-

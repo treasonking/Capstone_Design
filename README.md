@@ -73,7 +73,7 @@ flowchart LR
 
 경량 분류기 artifact가 없거나 비활성화된 경우에도 시스템은 요청을 중단하지 않고 `regex/rule + fallback heuristic` 경로로 계속 동작합니다. 이때 audit summary에는 `model_status`, `fallback_used`, `fallback_reason`이 남아 선택형 분류기 경로가 실제로 사용 가능한 상태였는지 확인할 수 있습니다. 이 구조는 공공기관 환경에서 중요한 설명 가능성, 재현성, 운영 안정성을 유지하면서도 정규식의 한계를 보완하기 위한 설계입니다.
 
-현재 저장소에는 `backend/app/detection/lightweight_classifier.py`, `backend/app/detection/model_detector.py`, `backend/app/detection/hybrid_detector.py`가 포함되어 있으며, `models/lightweight/vectorizer.joblib`와 `models/lightweight/classifier.joblib`가 없으면 `artifact_missing` 상태로 기록되고 프록시는 중단되지 않습니다.
+현재 저장소에는 `backend/app/detection/lightweight_classifier.py`, `backend/app/detection/model_detector.py`, `backend/app/detection/hybrid_detector.py`, `tools/train_lightweight_classifier.py`가 포함되어 있습니다. 기본 artifact 경로는 프로젝트 루트의 `models/lightweight/vectorizer.joblib`, `models/lightweight/classifier.joblib`이며, 두 파일이 모두 없으면 `artifact_missing` 상태와 fallback reason code가 audit summary에 명확히 기록되고 프록시는 중단되지 않습니다.
 
 ## 성능 요약
 
@@ -157,9 +157,9 @@ flowchart LR
 - 전체 구조는 `Regex Detector + Rule-based Detector + Optional Lightweight Classifier + Policy Engine`을 결합한 하이브리드 탐지 엔진입니다.
 - `backend/app/detection/hybrid_detector.py`는 PII 탐지, 인젝션 탐지, 선택형 경량 분류기 보조 탐지를 병합하고 `model_enabled`, `model_status`, `fallback_used` 메타데이터를 반환합니다.
 - `backend/app/services/proxy_service.py`는 실제 프록시 입력/출력 경로에서 하이브리드 결과를 사용하고 audit summary에 `hybrid_detection` 상태를 남깁니다.
-- 현재 모델 artifact가 없으면 선택형 분류기 경로는 `artifact_missing` 상태로 남고, 입력 판단은 regex/rule 및 fallback heuristic 결과로 계속 진행됩니다.
-- 선택형 경량 분류기를 보조 탐지기로 연결할 수 있는 구조를 반영했습니다.
-- 실제 모델 학습 및 모델 단독 성능 평가는 향후 확장 과제입니다.
+- `tools/train_lightweight_classifier.py`는 synthetic dataset과 더미 공격 문장을 이용해 `models/lightweight/vectorizer.joblib`, `models/lightweight/classifier.joblib`를 생성합니다.
+- 현재 모델 artifact가 없으면 선택형 분류기 경로는 `artifact_missing` 상태로 남고, `MODEL_ARTIFACT_MISSING` 또는 `MODEL_UNAVAILABLE_FALLBACK_USED` reason code가 함께 기록됩니다.
+- Docker 이미지는 `models/lightweight`를 `/app/models/lightweight`로 복사하고 `.[perf]` 의존성을 설치해 컨테이너 내부에서도 동일한 artifact를 로드합니다.
 
 ## 프로젝트 구조
 
@@ -190,6 +190,10 @@ backend/
     test_pii_detector.py
     test_injection_detector.py
     test_proxy_api.py
+models/
+  lightweight/
+    vectorizer.joblib
+    classifier.joblib
 policies/
   policy.yaml
   strict.yaml
@@ -205,6 +209,9 @@ reports/
   baseline_compare_report.md
 frontend/
   demo.html
+tools/
+  mock_llm.py
+  train_lightweight_classifier.py
 ```
 
 ## 프록시 동작 흐름
@@ -267,16 +274,17 @@ curl -X POST "http://127.0.0.1:8000/proxy/chat" \
 
 ## 실행 방법
 
-1. 의존성 설치
+1. 개발 의존성 설치
 
 ```bash
-pip install ".[dev]"
+python -m pip install ".[dev]"
 ```
 
-경량 모델 실험 또는 artifact 재생성이 필요하면:
+2. 경량 모델 의존성 및 artifact 생성
 
 ```bash
-pip install ".[dev,perf]"
+python -m pip install ".[perf]"
+python tools/train_lightweight_classifier.py
 ```
 
 권장 탐지 설정은 다음과 같습니다.
@@ -288,13 +296,20 @@ MODEL_DETECTOR_THRESHOLD=0.70
 MODEL_DETECTOR_FAIL_MODE=warn
 ```
 
-2. 테스트 실행
+3. artifact 생성 확인
+
+```powershell
+Test-Path .\models\lightweight\vectorizer.joblib
+Test-Path .\models\lightweight\classifier.joblib
+```
+
+4. 테스트 실행
 
 ```bash
 python -m pytest -q
 ```
 
-3. 내부 회귀 테스트 보고서 생성
+5. 내부 회귀 테스트 보고서 생성
 
 ```bash
 python -m evaluation.evaluate \
@@ -308,7 +323,7 @@ Windows에서는 다음 형식으로도 실행할 수 있습니다.
 py -m evaluation.evaluate --dataset evaluation/sample_dataset.json --report reports/evaluation_report.md
 ```
 
-4. 외부 스타일 검증 보고서 생성
+6. 외부 스타일 검증 보고서 생성
 
 ```bash
 python -m evaluation.evaluate \
@@ -316,7 +331,7 @@ python -m evaluation.evaluate \
   --report reports/external_validation_report.md
 ```
 
-5. Baseline 비교 보고서 생성
+7. Baseline 비교 보고서 생성
 
 ```bash
 python -m evaluation.baseline_compare \
@@ -324,19 +339,29 @@ python -m evaluation.baseline_compare \
   --report reports/baseline_compare_report.md
 ```
 
-6. FastAPI 프록시 실행
+8. Docker 이미지 재빌드 및 컨테이너 검증
+
+```powershell
+docker compose build --no-cache
+docker compose up -d
+docker compose exec proxy ls -al /app/models/lightweight
+```
+
+컨테이너 내부에는 `vectorizer.joblib`, `classifier.joblib`가 모두 보여야 하며, 이후 audit summary의 `hybrid_detection.model_status`는 `enabled`로 바뀌어야 합니다.
+
+9. FastAPI 프록시 실행
 
 ```bash
 python -m uvicorn backend.app.api.proxy:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-7. Mock LLM 실행
+10. Mock LLM 실행
 
 ```bash
 python -m uvicorn tools.mock_llm:app --host 127.0.0.1 --port 8001 --app-dir .
 ```
 
-8. 발표용 정적 데모 페이지 실행
+11. 발표용 정적 데모 페이지 실행
 
 ```bash
 cd frontend

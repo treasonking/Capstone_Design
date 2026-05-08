@@ -73,6 +73,16 @@ _POLICY_BYPASS_PATTERNS: tuple[re.Pattern[str], ...] = (
         r"(bypass|disable|ignore).{0,40}(policy|policies|filter|filters|restriction|restrictions|safety\s*policy|safety\s*filter)",
         re.IGNORECASE,
     ),
+    re.compile(
+        r"(pii[_\s-]*detection|detection|보안\s*필터|탐지|검사).{0,20}"
+        r"(=|을|를|은|는)?\s*(false|0|off|disable|disabled|비활성화|끄고|꺼|해제)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(로그|log).{0,20}(원문|실제\s*값|raw\s*(?:prompt|text|data)|original\s*(?:prompt|text|data)).{0,20}"
+        r"(남겨|기록|저장|keep|store|leave|log)",
+        re.IGNORECASE,
+    ),
 )
 _DIRECT_OVERRIDE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(
@@ -81,6 +91,14 @@ _DIRECT_OVERRIDE_PATTERNS: tuple[re.Pattern[str], ...] = (
     ),
     re.compile(
         r"(무시하고|따르지\s*말고|잊고).{0,40}(줘|알려줘|출력|제공|보여줘|show|print|reveal|provide)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(보안\s*정책|정책|규칙|지침).{0,20}(보다|대신).{0,20}(이메일\s*명령|명령|지시).{0,10}(우선)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(prioritize|prefer).{0,20}(instruction|command|email\s*instruction).{0,20}(over).{0,20}(policy|rule|safety)",
         re.IGNORECASE,
     ),
 )
@@ -177,6 +195,21 @@ def _prediction_reasons(prediction: LightweightPrediction) -> list[str]:
     return [prediction.reason_code]
 
 
+def _fallback_reason_code(status: str) -> str | None:
+    if status == "artifact_missing":
+        return ReasonCode.MODEL_ARTIFACT_MISSING.value
+    if status == "error":
+        return ReasonCode.MODEL_DETECTOR_ERROR.value
+    if status in {"disabled", "dependency_missing"}:
+        return ReasonCode.MODEL_UNAVAILABLE_FALLBACK_USED.value
+    return None
+
+
+def _prediction_label(prediction: LightweightPrediction) -> str | None:
+    label = prediction.label.strip().upper()
+    return label or None
+
+
 def _detection_type(reason_code: str) -> DetectorType:
     if reason_code.startswith("PII_") or reason_code == ReasonCode.MODEL_PII_RISK.value:
         return DetectorType.PII
@@ -230,10 +263,10 @@ def _error_result(settings: DetectionSettings) -> ModelDetectionResult:
             reasons=reasons,
             status="error",
         ),
-        model_enabled=settings.model_detector_requested,
+        model_enabled=False,
         model_status="error",
         fallback_used=True,
-        model_label=action,
+        model_label="ERROR",
         model_confidence=0.0,
     )
 
@@ -265,20 +298,40 @@ def detect_model(
         classifier_status = active_classifier.status()
         prediction = detect_lightweight(text, active_classifier)
         heuristic_reasons = _heuristic_reasons(text)
-        reasons = heuristic_reasons or _prediction_reasons(prediction)
+        prediction_reasons = _prediction_reasons(prediction)
+        signal_reasons = ordered_reason_codes(
+            [*heuristic_reasons, *prediction_reasons]
+        )
+        fallback_reason = (
+            _fallback_reason_code(classifier_status.status)
+            if not classifier_status.enabled
+            else None
+        )
+        reasons = list(signal_reasons)
+        if fallback_reason is not None:
+            reasons = ordered_reason_codes([*reasons, fallback_reason])
         reasons = ordered_reason_codes(reasons)
-        confidence = _fallback_confidence(reasons, prediction)
+        confidence = _fallback_confidence(signal_reasons, prediction)
         action = action_for_reasons(reasons) if reasons else "ALLOW"
         status = "enabled" if classifier_status.enabled else classifier_status.status
-        label = action if reasons else (prediction.label.upper() if prediction.label else "ALLOW")
+        summary_action = (
+            "UNAVAILABLE"
+            if fallback_reason is not None and not signal_reasons
+            else action
+        )
+        label = _prediction_label(prediction)
         detections = _build_detections(reasons, confidence)
         summary = DetectorRunSummary(
             detector="llm",
-            action=action,
+            action=summary_action,
             reasons=reasons,
             pii_detected=any(_detection_type(reason) == DetectorType.PII for reason in reasons),
             injection_detected=any(_detection_type(reason) == DetectorType.INJECTION for reason in reasons),
-            confidence=confidence if reasons else (prediction.confidence or None),
+            confidence=(
+                None
+                if fallback_reason is not None and not signal_reasons
+                else confidence if reasons else (prediction.confidence or None)
+            ),
             status=status,
         )
         logger.debug(
@@ -290,7 +343,7 @@ def detect_model(
         return ModelDetectionResult(
             detections=detections,
             summary=summary,
-            model_enabled=True,
+            model_enabled=classifier_status.enabled,
             model_status=status,
             fallback_used=not classifier_status.enabled,
             model_label=label,

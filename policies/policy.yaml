@@ -110,11 +110,21 @@ rules:
     priority: 65
     threshold: 0.0
     description: "Model detector execution failed. Do not treat the request as SAFE_INPUT."
-  MODEL_DETECTOR_UNAVAILABLE:
+  MODEL_ARTIFACT_MISSING:
     action: WARN
     priority: 64
     threshold: 0.0
-    description: "Model detector was requested but unavailable."
+    description: "Model artifacts are missing. Record fallback usage explicitly instead of treating the detector as ALLOW."
+  MODEL_UNAVAILABLE_FALLBACK_USED:
+    action: WARN
+    priority: 63
+    threshold: 0.0
+    description: "Model detector fallback was used because the optional lightweight model was unavailable."
+  MODEL_DETECTOR_UNAVAILABLE:
+    action: WARN
+    priority: 62
+    threshold: 0.0
+    description: "Legacy unavailable status retained for backward compatibility."
   SAFE_INPUT:
     action: ALLOW
     priority: 0

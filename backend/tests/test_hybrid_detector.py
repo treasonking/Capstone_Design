@@ -1,11 +1,34 @@
+from pathlib import Path
+
 import pytest
 
 from backend.app.detection.hybrid_detector import detect_hybrid
 from backend.app.detection.lightweight_classifier import (
     LightweightClassifier,
+    LightweightModelStatus,
+    LightweightPrediction,
     get_lightweight_classifier,
 )
 from backend.app.detection.reason_codes import ReasonCode
+from backend.app.config import DetectionSettings
+
+
+class _StubClassifier:
+    def __init__(self, prediction: LightweightPrediction) -> None:
+        self._prediction = prediction
+        self.threshold = 0.0
+
+    def status(self) -> LightweightModelStatus:
+        return LightweightModelStatus(
+            enabled=True,
+            status="enabled",
+            note="stub",
+            vectorizer_path=Path("vectorizer.joblib"),
+            classifier_path=Path("classifier.joblib"),
+        )
+
+    def classify(self, _text: str) -> LightweightPrediction:
+        return self._prediction
 
 
 def test_lightweight_classifier_is_safe_when_artifacts_are_missing() -> None:
@@ -130,3 +153,29 @@ def test_hybrid_detector_contextual_attacks_are_not_safe_when_model_is_loaded() 
         assert result.model_status == "enabled"
         assert result.action != "ALLOW"
         assert ReasonCode.SAFE_INPUT.value not in result.reason_codes
+
+
+def test_hybrid_detector_keeps_low_confidence_prediction_out_of_counts() -> None:
+    classifier = _StubClassifier(
+        LightweightPrediction(
+            detected=False,
+            confidence=0.349,
+            reason_code=None,
+            label="pii",
+            source="lightweight_model",
+        )
+    )
+    settings = DetectionSettings(model_detector_threshold=0.7)
+
+    result = detect_hybrid("완전히 안전한 문장입니다.", classifier=classifier, settings=settings)
+    llm_summary = next(item for item in result.detector_results if item.detector == "llm")
+
+    assert result.action == "ALLOW"
+    assert result.detector_counts == {}
+    assert llm_summary.action == "ALLOW"
+    assert llm_summary.reasons == []
+    assert result.model_label == "PII"
+    assert result.model_confidence == 0.349
+    assert result.model_threshold == 0.7
+    assert result.model_prediction_accepted is False
+    assert result.model_reason_code == ReasonCode.MODEL_PII_RISK.value

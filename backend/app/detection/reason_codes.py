@@ -5,6 +5,7 @@ from .models import PolicyAction
 
 class ReasonCode(str, Enum):
     PII_EMAIL_DETECTED = "PII_EMAIL_DETECTED"
+    PII_EMAIL_OBFUSCATED = "PII_EMAIL_OBFUSCATED"
     PII_PHONE_DETECTED = "PII_PHONE_DETECTED"
     PII_ADDRESS_DETECTED = "PII_ADDRESS_DETECTED"
     PII_RRN_DETECTED = "PII_RRN_DETECTED"
@@ -41,6 +42,7 @@ PRIMARY_REASON_PRIORITY = [
     ReasonCode.PII_EXFILTRATION_REQUEST.value,
     ReasonCode.PII_RRN_DETECTED.value,
     ReasonCode.PII_PHONE_DETECTED.value,
+    ReasonCode.PII_EMAIL_OBFUSCATED.value,
     ReasonCode.PII_EMAIL_DETECTED.value,
     ReasonCode.MODEL_DETECTOR_ERROR.value,
     ReasonCode.MODEL_ARTIFACT_MISSING.value,
@@ -52,6 +54,7 @@ PRIMARY_REASON_PRIORITY = [
 
 _REASON_ACTIONS = {
     ReasonCode.PII_EMAIL_DETECTED.value: PolicyAction.MASK.value,
+    ReasonCode.PII_EMAIL_OBFUSCATED.value: PolicyAction.MASK.value,
     ReasonCode.PII_PHONE_DETECTED.value: PolicyAction.MASK.value,
     ReasonCode.PII_ADDRESS_DETECTED.value: PolicyAction.MASK.value,
     ReasonCode.PII_RRN_DETECTED.value: PolicyAction.BLOCK.value,

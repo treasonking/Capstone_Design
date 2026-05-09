@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from backend.app.detection.email_normalization import normalize_obfuscated_email_candidate
 from backend.app.detection.models import DetectionResult
 from backend.app.detection.reason_codes import ReasonCode
 
@@ -59,6 +60,9 @@ def _mask_address(value: str) -> str:
 def _mask_by_reason(reason_code: str, value: str) -> str:
     if reason_code == ReasonCode.PII_EMAIL_DETECTED.value:
         return _mask_email(value)
+    if reason_code == ReasonCode.PII_EMAIL_OBFUSCATED.value:
+        normalized = normalize_obfuscated_email_candidate(value)
+        return _mask_email(normalized) if "@" in normalized else "*" * len(value)
     if reason_code == ReasonCode.PII_PHONE_DETECTED.value:
         return _mask_phone(value)
     if reason_code == ReasonCode.PII_ADDRESS_DETECTED.value:

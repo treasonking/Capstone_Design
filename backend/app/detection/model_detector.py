@@ -137,6 +137,9 @@ class ModelDetectionResult:
     fallback_used: bool = False
     model_label: str | None = None
     model_confidence: float | None = None
+    model_threshold: float | None = None
+    model_prediction_accepted: bool = False
+    model_reason_code: str | None = None
     model_prediction: LightweightPrediction | None = None
 
 
@@ -193,6 +196,18 @@ def _prediction_reasons(prediction: LightweightPrediction) -> list[str]:
     if not prediction.detected or not prediction.reason_code:
         return []
     return [prediction.reason_code]
+
+
+def _prediction_reason_code(prediction: LightweightPrediction) -> str | None:
+    if prediction.reason_code:
+        return prediction.reason_code
+
+    normalized = prediction.label.strip().lower()
+    if "pii" in normalized or "privacy" in normalized:
+        return ReasonCode.MODEL_PII_RISK.value
+    if "inj" in normalized or "prompt" in normalized or "jailbreak" in normalized:
+        return ReasonCode.MODEL_INJECTION_RISK.value
+    return None
 
 
 def _fallback_reason_code(status: str) -> str | None:
@@ -268,6 +283,8 @@ def _error_result(settings: DetectionSettings) -> ModelDetectionResult:
         fallback_used=True,
         model_label="ERROR",
         model_confidence=0.0,
+        model_threshold=settings.model_detector_threshold,
+        model_prediction_accepted=False,
     )
 
 
@@ -288,6 +305,7 @@ def detect_model(
             model_enabled=False,
             model_status="disabled",
             fallback_used=False,
+            model_prediction_accepted=False,
         )
 
     active_classifier = classifier or get_lightweight_classifier()
@@ -299,6 +317,7 @@ def detect_model(
         prediction = detect_lightweight(text, active_classifier)
         heuristic_reasons = _heuristic_reasons(text)
         prediction_reasons = _prediction_reasons(prediction)
+        predicted_reason_code = _prediction_reason_code(prediction)
         signal_reasons = ordered_reason_codes(
             [*heuristic_reasons, *prediction_reasons]
         )
@@ -320,6 +339,7 @@ def detect_model(
             else action
         )
         label = _prediction_label(prediction)
+        prediction_accepted = bool(prediction.detected and predicted_reason_code is not None)
         detections = _build_detections(reasons, confidence)
         summary = DetectorRunSummary(
             detector="llm",
@@ -347,7 +367,10 @@ def detect_model(
             model_status=status,
             fallback_used=not classifier_status.enabled,
             model_label=label,
-            model_confidence=summary.confidence,
+            model_confidence=prediction.confidence,
+            model_threshold=active_settings.model_detector_threshold,
+            model_prediction_accepted=prediction_accepted,
+            model_reason_code=predicted_reason_code,
             model_prediction=prediction,
         )
     except Exception as exc:  # pragma: no cover - defensive path

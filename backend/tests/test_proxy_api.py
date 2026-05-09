@@ -139,6 +139,7 @@ def test_proxy_masks_obfuscated_input_and_detects_restored_output_email(monkeypa
     assert "ho***@test.co.kr" in result.content
     assert ReasonCode.PII_EMAIL_OBFUSCATED.value in result.reasons
     assert ReasonCode.PII_EMAIL_DETECTED.value in result.reasons
+    assert ReasonCode.SAFE_INPUT.value not in result.reasons
 
     input_summary = result.audit_summary["input"]
     output_summary = result.audit_summary["output"]

@@ -54,6 +54,15 @@ def _resolve_reason_code(reasons: list[str]) -> str | None:
     return select_primary_reason(reasons) if reasons else None
 
 
+def _merge_reason_codes(*reason_lists: list[str]) -> list[str]:
+    merged = ordered_reason_codes(
+        [reason for reasons in reason_lists for reason in reasons]
+    )
+    if len(merged) > 1:
+        merged = [reason for reason in merged if reason != "SAFE_INPUT"]
+    return merged
+
+
 def _severity(action: str) -> int:
     order = {
         PolicyAction.ALLOW.value: 1,
@@ -437,7 +446,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
     # 입력과 출력에 각각 정책 결과가 있으면 더 강한 조치를 최종 action으로 반환합니다.
     safe_content = output_decision.masked_text or llm_content
     final_action = _final_action(input_action, output_action)
-    all_reasons = ordered_reason_codes(input_decision.reasons + output_decision.reasons)
+    all_reasons = _merge_reason_codes(input_decision.reasons, output_decision.reasons)
     audit_summary = _build_audit_summary(
         timestamp_utc,
         started,
@@ -593,7 +602,7 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
         return
 
     final_action = _final_action(input_action, output_action)
-    all_reasons = ordered_reason_codes(input_decision.reasons + output_decision.reasons)
+    all_reasons = _merge_reason_codes(input_decision.reasons, output_decision.reasons)
     audit_summary = _build_audit_summary(
         timestamp_utc,
         started,

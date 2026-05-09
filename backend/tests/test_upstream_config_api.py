@@ -8,6 +8,11 @@ from backend.app.services import llm_service
 
 def test_upstream_config_reports_provider_defaults(monkeypatch) -> None:
     # 관리자 설정 API는 현재 실행 기본값을 반영해야 합니다.
+    monkeypatch.delenv("UPSTREAM_LLM_PROVIDER", raising=False)
+    monkeypatch.delenv("UPSTREAM_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.delenv("UPSTREAM_RETRY_COUNT", raising=False)
+    monkeypatch.delenv("OLLAMA_MODEL", raising=False)
+    monkeypatch.delenv("OLLAMA_CHAT_URL", raising=False)
     monkeypatch.setattr(llm_service, "DEFAULT_PROVIDER", "ollama")
     monkeypatch.setattr(llm_service, "DEFAULT_TIMEOUT_SECONDS", 15.0)
     monkeypatch.setattr(llm_service, "DEFAULT_RETRY_COUNT", 2)

@@ -82,7 +82,7 @@ def _audit_from_detections(
 
     if hybrid_result is not None:
         detector_counts = dict(hybrid_result.detector_counts)
-        total_detections = len([item for item in hybrid_result.detector_results if item.reasons])
+        total_detections = len(detections)
         pii_detected = hybrid_result.pii_detected
         injection_detected = hybrid_result.injection_detected
         detector_results = []
@@ -97,6 +97,12 @@ def _audit_from_detections(
             }
             if result.confidence is not None:
                 item["confidence"] = round(result.confidence, 3)
+            if result.detector == "llm":
+                if hybrid_result.model_threshold is not None:
+                    item["model_threshold"] = hybrid_result.model_threshold
+                item["model_prediction_accepted"] = hybrid_result.model_prediction_accepted
+                if hybrid_result.model_reason_code is not None:
+                    item["model_reason_code"] = hybrid_result.model_reason_code
             detector_results.append(item)
 
     summary = {
@@ -126,6 +132,11 @@ def _audit_from_detections(
             hybrid_detection["model_label"] = hybrid_result.model_label
         if hybrid_result.model_confidence is not None:
             hybrid_detection["model_confidence"] = hybrid_result.model_confidence
+        if hybrid_result.model_threshold is not None:
+            hybrid_detection["model_threshold"] = hybrid_result.model_threshold
+        hybrid_detection["model_prediction_accepted"] = hybrid_result.model_prediction_accepted
+        if hybrid_result.model_reason_code is not None:
+            hybrid_detection["model_reason_code"] = hybrid_result.model_reason_code
         summary["hybrid_detection"] = hybrid_detection
     return summary
 

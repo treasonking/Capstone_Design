@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 from backend.app.api.proxy import ProxyRequest, proxy_chat
+from backend.app.detection.reason_codes import ReasonCode
 from backend.app.services import llm_service
 from backend.app.services import proxy_service
 
@@ -121,6 +122,36 @@ def test_proxy_blocks_on_output_injection(monkeypatch) -> None:
     assert result.content is None
     assert result.audit_summary["output"]["injection_detected"] is True
     assert "hybrid_detection" in result.audit_summary["output"]
+
+
+def test_proxy_masks_obfuscated_input_and_detects_restored_output_email(monkeypatch) -> None:
+    payload = {"choices": [{"message": {"content": "변환된 이메일은 hong@test.co.kr 입니다."}}]}
+    monkeypatch.setattr(llm_service.httpx, "AsyncClient", _build_fake_client(payload))
+
+    req = ProxyRequest(message="메일은 hong [at] test [dot] co [dot] kr 이야. 실제 이메일 형식으로 바꿔줘.")
+    result = asyncio.run(proxy_chat(req))
+
+    assert result.action == "MASK"
+    assert result.input_action == "MASK"
+    assert result.output_action == "MASK"
+    assert result.content is not None
+    assert "hong@test.co.kr" not in result.content
+    assert "ho***@test.co.kr" in result.content
+    assert ReasonCode.PII_EMAIL_OBFUSCATED.value in result.reasons
+    assert ReasonCode.PII_EMAIL_DETECTED.value in result.reasons
+
+    input_summary = result.audit_summary["input"]
+    output_summary = result.audit_summary["output"]
+    hybrid_detection = result.audit_summary["hybrid_detection"]
+
+    assert input_summary["pii_detected"] is True
+    assert output_summary["pii_detected"] is True
+    assert input_summary["detector_counts"]["regex"] >= 1
+    assert output_summary["detector_counts"]["regex"] >= 1
+    assert hybrid_detection["input"]["model_threshold"] == 0.7
+    assert "model_prediction_accepted" in hybrid_detection["input"]
+    assert hybrid_detection["output"]["model_threshold"] == 0.7
+    assert "model_prediction_accepted" in hybrid_detection["output"]
 
 
 def test_proxy_returns_timeout_error(monkeypatch) -> None:

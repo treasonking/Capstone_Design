@@ -28,6 +28,9 @@ class HybridDetectionResult:
     fallback_used: bool
     model_label: str | None = None
     model_confidence: float | None = None
+    model_threshold: float | None = None
+    model_prediction_accepted: bool = False
+    model_reason_code: str | None = None
     reason_codes: list[str] = field(default_factory=list)
     primary_reason_code: str | None = None
     risk_score: float = 0.0
@@ -155,6 +158,9 @@ def detect_hybrid(
         model_status=model_result.model_status,
         model_label=model_result.model_label,
         model_confidence=model_result.model_confidence,
+        model_threshold=model_result.model_threshold,
+        model_prediction_accepted=model_result.model_prediction_accepted,
+        model_reason_code=model_result.model_reason_code,
         fallback_used=model_result.fallback_used,
         reason_codes=reason_codes,
         primary_reason_code=(

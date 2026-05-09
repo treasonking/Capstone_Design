@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from .email_normalization import EMAIL_PATTERN, extract_obfuscated_emails
 from .models import DetectionResult, DetectorType
 from .reason_codes import ReasonCode
 
@@ -10,10 +11,7 @@ _PII_PATTERNS: list[tuple[str, str, re.Pattern[str], float]] = [
     (
         "EMAIL",
         ReasonCode.PII_EMAIL_DETECTED.value,
-        re.compile(
-            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,24}\b",
-            flags=re.IGNORECASE,
-        ),
+        EMAIL_PATTERN,
         0.95,
     ),
     (
@@ -305,6 +303,21 @@ def _intent_detections(text: str) -> list[DetectionResult]:
     return results
 
 
+def _obfuscated_email_detections(text: str) -> list[DetectionResult]:
+    return [
+        DetectionResult(
+            detector_type=DetectorType.PII,
+            category="EMAIL_OBFUSCATED",
+            reason_code=ReasonCode.PII_EMAIL_OBFUSCATED.value,
+            start=match.start,
+            end=match.end,
+            matched_text=match.raw_text,
+            score=0.95,
+        )
+        for match in extract_obfuscated_emails(text)
+    ]
+
+
 def _looks_like_math_expression(candidate: str, context: str) -> bool:
     if _has_any(context, _MATH_CONTEXT_TERMS):
         return True
@@ -366,6 +379,7 @@ def detect_pii(text: str) -> list[DetectionResult]:
 
     results: list[DetectionResult] = []
     results.extend(_intent_detections(text))
+    results.extend(_obfuscated_email_detections(text))
     for category, reason_code, pattern, score in _PII_PATTERNS:
         for match in pattern.finditer(text):
             matched_text = match.group(0)

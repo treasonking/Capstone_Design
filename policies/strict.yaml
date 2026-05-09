@@ -5,6 +5,11 @@ rules:
     priority: 60
     threshold: 0.7
     description: "Mask email address before forwarding to model."
+  PII_EMAIL_OBFUSCATED:
+    action: MASK
+    priority: 61
+    threshold: 0.7
+    description: "Mask obfuscated email expressions such as [at]/[dot] before forwarding to model."
   PII_PHONE_DETECTED:
     action: MASK
     priority: 70

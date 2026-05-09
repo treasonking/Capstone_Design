@@ -1,5 +1,6 @@
 from backend.app.detection.pii_detector import detect_pii
 from backend.app.detection.reason_codes import ReasonCode
+import pytest
 
 
 def test_detect_pii_multiple_categories() -> None:
@@ -14,6 +15,21 @@ def test_detect_pii_multiple_categories() -> None:
 
 def test_detect_pii_safe_text() -> None:
     assert detect_pii("오늘은 보안 정책 회의가 있습니다.") == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "hong [at] test [dot] co [dot] kr",
+        "hong(at)test(dot)co(dot)kr",
+        "hong at test dot co dot kr",
+    ],
+)
+def test_detect_pii_obfuscated_email_variants(text: str) -> None:
+    results = detect_pii(text)
+    reason_codes = {item.reason_code for item in results}
+
+    assert ReasonCode.PII_EMAIL_OBFUSCATED.value in reason_codes
 
 
 def test_detect_pii_phone_variants() -> None:

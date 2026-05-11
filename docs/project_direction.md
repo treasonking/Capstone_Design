@@ -6,12 +6,14 @@
 
 ## 핵심 흐름
 1. 사용자 UI 요청 수신
-2. 보안 프록시에서 입력 검사
-3. 탐지 엔진(PII, Prompt Injection) 실행
-4. 정책 엔진으로 `ALLOW / WARN / MASK / BLOCK` 결정
-5. 허용된 경우에만 LLM 호출
-6. 출력 재검사 후 사용자 반환
-7. 감사 로그 저장
+2. 보안 프록시에서 입력을 다층형 탐지 파이프라인으로 전달
+3. 정규식 패턴 계층에서 정형 PII 우선 탐지
+4. 휴리스틱 규칙 계층에서 정책 우회, 시스템 프롬프트 탈취, 지시 무시 단서 탐지
+5. 경량 분류 계층에서 비정형 또는 애매한 문장형 공격 보완 분류
+6. 의사결정 계층에서 `ALLOW / WARN / MASK / BLOCK` 결정
+7. 허용된 경우에만 LLM 호출
+8. 출력 재검사 후 사용자 반환
+9. 감사 로그 저장
 
 ## 정책 모드
 - `ALLOW`: 그대로 통과
@@ -29,9 +31,25 @@
 - 저장: `request_id`, `user_id`, `timestamp`, `action`, `reason_codes`, 탐지 여부, `latency`, upstream 호출 여부
 - 미저장: 원문 프롬프트/원문 응답/API 키/민감정보 원문
 
+## 탐지 구조
+
+- 대표 명칭: 다층형 탐지 파이프라인(Multi-layered Detection Pipeline)
+- 1계층: Regex Pattern Layer
+- 2계층: Heuristic Rule Layer
+- 3계층: Lightweight Classification Layer
+- 4계층: Decision Layer
+
+## 프록시 배포 형태
+
+본 프로젝트의 프록시는 사용자 PC에 설치되는 단순 클라이언트가 아니라, 사용자 요청과 외부 LLM API 또는 내부 LLM 사이에 위치하는 서버형 보안 게이트웨이다. 기관 내부 서버 또는 컨테이너 환경에 배포할 수 있으며, 직원의 LLM 요청은 프록시를 거쳐 입력 검사, 출력 검사, 마스킹, 차단, 감사 로그 기록 과정을 수행한다.
+
+```text
+공공기관 직원 → LLM Security Proxy Server → 외부 LLM API 또는 내부 LLM
+```
+
 ## 기술 스택(초안)
 - Backend: FastAPI, Pydantic
-- Detection: Presidio + 커스텀 룰(PII, Prompt Injection)
+- Detection: Regex Pattern Layer + Heuristic Rule Layer + Lightweight Classification Layer
 - Policy: YAML 기반 정책
 - DB: SQLite(기본), PostgreSQL(확장)
 - Frontend: React + Vite

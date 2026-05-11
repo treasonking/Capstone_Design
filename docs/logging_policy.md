@@ -17,7 +17,7 @@
 - `pii_detected` / `injection_detected`
 - `latency_ms`
 - `detector_counts`, `matched_detector_count`, `detectors_invoked` 같은 detector 요약 통계
-- `hybrid_detection.model_status`, `fallback_used`, `fallback_reason` 같은 선택형 분류기 상태 메타데이터
+- 기존 호환성 필드인 `hybrid_detection.model_status`, `fallback_used`, `fallback_reason` 같은 경량 분류 계층 상태 메타데이터
 
 ## 저장 금지 대상 (금지)
 
@@ -28,7 +28,7 @@
 
 `logs/audit_log.jsonl`에는 원문 `prompt`나 원문 `response`를 저장하지 않는다. 감사 로그는 정책 판정, 탐지 여부, 지연 시간 같은 안전한 요약 정보만 남기고 원문 텍스트는 기록하지 않는다.
 
-`detector_counts`는 "이유 코드를 하나 이상 남긴 detector 종류 수"를 요약한 필드다. 예를 들어 regex와 선택형 분류기 경로가 모두 위험 신호를 남기면 `{"regex": 1, "llm": 1}`처럼 기록된다. 반면 `detectors_invoked`는 실제로 실행된 detector 목록이므로, match가 없더라도 실행 사실은 여기에서 확인한다.
+`detector_counts`는 "이유 코드를 하나 이상 남긴 detector 종류 수"를 요약한 필드다. 예를 들어 정규식 패턴 계층과 경량 분류 계층이 모두 위험 신호를 남기면 `{"regex": 1, "llm": 1}`처럼 기록된다. 반면 `detectors_invoked`는 실제로 실행된 detector 목록이므로, match가 없더라도 실행 사실은 여기에서 확인한다.
 
 ## user_id 권장값
 
@@ -41,4 +41,3 @@
 1. 응답의 `audit_summary` 필드에 원문 텍스트가 포함되지 않았는지 확인
 2. `logs/audit_log.jsonl`에 `prompt`, `response`, `content` 원문이 기록되지 않도록 점검
 3. 릴리즈 전 샘플 요청 5건으로 수동 검증
-

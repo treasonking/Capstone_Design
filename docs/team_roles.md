@@ -3,7 +3,7 @@
 ## 정책/탐지 리드 (현재 저장소 핵심 반영 영역)
 
 - `policies/policy.yaml` 정책 포맷/우선순위/threshold 설계
-- `backend/app/detection/*` PII/Injection 룰 기반 탐지
+- `backend/app/detection/*` 정규식 패턴/휴리스틱 규칙/경량 분류 계층
 - `backend/app/engine/*` 정책 판정 및 마스킹
 - `evaluation/*` 정량 평가 스크립트/리포트 생성
 - `backend/tests/*` 탐지/정책/프록시 테스트
@@ -32,4 +32,3 @@
 - 데이터셋 확대/라벨 품질 검증
 - E2E 테스트 시나리오 자동화
 - 릴리즈 체크리스트 운영
-

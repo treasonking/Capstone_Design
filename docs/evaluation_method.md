@@ -11,7 +11,7 @@
 - 구성:
   - PII 샘플: 43건 (양성/음성 혼합)
   - Injection 샘플: 65건 (양성/음성 혼합)
-  - Hybrid 샘플: 5건 (정책 우회 + 개인정보 요청 결합)
+  - 다층 위험 결합 샘플: 5건 (정책 우회 + 개인정보 요청 결합)
 
 ## 라벨 기준
 
@@ -85,4 +85,5 @@ python tools/sync_benchmark_docs.py --dataset evaluation/sample_dataset.json
 
 - PII는 오탐/미탐 모두 중요하므로 Precision/Recall 균형(F1)을 함께 본다.
 - Injection은 보안 특성상 미탐(FN) 억제가 중요하므로 Recall을 우선 점검한다.
+- 계층별 ablation에서는 정규식 패턴 계층, 휴리스틱 규칙 계층, 경량 분류 계층이 각각 정형 PII, 프롬프트 인젝션, 비정형 공격 탐지에 얼마나 기여하는지 분리해서 해석한다.
 - FP/FN 샘플 id를 기반으로 룰을 보정한다.

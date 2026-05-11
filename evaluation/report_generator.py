@@ -24,14 +24,14 @@ def _dataset_sections(dataset_path: str) -> list[str]:
     dataset_name = Path(dataset_path).name.lower()
     if dataset_name == "sample_dataset.json":
         return [
-            "## Model Detector and Fallback Notes",
+            "## Lightweight Classification Layer and Fallback Notes",
             "",
-            "- 이 브랜치의 하이브리드 구조는 `regex/rule detector`와 `model detector` 경로를 함께 실행한 뒤 결과를 병합한다.",
-            "- 여기서 `model detector`는 외부 대형 모델 사용을 전제하지 않는다. 현재 저장소에서는 선택형 경량 분류기와 fallback heuristic 경로를 감싸는 보조 detector로 동작한다.",
+            "- 이 브랜치의 다층형 탐지 파이프라인은 Regex Pattern Layer, Heuristic Rule Layer, Lightweight Classification Layer를 순서대로 실행한 뒤 Decision Layer에서 결과를 종합한다.",
+            "- 여기서 Lightweight Classification Layer는 외부 대형 모델 사용을 전제하지 않는다. 현재 저장소에서는 경량 분류기와 fallback heuristic 경로를 통해 비정형 프롬프트 인젝션을 보완적으로 분류한다.",
             "- `models/lightweight/vectorizer.joblib`, `models/lightweight/classifier.joblib` artifact가 없거나 비활성화된 환경에서는 `model_status`가 `artifact_missing`, `disabled`, `dependency_missing`, `error` 중 하나로 기록될 수 있다.",
-            "- 이런 경우에도 최종 평가는 `SAFE_INPUT`으로 우회되지 않고, `regex/rule + fallback heuristic` 경로로 계속 진행된다.",
-            "- audit summary에서는 `hybrid_detection.model_status`, `fallback_used`, `fallback_reason`, `detector_counts`, `detectors_invoked`로 실제 detector 실행 상태를 확인할 수 있다.",
-            '- 따라서 본 리포트의 PASS 결과는 "선택형 분류기 artifact가 반드시 로드된 상태"를 의미하지 않으며, 현재 실행 환경에서 허용된 detector 경로가 일관되게 정책 결정을 내렸다는 뜻으로 해석해야 한다.',
+            "- 이런 경우에도 최종 평가는 `SAFE_INPUT`으로 우회되지 않고, `regex + heuristic rule + fallback heuristic` 경로로 계속 진행된다.",
+            "- audit summary에서는 기존 호환성 필드인 `hybrid_detection.model_status`, `fallback_used`, `fallback_reason`, `detector_counts`, `detectors_invoked`로 실제 detector 실행 상태를 확인할 수 있다.",
+            "- 따라서 본 리포트의 PASS 결과는 경량 분류 계층 artifact가 반드시 로드된 상태를 의미하지 않으며, 현재 실행 환경에서 허용된 계층들이 일관되게 정책 결정을 내렸다는 뜻으로 해석해야 한다.",
             "",
         ]
     if dataset_name == "external_validation_sample.json":
@@ -52,7 +52,7 @@ def _dataset_sections(dataset_path: str) -> list[str]:
             "",
             "- 내부 회귀셋에서는 기존 정책이 깨지지 않았는지를 확인하고, 외부 스타일셋에서는 경계 문장과 우회 표현에 대한 일반화 위험을 확인한다.",
             '- 현재 외부 검증 결과는 "PII 패턴 탐지는 안정적이지만 Injection 해석은 아직 rule 경계 조정이 필요하다"는 메시지로 설명하는 것이 적절하다.',
-            "- 선택형 경량 분류기 artifact가 없는 환경에서는 이 결과 역시 `regex/rule + fallback heuristic` 중심으로 나온 값일 수 있으므로, model-only 성능 주장으로 확대 해석하지 않는다.",
+            "- 경량 분류 계층 artifact가 없는 환경에서는 이 결과 역시 `regex + heuristic rule + fallback heuristic` 중심으로 나온 값일 수 있으므로, Lightweight Classification Layer 단독 성능 주장으로 확대 해석하지 않는다.",
             "",
         ]
     return []
@@ -137,7 +137,7 @@ def _render_hybrid_cases(metrics: dict[str, Any]) -> list[str]:
         return []
 
     lines = [
-        "## Hybrid Attack Detection",
+        "## Multi-layered Combined Risk Detection",
         "",
         f"- Passed: **{hybrid.get('passed', 0)} / {hybrid.get('total', 0)}**",
         f"- Failed: **{hybrid.get('failed', 0)}**",

@@ -74,6 +74,8 @@ python evaluation/eval_deepset_prompt_injection.py --max-samples 100
 
 이 데이터셋은 영어 기반 Prompt Injection 및 정상 프롬프트를 포함하므로, 프로젝트 내부의 한국어 공공기관 시나리오 데이터셋과는 목적이 다르다.
 
+내부 데이터셋은 회귀 테스트와 공공기관 시나리오 검증용으로 유지하고, 외부 공개 데이터셋은 Prompt Injection 일반화 성능을 확인하기 위한 보조 벤치마크로 사용한다.
+
 ### Evaluation Purpose
 
 | Dataset | Purpose |

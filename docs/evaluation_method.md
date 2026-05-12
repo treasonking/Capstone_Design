@@ -60,19 +60,21 @@ python -m evaluation.evaluate \
   --report reports/external_validation_report.md
 ```
 
+이 24건 데이터셋은 표본 수가 작으므로 예비 검증용으로만 유지하고, 본 논문의 주요 성능 비교 결과에는 포함하지 않는다.
+
 Hugging Face 공개 데이터셋 기반 Prompt Injection 벤치마크:
 
 ```bash
-python evaluation/eval_deepset_prompt_injection.py --max-samples 100
+python -m evaluation.evaluate_external_prompt_injection
 ```
 
 추가 해석 가이드는 `docs/evaluation_limitations.md`를 참고한다.
 
 ## External Prompt Injection Benchmark
 
-본 프로젝트는 내부 제작 데이터셋 외에도 Hugging Face의 `deepset/prompt-injections` 데이터셋을 사용하여 Prompt Injection 탐지 성능을 추가 평가한다.
+본 프로젝트는 내부 제작 데이터셋 외에도 Hugging Face의 공개 Prompt Injection 데이터셋을 사용하여 탐지 성능을 추가 평가한다.
 
-이 데이터셋은 영어 기반 Prompt Injection 및 정상 프롬프트를 포함하므로, 프로젝트 내부의 한국어 공공기관 시나리오 데이터셋과는 목적이 다르다.
+공개 데이터셋은 영어 기반 Prompt Injection 및 정상 프롬프트를 포함하므로, 프로젝트 내부의 한국어 공공기관 시나리오 데이터셋과는 목적이 다르다.
 
 내부 데이터셋은 회귀 테스트와 공공기관 시나리오 검증용으로 유지하고, 외부 공개 데이터셋은 Prompt Injection 일반화 성능을 확인하기 위한 보조 벤치마크로 사용한다.
 
@@ -81,23 +83,36 @@ python evaluation/eval_deepset_prompt_injection.py --max-samples 100
 | Dataset | Purpose |
 |---|---|
 | `evaluation/sample_dataset.json` | 내부 회귀 테스트 |
-| `evaluation/external_validation_sample.json` | 외부 스타일 변형 검증 |
-| `deepset/prompt-injections` | 공개 데이터셋 기반 Prompt Injection 벤치마크 |
+| `evaluation/external_validation_sample.json` | 24건 외부 스타일 예비 검증 |
+| `deepset/prompt-injections` | 메인 외부 Prompt Injection 성능 평가 |
+| `protectai/prompt-injection-validation` | 대규모 추가 검증 |
+| `Lakera/gandalf_ignore_instructions` | 공격 특화 Recall 검증 |
 
-### Latest External Benchmark Result
+### Public Dataset Benchmark Strategy
 
-| Dataset | Split | Samples | Accuracy | Precision | Recall | F1 |
-|---|---|---:|---:|---:|---:|---:|
-| `deepset/prompt-injections` | `train` | 100 | 0.880 | 1.000 | 0.200 | 0.333 |
+| Experiment | Dataset | Purpose |
+|---|---|---|
+| Experiment A | `deepset/prompt-injections` | 메인 외부 성능 평가 |
+| Experiment B | `protectai/prompt-injection-validation` | 대규모 추가 검증 |
+| Experiment C | `Lakera/gandalf_ignore_instructions` | "ignore previous instructions" 계열 공격 탐지력 검증 |
+| Experiment D | 자체 공공기관 시나리오 데이터셋 | 프로젝트 특화성 검증 |
 
-False Negative 12건은 실제 Prompt Injection 샘플이 프록시를 통과한 사례이므로, 향후 휴리스틱 규칙과 경량 분류 계층 보강의 우선 검토 대상으로 본다.
+최신 공개 데이터셋 평가 결과는 `reports/external_prompt_injection_report.md`에서 확인한다.
 
 ### Limitations
 
 - `deepset/prompt-injections`는 PII 탐지 평가용 데이터셋이 아니다.
+- `protectai/prompt-injection-validation`과 `Lakera/gandalf_ignore_instructions`도 Prompt Injection 중심 데이터셋이므로 PII 탐지 성능과 분리한다.
+- `Lakera/gandalf_ignore_instructions`는 공격 중심 데이터셋이므로 Precision보다 Recall 중심으로 해석한다.
 - 한국어 주민등록번호, 전화번호, 주소, 민원정보 유출 시나리오는 별도 데이터셋으로 평가해야 한다.
 - 영어 기반 Prompt Injection 결과를 한국어 공공기관 운영 환경 성능으로 직접 일반화하면 안 된다.
 - 따라서 보고서에서는 내부 데이터셋 결과와 외부 데이터셋 결과를 반드시 분리해서 제시한다.
+
+### Paper Wording
+
+기존 외부 검증 데이터셋 24건은 표본 수가 작아 예비 검증 자료로만 활용하였다. 교수 피드백을 반영하여 본 실험에서는 Hugging Face 공개 데이터셋인 `deepset/prompt-injections`, `protectai/prompt-injection-validation`, `Lakera/gandalf_ignore_instructions`를 추가하였다. 이를 통해 Prompt Injection 탐지 성능을 Precision, Recall, F1-score, Accuracy 기준으로 정량 평가하였다.
+
+특히 `deepset/prompt-injections`는 정상 프롬프트와 공격 프롬프트를 모두 포함하므로 본 프로젝트의 메인 외부 성능 비교 데이터셋으로 사용하였다. `protectai/prompt-injection-validation`은 더 큰 규모의 추가 검증셋으로 사용하였고, `Lakera/gandalf_ignore_instructions`는 "ignore previous instructions" 계열 공격 탐지력을 확인하기 위한 공격 특화 Recall 검증셋으로 사용하였다.
 
 ## 최신 벤치마크 스냅샷
 

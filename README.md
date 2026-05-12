@@ -91,7 +91,7 @@ flowchart TD
 | PII Detection | 1.000 | 1.000 | 1.000 | 29 / 0 / 0 |
 | Prompt Injection Detection | 1.000 | 1.000 | 1.000 | 104 / 0 / 0 |
 
-### 외부 스타일 검증 결과
+### 외부 스타일 예비 검증 결과
 
 기준 데이터셋: `evaluation/external_validation_sample.json` 24건
 
@@ -100,19 +100,23 @@ flowchart TD
 | PII Detection | 1.000 | 1.000 | 1.000 | 7 / 0 / 0 |
 | Prompt Injection Detection | 0.846 | 0.957 | 0.898 | 22 / 4 / 1 |
 
-이 결과는 실제 운영 일반화 성능 추정치가 아니라, 내부 회귀셋과 표현이 다른 외부 스타일 샘플에서 오탐/미탐 패턴을 확인하기 위한 검증 결과입니다.
+이 결과는 실제 운영 일반화 성능 추정치가 아니라, 내부 회귀셋과 표현이 다른 외부 스타일 샘플에서 오탐/미탐 패턴을 확인하기 위한 예비 검증 결과입니다. 표본 수가 작기 때문에 본 논문의 주요 성능 비교 결과에는 포함하지 않습니다.
 
-### Hugging Face 공개 데이터셋 기반 Prompt Injection 평가 결과
+### 공개 데이터셋 기반 Prompt Injection 본 실험 결과
 
-기준 데이터셋: `deepset/prompt-injections`
+기준 데이터셋: Hugging Face 공개 Prompt Injection 데이터셋
 
-| Dataset | Split | Samples | Accuracy | Precision | Recall | F1 |
-|---|---|---:|---:|---:|---:|---:|
-| `deepset/prompt-injections` | `train` | 100 | 0.880 | 1.000 | 0.200 | 0.333 |
+| Dataset | Size | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `deepset/prompt-injections` | 662 | 1.0000 | 0.0760 | 0.1413 | 0.6329 | 20 | 0 | 399 | 243 |
+| `protectai/prompt-injection-validation` | 3,227 | 0.8251 | 0.1796 | 0.2950 | 0.6297 | 250 | 53 | 1,782 | 1,142 |
+| `Lakera/gandalf_ignore_instructions` | 1,000 | N/A | 0.4480 | N/A | 0.4480 | 448 | N/A | N/A | 552 |
 
-이 평가는 Hugging Face 공개 데이터셋을 사용한 Prompt Injection 외부 벤치마크입니다. 해당 데이터셋은 PII 탐지용 데이터셋이 아니므로 개인정보 탐지 성능에는 포함하지 않습니다.
+이 평가는 Hugging Face 공개 데이터셋을 사용한 Prompt Injection 외부 벤치마크입니다. 해당 데이터셋들은 PII 탐지용 데이터셋이 아니므로 개인정보 탐지 성능에는 포함하지 않습니다.
 
-총 100개 샘플 중 유효 샘플 100개를 대상으로 평가했으며, False Positive는 0건, False Negative는 12건이었습니다. False Negative는 실제 Prompt Injection 문장인데 프록시가 차단하지 못한 사례이므로 향후 탐지 룰 개선의 우선 검토 대상입니다.
+`deepset/prompt-injections`는 정상 프롬프트와 공격 프롬프트를 모두 포함하므로 메인 외부 성능 비교 데이터셋으로 사용합니다. `protectai/prompt-injection-validation`은 3천 건 이상의 대규모 추가 검증셋이며, `Lakera/gandalf_ignore_instructions`는 공격 중심 데이터셋이므로 Precision보다 Recall 중심으로 해석합니다.
+
+False Negative는 실제 Prompt Injection 문장인데 프록시가 차단하지 못한 사례이므로 향후 탐지 룰 개선의 우선 검토 대상입니다.
 
 ### 성능 결과 해석 주의
 
@@ -120,19 +124,19 @@ flowchart TD
 
 그러나 이 결과를 실제 운영 환경에서의 일반화 성능으로 해석해서는 안 됩니다. 이를 보완하기 위해 `evaluation/external_validation_sample.json`을 별도로 구성했으며, 외부 스타일 검증에서는 Prompt Injection F1이 낮아지는 것을 확인했습니다. 향후 데이터셋을 확장하여 우회 표현, 비정형 개인정보, 공공기관 업무 문장에 대한 일반화 성능을 지속적으로 평가합니다.
 
-`deepset/prompt-injections` 결과는 외부 공개 데이터셋 기반 Prompt Injection 평가 결과이며, 내부 회귀 테스트와 목적이 다릅니다. 내부 회귀 테스트는 기존 정책과 룰이 깨지지 않았는지 확인하기 위한 안정성 검증이고, 외부 데이터셋 평가는 프로젝트 외부의 공격 표현에 대한 일반화 가능성을 확인하기 위한 보조 검증입니다.
+`deepset/prompt-injections`, `protectai/prompt-injection-validation`, `Lakera/gandalf_ignore_instructions` 결과는 외부 공개 데이터셋 기반 Prompt Injection 평가 결과이며, 내부 회귀 테스트와 목적이 다릅니다. 내부 회귀 테스트는 기존 정책과 룰이 깨지지 않았는지 확인하기 위한 안정성 검증이고, 외부 데이터셋 평가는 프로젝트 외부의 공격 표현에 대한 일반화 가능성을 확인하기 위한 보조 검증입니다.
 
 ## 벤치마크 비교 기준
 
 - 잘못된 표현: `정확도 100%`, `탐지율 100%`, `모든 공격 탐지 가능`
 - 올바른 표현: `내부 회귀 테스트 데이터셋 기준 F1 1.000`
 - 올바른 표현: `외부 스타일 검증 데이터셋 기준 Injection F1 0.898`
-- 올바른 표현: `Hugging Face 공개 데이터셋 기준 Injection F1 0.333`
+- 올바른 표현: `Hugging Face deepset 공개 데이터셋 기준 Injection F1 0.1413`
 - 올바른 표현: `내부 데이터셋 F1 1.000은 내부 회귀 테스트 결과이며, 일반화 성능은 외부 스타일 검증으로 별도 확인한다.`
 
 ## 데이터셋 구성 방향
 
-내부 데이터셋만 사용할 경우 탐지 룰에 과적합될 수 있으므로, 데이터셋을 세 종류로 분리합니다.
+내부 데이터셋만 사용할 경우 탐지 룰에 과적합될 수 있으므로, 데이터셋을 역할별로 분리합니다.
 
 내부 데이터셋은 회귀 테스트와 공공기관 시나리오 검증용으로 유지하고, 외부 공개 데이터셋은 Prompt Injection 일반화 성능을 확인하기 위한 보조 벤치마크로 사용합니다.
 
@@ -140,9 +144,12 @@ flowchart TD
    기존 룰과 정책이 깨지지 않았는지 확인합니다.
    예: `evaluation/sample_dataset.json`
 2. 외부 스타일 검증 데이터셋
-   내부 데이터셋과 다른 표현 방식, 우회 문장, 변형된 인젝션 문장을 포함합니다.
+   내부 데이터셋과 다른 표현 방식, 우회 문장, 변형된 인젝션 문장을 포함하는 예비 검증셋입니다.
    예: `evaluation/external_validation_sample.json`
-3. 확장 난이도 데이터셋
+3. 외부 공개 Prompt Injection 벤치마크
+   교수 피드백을 반영하여 공개 데이터셋 기반 정량 평가에 사용합니다.
+   예: `deepset/prompt-injections`, `protectai/prompt-injection-validation`, `Lakera/gandalf_ignore_instructions`
+4. 확장 난이도 데이터셋
    향후 추가 예정입니다.
    한글 숫자 PII, 띄어쓰기 우회, 주소/이름 등 비정형 PII, 공공기관 민원 문장, 간접 프롬프트 인젝션, hard negative를 포함합니다.
 
@@ -230,6 +237,8 @@ policies/
 evaluation/
   sample_dataset.json
   external_validation_sample.json
+  external_datasets.py
+  evaluate_external_prompt_injection.py
   evaluate.py
   baseline_compare.py
   eval_deepset_prompt_injection.py
@@ -241,6 +250,7 @@ reports/
   baseline_compare_report.md
   deepset_prompt_injection_report.md
   external_dataset_performance_summary.md
+  external_prompt_injection_report.md
 frontend/
   demo.html
 tools/
@@ -476,6 +486,36 @@ The CSV files include evaluated prompt text and are ignored by default through `
 
 False Negative cases are the most important review target because they represent attack prompts that bypassed the proxy.
 
+## External Prompt Injection Benchmark
+
+기존 24건 외부 스타일 검증 데이터셋은 표본 수가 작기 때문에 예비 검증용으로만 유지합니다.
+
+본 프로젝트는 교수 피드백을 반영하여 공개 Prompt Injection 데이터셋 기반 평가를 추가했습니다.
+
+| Dataset | Size | Purpose |
+|---|---:|---|
+| `deepset/prompt-injections` | 662 | Main external benchmark |
+| `protectai/prompt-injection-validation` | 3,227 | Additional large-scale validation |
+| `Lakera/gandalf_ignore_instructions` | 1,000 | Attack-focused recall validation |
+
+평가 결과는 다음 파일에서 확인할 수 있습니다.
+
+- `reports/external_prompt_injection_report.md`
+
+최신 본 실험 결과:
+
+| Dataset | Size | Precision | Recall | F1 | Accuracy |
+|---|---:|---:|---:|---:|---:|
+| `deepset/prompt-injections` | 662 | 1.0000 | 0.0760 | 0.1413 | 0.6329 |
+| `protectai/prompt-injection-validation` | 3,227 | 0.8251 | 0.1796 | 0.2950 | 0.6297 |
+| `Lakera/gandalf_ignore_instructions` | 1,000 | N/A | 0.4480 | N/A | 0.4480 |
+
+실행 명령:
+
+```bash
+python -m evaluation.evaluate_external_prompt_injection
+```
+
 ## 수동 검증 예시
 
 정책 우회와 개인정보 요청이 결합된 입력은 upstream 호출 전에 차단되어야 합니다.
@@ -530,6 +570,7 @@ Invoke-RestMethod `
 - `reports/baseline_compare_report.md`
 - `reports/deepset_prompt_injection_report.md`
 - `reports/external_dataset_performance_summary.md`
+- `reports/external_prompt_injection_report.md`
 
 ## 한계와 향후 개선
 

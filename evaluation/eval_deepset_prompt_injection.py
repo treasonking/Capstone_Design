@@ -15,7 +15,6 @@ from sklearn.metrics import (
     precision_recall_fscore_support,
 )
 
-
 DEFAULT_PROXY_URL = "http://127.0.0.1:8000/v1/chat/completions"
 DEFAULT_DATASET_NAME = "deepset/prompt-injections"
 DEFAULT_SPLIT = "train"
@@ -23,6 +22,7 @@ DEFAULT_MAX_SAMPLES = 100
 
 RESULT_DIR = Path("evaluation/results")
 REPORT_DIR = Path("reports")
+
 RESULT_COLUMNS = [
     "id",
     "dataset",
@@ -81,11 +81,7 @@ def build_payload(text: str, model: str) -> dict[str, Any]:
 
 def classify_proxy_response(response_json: dict[str, Any]) -> int:
     action = response_json.get("action")
-
-    if action == "BLOCK":
-        return 1
-
-    return 0
+    return 1 if action == "BLOCK" else 0
 
 
 def request_proxy(
@@ -126,7 +122,6 @@ def evaluate(
     dataset = load_prompt_injection_dataset(dataset_name, split)
 
     rows: list[dict[str, Any]] = []
-
     total = min(max(max_samples, 0), len(dataset))
 
     for idx in range(total):
@@ -195,9 +190,7 @@ def calculate_metrics(df: pd.DataFrame) -> dict[str, Any]:
 
     accuracy = accuracy_score(y_true, y_pred)
 
-    labels = [0, 1]
-    cm = confusion_matrix(y_true, y_pred, labels=labels)
-
+    cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
     tn, fp, fn, tp = cm.ravel()
 
     return {
@@ -221,13 +214,11 @@ def save_results(df: pd.DataFrame) -> tuple[Path, Path, Path]:
     df.to_csv(result_path, index=False, encoding="utf-8-sig")
 
     false_negatives = df[
-        (df["true_label"] == 1)
-        & (df["pred_label"] == 0)
+        (df["true_label"] == 1) & (df["pred_label"] == 0)
     ].copy()
 
     false_positives = df[
-        (df["true_label"] == 0)
-        & (df["pred_label"] == 1)
+        (df["true_label"] == 0) & (df["pred_label"] == 1)
     ].copy()
 
     false_negatives.to_csv(fn_path, index=False, encoding="utf-8-sig")
@@ -251,7 +242,6 @@ def generate_report(
 
     total_samples = len(df)
     error_count = int((df["pred_label"] == -1).sum())
-
     generated_at = datetime.now().isoformat(timespec="seconds")
 
     content = f"""# Deepset Prompt Injection Evaluation Report
@@ -269,7 +259,7 @@ def generate_report(
 
 This report evaluates the Prompt Injection detection capability of the LLM security proxy using the external Hugging Face dataset `{dataset_name}`.
 
-The dataset is used only for Prompt Injection evaluation. PII detection should continue to be evaluated with a separate Korean PII-focused dataset.
+This dataset is used only for Prompt Injection evaluation. PII detection is evaluated separately with Korean PII-focused datasets.
 
 ---
 
@@ -285,10 +275,12 @@ The dataset is used only for Prompt Injection evaluation. PII detection should c
 ## 3. Prediction Mapping
 
 | Proxy Response | Predicted Label |
-|---|---|
+|---|---:|
 | `action == "BLOCK"` | 1 |
 | Other actions | 0 |
-| Request or parsing error | -1, excluded from metric calculation |
+| Request/parsing error | -1 |
+
+Rows with `pred_label = -1` are excluded from metric calculation.
 
 ---
 
@@ -312,14 +304,14 @@ The dataset is used only for Prompt Injection evaluation. PII detection should c
 
 ---
 
-## 6. Error Analysis Targets
+## 6. Error Analysis
 
 | Type | Meaning | Count |
 |---|---|---:|
 | False Positive | Normal prompt incorrectly blocked | {metrics["fp"]} |
 | False Negative | Injection prompt incorrectly allowed | {metrics["fn"]} |
 
-False Negative cases are especially important for this project because they represent attack prompts that bypassed the proxy.
+False Negative cases are the highest-priority review target because they represent prompt injection samples that bypassed the proxy.
 
 ---
 
@@ -327,21 +319,125 @@ False Negative cases are especially important for this project because they repr
 
 | File | Description |
 |---|---|
-| `{result_path}` | Full evaluation result |
+| `{result_path}` | Full evaluation result CSV |
 | `{fn_path}` | False Negative cases |
 | `{fp_path}` | False Positive cases |
 
 ---
 
-## 8. Notes
+## 8. Interpretation
 
-- This external dataset is useful for validating general Prompt Injection detection performance.
-- The dataset is mostly English-based, so Korean public-sector scenarios should remain in the project-specific evaluation dataset.
-- This result should be presented as an additional external benchmark, not as a replacement for the internal Korean scenario-based testset.
+This external dataset result should be treated as an additional benchmark for general Prompt Injection detection.
+
+It should not replace:
+- internal Korean public-sector scenario tests
+- PII detection tests
+- manually designed hard-negative tests
+
+The result should be described as external benchmark evidence, not as proof of universal operational detection performance.
 """
 
     report_path.write_text(content, encoding="utf-8")
     return report_path
+
+
+def generate_performance_summary(
+    metrics: dict[str, Any],
+    df: pd.DataFrame,
+    dataset_name: str,
+    split: str,
+    max_samples: int,
+) -> Path:
+    summary_path = REPORT_DIR / "external_dataset_performance_summary.md"
+
+    total_samples = len(df)
+    error_count = int((df["pred_label"] == -1).sum())
+    generated_at = datetime.now().isoformat(timespec="seconds")
+
+    content = f"""# External Dataset Performance Summary
+
+## 1. Summary
+
+- Generated at: {generated_at}
+- Dataset: `{dataset_name}`
+- Split: `{split}`
+- Requested max samples: {max_samples}
+- Total rows: {total_samples}
+- Valid samples: {metrics["valid_samples"]}
+- Error samples: {error_count}
+
+This summary describes the Prompt Injection detection performance of the LLM security proxy on the external Hugging Face dataset `deepset/prompt-injections`.
+
+---
+
+## 2. Main Result
+
+| Metric | Value |
+|---|---:|
+| Accuracy | {metrics["accuracy"]:.3f} |
+| Precision | {metrics["precision"]:.3f} |
+| Recall | {metrics["recall"]:.3f} |
+| F1-score | {metrics["f1"]:.3f} |
+
+---
+
+## 3. Confusion Matrix
+
+|  | Predicted Normal | Predicted Injection |
+|---|---:|---:|
+| Actual Normal | {metrics["tn"]} | {metrics["fp"]} |
+| Actual Injection | {metrics["fn"]} | {metrics["tp"]} |
+
+---
+
+## 4. Result Interpretation
+
+The external dataset evaluation shows how the proxy performs on Prompt Injection samples that were not manually designed only for this project.
+
+Precision indicates how many blocked prompts were actually injection prompts.
+
+Recall indicates how many actual injection prompts were successfully blocked.
+
+F1-score provides a balanced view of precision and recall.
+
+False Negative cases are more critical than False Positive cases in this project because False Negatives mean that attack prompts bypassed the proxy and reached the upstream LLM.
+
+---
+
+## 5. Recommended Presentation Wording
+
+Use this wording in the report or presentation:
+
+> In addition to the internal Korean public-sector scenario dataset, the project evaluated Prompt Injection detection using the external Hugging Face dataset `deepset/prompt-injections`. This external benchmark provides additional evidence for general Prompt Injection detection performance. The result is reported separately from PII detection because the dataset is focused on Prompt Injection, not Korean personal information leakage.
+
+Avoid this wording:
+
+> The system detects all Prompt Injection attacks.
+> The system is 100% accurate in real environments.
+> This result proves production-level security.
+
+---
+
+## 6. Limitations
+
+- The dataset is mainly English-based.
+- It does not evaluate Korean public-sector PII leakage.
+- It does not fully represent indirect prompt injection in document/RAG/tool-use environments.
+- It should be used as an external benchmark, not as the only evaluation source.
+
+---
+
+## 7. Next Improvement Targets
+
+1. Review False Negative samples and add missing injection patterns to the rule layer.
+2. Review False Positive samples and add hard-negative safe prompts.
+3. Compare internal dataset F1 and external dataset F1 separately.
+4. Add Korean transformed injection prompts based on the same attack intent.
+5. Keep the external benchmark result separate from internal regression test results.
+"""
+
+    summary_path.write_text(content, encoding="utf-8")
+    return summary_path
 
 
 def parse_args() -> argparse.Namespace:
@@ -420,6 +516,14 @@ def main() -> None:
         fp_path=fp_path,
     )
 
+    summary_path = generate_performance_summary(
+        metrics=metrics,
+        df=df,
+        dataset_name=args.dataset_name,
+        split=args.split,
+        max_samples=args.max_samples,
+    )
+
     print("=== Deepset Prompt Injection Evaluation ===")
     print(f"Dataset       : {args.dataset_name}")
     print(f"Split         : {args.split}")
@@ -434,10 +538,11 @@ def main() -> None:
     print(f"TN: {metrics['tn']} | FP: {metrics['fp']}")
     print(f"FN: {metrics['fn']} | TP: {metrics['tp']}")
     print()
-    print(f"Saved result : {result_path}")
-    print(f"Saved FN     : {fn_path}")
-    print(f"Saved FP     : {fp_path}")
-    print(f"Saved report : {report_path}")
+    print(f"Saved result  : {result_path}")
+    print(f"Saved FN      : {fn_path}")
+    print(f"Saved FP      : {fp_path}")
+    print(f"Saved report  : {report_path}")
+    print(f"Saved summary : {summary_path}")
 
 
 if __name__ == "__main__":

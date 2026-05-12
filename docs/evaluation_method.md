@@ -60,7 +60,42 @@ python -m evaluation.evaluate \
   --report reports/external_validation_report.md
 ```
 
+Hugging Face 공개 데이터셋 기반 Prompt Injection 벤치마크:
+
+```bash
+python evaluation/eval_deepset_prompt_injection.py --max-samples 100
+```
+
 추가 해석 가이드는 `docs/evaluation_limitations.md`를 참고한다.
+
+## External Prompt Injection Benchmark
+
+본 프로젝트는 내부 제작 데이터셋 외에도 Hugging Face의 `deepset/prompt-injections` 데이터셋을 사용하여 Prompt Injection 탐지 성능을 추가 평가한다.
+
+이 데이터셋은 영어 기반 Prompt Injection 및 정상 프롬프트를 포함하므로, 프로젝트 내부의 한국어 공공기관 시나리오 데이터셋과는 목적이 다르다.
+
+### Evaluation Purpose
+
+| Dataset | Purpose |
+|---|---|
+| `evaluation/sample_dataset.json` | 내부 회귀 테스트 |
+| `evaluation/external_validation_sample.json` | 외부 스타일 변형 검증 |
+| `deepset/prompt-injections` | 공개 데이터셋 기반 Prompt Injection 벤치마크 |
+
+### Latest External Benchmark Result
+
+| Dataset | Split | Samples | Accuracy | Precision | Recall | F1 |
+|---|---|---:|---:|---:|---:|---:|
+| `deepset/prompt-injections` | `train` | 100 | 0.880 | 1.000 | 0.200 | 0.333 |
+
+False Negative 12건은 실제 Prompt Injection 샘플이 프록시를 통과한 사례이므로, 향후 휴리스틱 규칙과 경량 분류 계층 보강의 우선 검토 대상으로 본다.
+
+### Limitations
+
+- `deepset/prompt-injections`는 PII 탐지 평가용 데이터셋이 아니다.
+- 한국어 주민등록번호, 전화번호, 주소, 민원정보 유출 시나리오는 별도 데이터셋으로 평가해야 한다.
+- 영어 기반 Prompt Injection 결과를 한국어 공공기관 운영 환경 성능으로 직접 일반화하면 안 된다.
+- 따라서 보고서에서는 내부 데이터셋 결과와 외부 데이터셋 결과를 반드시 분리해서 제시한다.
 
 ## 최신 벤치마크 스냅샷
 

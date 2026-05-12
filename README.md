@@ -102,17 +102,32 @@ flowchart TD
 
 이 결과는 실제 운영 일반화 성능 추정치가 아니라, 내부 회귀셋과 표현이 다른 외부 스타일 샘플에서 오탐/미탐 패턴을 확인하기 위한 검증 결과입니다.
 
+### Hugging Face 공개 데이터셋 기반 Prompt Injection 평가 결과
+
+기준 데이터셋: `deepset/prompt-injections`
+
+| Dataset | Split | Samples | Accuracy | Precision | Recall | F1 |
+|---|---|---:|---:|---:|---:|---:|
+| `deepset/prompt-injections` | `train` | 100 | 0.880 | 1.000 | 0.200 | 0.333 |
+
+이 평가는 Hugging Face 공개 데이터셋을 사용한 Prompt Injection 외부 벤치마크입니다. 해당 데이터셋은 PII 탐지용 데이터셋이 아니므로 개인정보 탐지 성능에는 포함하지 않습니다.
+
+총 100개 샘플 중 유효 샘플 100개를 대상으로 평가했으며, False Positive는 0건, False Negative는 12건이었습니다. False Negative는 실제 Prompt Injection 문장인데 프록시가 차단하지 못한 사례이므로 향후 탐지 룰 개선의 우선 검토 대상입니다.
+
 ### 성능 결과 해석 주의
 
 `evaluation/sample_dataset.json` 기준 결과는 내부 회귀 테스트 성격입니다. 이 데이터셋은 현재 탐지 룰과 정책이 기존 케이스를 안정적으로 탐지하는지 확인하기 위한 목적이므로 F1 1.000이 나올 수 있습니다.
 
 그러나 이 결과를 실제 운영 환경에서의 일반화 성능으로 해석해서는 안 됩니다. 이를 보완하기 위해 `evaluation/external_validation_sample.json`을 별도로 구성했으며, 외부 스타일 검증에서는 Prompt Injection F1이 낮아지는 것을 확인했습니다. 향후 데이터셋을 확장하여 우회 표현, 비정형 개인정보, 공공기관 업무 문장에 대한 일반화 성능을 지속적으로 평가합니다.
 
+`deepset/prompt-injections` 결과는 외부 공개 데이터셋 기반 Prompt Injection 평가 결과이며, 내부 회귀 테스트와 목적이 다릅니다. 내부 회귀 테스트는 기존 정책과 룰이 깨지지 않았는지 확인하기 위한 안정성 검증이고, 외부 데이터셋 평가는 프로젝트 외부의 공격 표현에 대한 일반화 가능성을 확인하기 위한 보조 검증입니다.
+
 ## 벤치마크 비교 기준
 
 - 잘못된 표현: `정확도 100%`, `탐지율 100%`, `모든 공격 탐지 가능`
 - 올바른 표현: `내부 회귀 테스트 데이터셋 기준 F1 1.000`
 - 올바른 표현: `외부 스타일 검증 데이터셋 기준 Injection F1 0.898`
+- 올바른 표현: `Hugging Face 공개 데이터셋 기준 Injection F1 0.333`
 - 올바른 표현: `내부 데이터셋 F1 1.000은 내부 회귀 테스트 결과이며, 일반화 성능은 외부 스타일 검증으로 별도 확인한다.`
 
 ## 데이터셋 구성 방향
@@ -222,6 +237,8 @@ reports/
   evaluation_report.md
   external_validation_report.md
   baseline_compare_report.md
+  deepset_prompt_injection_report.md
+  external_dataset_performance_summary.md
 frontend/
   demo.html
 tools/
@@ -441,6 +458,7 @@ python evaluation/eval_deepset_prompt_injection.py --proxy-url http://127.0.0.1:
 - `evaluation/results/deepset_prompt_injection_false_negatives.csv`
 - `evaluation/results/deepset_prompt_injection_false_positives.csv`
 - `reports/deepset_prompt_injection_report.md`
+- `reports/external_dataset_performance_summary.md`
 
 The CSV files include evaluated prompt text and are ignored by default through `.gitignore`. The Markdown report is suitable for presentation or evaluation evidence when generated.
 
@@ -508,6 +526,8 @@ Invoke-RestMethod `
 - `reports/evaluation_report.md`
 - `reports/external_validation_report.md`
 - `reports/baseline_compare_report.md`
+- `reports/deepset_prompt_injection_report.md`
+- `reports/external_dataset_performance_summary.md`
 
 ## 한계와 향후 개선
 

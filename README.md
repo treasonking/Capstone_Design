@@ -215,7 +215,9 @@ evaluation/
   external_validation_sample.json
   evaluate.py
   baseline_compare.py
+  eval_deepset_prompt_injection.py
   report_generator.py
+  results/
 reports/
   evaluation_report.md
   external_validation_report.md
@@ -388,6 +390,71 @@ python -m http.server 5500
 ```
 
 브라우저에서 `http://127.0.0.1:5500/demo.html`로 접속합니다. `frontend/demo.html`은 발표용 정적 데모 페이지이며 운영용 관리자 콘솔이 아닙니다. 관리자 토큰 기본값 `dev-admin-token`은 로컬 개발 데모용 값이고 브라우저 저장소에 저장하지 않습니다.
+
+## External Prompt Injection Evaluation
+
+This project supports external benchmark evaluation using the Hugging Face dataset `deepset/prompt-injections`.
+
+This dataset is used to evaluate Prompt Injection detection performance only. PII detection is evaluated separately with a Korean PII-focused dataset.
+
+### Install dependencies
+
+The external evaluation dependencies are provided through the `eval` extra.
+
+```bash
+python -m pip install ".[eval]"
+```
+
+Equivalent package set:
+
+```bash
+python -m pip install datasets requests pandas scikit-learn
+```
+
+### Run proxy
+
+```bash
+python -m uvicorn backend.app.api.proxy:app --host 127.0.0.1 --port 8000 --reload
+```
+
+### Run evaluation
+
+```bash
+python evaluation/eval_deepset_prompt_injection.py
+```
+
+### Run with custom sample size
+
+```bash
+python evaluation/eval_deepset_prompt_injection.py --max-samples 500
+```
+
+### Run with custom proxy URL
+
+```bash
+python evaluation/eval_deepset_prompt_injection.py --proxy-url http://127.0.0.1:8000/v1/chat/completions
+```
+
+### Generated outputs
+
+- `evaluation/results/deepset_prompt_injection_results.csv`
+- `evaluation/results/deepset_prompt_injection_false_negatives.csv`
+- `evaluation/results/deepset_prompt_injection_false_positives.csv`
+- `reports/deepset_prompt_injection_report.md`
+
+The CSV files include evaluated prompt text and are ignored by default through `.gitignore`. The Markdown report is suitable for presentation or evaluation evidence when generated.
+
+### Metric interpretation
+
+| Metric | Meaning |
+|---|---|
+| Precision | Among prompts blocked as injection, how many were actual injection prompts |
+| Recall | Among actual injection prompts, how many were blocked |
+| F1-score | Harmonic mean of Precision and Recall |
+| False Positive | Normal prompt incorrectly blocked |
+| False Negative | Injection prompt incorrectly allowed |
+
+False Negative cases are the most important review target because they represent attack prompts that bypassed the proxy.
 
 ## 수동 검증 예시
 

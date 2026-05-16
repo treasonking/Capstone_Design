@@ -6,15 +6,23 @@ from typing import Any
 
 
 def _dataset_notice(dataset_path: str) -> list[str]:
+    scope_notice = [
+        "본 프로젝트는 범용 Prompt Injection 탐지기가 아니라, 한국어 공공기관·사내망 환경에서 발생할 수 있는 개인정보 유출 및 정책 우회형 Prompt Injection을 우선 방어 대상으로 설계한 LLM 보안 프록시이다.",
+        "",
+    ]
     dataset_name = Path(dataset_path).name.lower()
     if dataset_name == "sample_dataset.json":
         return [
             "> 이 리포트는 내부 회귀 테스트 데이터셋 기준 결과이다. 탐지 룰과 정책이 기존 테스트 케이스에서 정상 동작하는지 확인하기 위한 목적이며, 실제 운영 환경의 일반화 성능을 의미하지 않는다.",
             "",
+            *scope_notice,
         ]
     if dataset_name == "external_validation_sample.json":
         return [
             "> 이 리포트는 내부 데이터셋 과적합 가능성을 보완하기 위한 외부 스타일 검증 결과이다. 외부 표현, 우회 문장, 다양한 프롬프트 스타일에서 탐지 성능이 어떻게 달라지는지 확인하기 위한 목적이다.",
+            "",
+            *scope_notice,
+            "외부 영어 데이터셋에서 낮은 Recall이 측정된 것은 현재 탐지 정책과 학습 데이터가 한국어 공공기관 시나리오에 집중되어 있기 때문이다. 이 결과는 시스템 실패로 숨기기보다, 범용 환경 확장을 위한 개선 지점으로 해석한다.",
             "",
         ]
     return []

@@ -65,11 +65,31 @@ rules:
     priority: 96
     threshold: 5.0
     description: "Block attempts to override previous or higher-priority instructions."
+  INJ_EN_DIRECT_OVERRIDE:
+    action: BLOCK
+    priority: 96
+    threshold: 5.0
+    description: "Block English direct instruction override patterns such as ignore/disregard previous instructions."
+  INJ_MIXED_DIRECT_OVERRIDE:
+    action: BLOCK
+    priority: 96
+    threshold: 5.0
+    description: "Block Korean-English mixed direct override patterns."
   INJ_SYSTEM_PROMPT_EXTRACTION_ATTEMPT:
     action: BLOCK
     priority: 98
     threshold: 5.0
     description: "Block attempts to reveal system prompts or hidden instructions."
+  INJ_EN_SYSTEM_PROMPT_LEAK:
+    action: BLOCK
+    priority: 98
+    threshold: 5.0
+    description: "Block English requests to reveal, show, or print system prompts or hidden instructions."
+  INJ_MIXED_SYSTEM_PROMPT_LEAK:
+    action: BLOCK
+    priority: 98
+    threshold: 5.0
+    description: "Block Korean-English mixed requests to reveal system prompts or hidden instructions."
   INJ_RULE_DISCLOSURE_ATTEMPT:
     action: BLOCK
     priority: 88
@@ -90,6 +110,21 @@ rules:
     priority: 90
     threshold: 5.0
     description: "Block policy bypass attempts."
+  INJ_EN_POLICY_BYPASS:
+    action: BLOCK
+    priority: 99
+    threshold: 5.0
+    description: "Block English policy bypass, safety-disable, or confidential-data leakage requests."
+  INJ_EN_JAILBREAK:
+    action: BLOCK
+    priority: 94
+    threshold: 5.0
+    description: "Block English jailbreak, DAN, developer mode, or unrestricted-assistant roleplay requests."
+  INJ_MIXED_POLICY_BYPASS:
+    action: BLOCK
+    priority: 99
+    threshold: 5.0
+    description: "Block Korean-English mixed policy bypass or safety filter disable requests."
   INJ_DEBUG_MODE_ATTEMPT:
     action: BLOCK
     priority: 93

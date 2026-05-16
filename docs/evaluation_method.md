@@ -4,10 +4,14 @@
 
 동사무소/행정복지센터 민원 업무 맥락에서 탐지 품질을 정량적으로 비교하기 위해 PII 탐지와 Prompt Injection 탐지를 분리 평가한다.
 
+본 프로젝트는 범용 Prompt Injection 탐지기가 아니라, 한국어 공공기관·사내망 환경에서 발생할 수 있는 개인정보 유출 및 정책 우회형 Prompt Injection을 우선 방어 대상으로 설계한 LLM 보안 프록시이다.
+
 ## 데이터셋
 
 - 파일: `evaluation/sample_dataset.json`
-- 현재 크기: 113건
+- 영어 Prompt Injection 보강셋: `evaluation/datasets/prompt_injection_english_cases.json`
+- 한국어-영어 혼합 Prompt Injection 보강셋: `evaluation/datasets/prompt_injection_mixed_cases.json`
+- 기본 내부 파일 크기: 113건
 - 구성:
   - PII 샘플: 43건 (양성/음성 혼합)
   - Injection 샘플: 65건 (양성/음성 혼합)
@@ -68,6 +72,22 @@ Hugging Face 공개 데이터셋 기반 Prompt Injection 벤치마크:
 python -m evaluation.evaluate_external_prompt_injection
 ```
 
+Rule Only / Lightweight Model Only / Hybrid 비교:
+
+```bash
+python -m evaluation.baseline_compare \
+  --report reports/baseline_compare_report.md \
+  --results reports/baseline_compare_results.json
+```
+
+이 비교는 Prompt Injection 탐지에 대해 세 가지 모드를 분리한다.
+
+- `Rule Only`: 휴리스틱/regex rule 기반 Prompt Injection 탐지만 사용
+- `Model Only`: `models/lightweight/vectorizer.joblib`, `models/lightweight/classifier.joblib`가 로드된 경우에만 경량 분류기 단독 사용
+- `Hybrid`: rule detector와 lightweight classifier를 함께 사용. artifact가 없으면 `Hybrid(fallback)` 또는 `model_status=artifact_missing`으로 표시
+
+fallback 상태의 결과는 완전한 Hybrid 성능으로 해석하지 않는다.
+
 추가 해석 가이드는 `docs/evaluation_limitations.md`를 참고한다.
 
 ## External Prompt Injection Benchmark
@@ -106,6 +126,7 @@ python -m evaluation.evaluate_external_prompt_injection
 - `Lakera/gandalf_ignore_instructions`는 공격 중심 데이터셋이므로 Precision보다 Recall 중심으로 해석한다.
 - 한국어 주민등록번호, 전화번호, 주소, 민원정보 유출 시나리오는 별도 데이터셋으로 평가해야 한다.
 - 영어 기반 Prompt Injection 결과를 한국어 공공기관 운영 환경 성능으로 직접 일반화하면 안 된다.
+- 외부 영어 데이터셋에서 낮은 Recall이 측정된 것은 현재 탐지 정책과 학습 데이터가 한국어 공공기관 시나리오에 집중되어 있기 때문이다. 이 결과는 시스템 실패로 숨기기보다, 범용 환경 확장을 위한 개선 지점으로 해석한다.
 - 따라서 보고서에서는 내부 데이터셋 결과와 외부 데이터셋 결과를 반드시 분리해서 제시한다.
 
 ### Paper Wording

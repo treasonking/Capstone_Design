@@ -27,6 +27,13 @@
 - `INJ_DEBUG_MODE_ATTEMPT`: 디버그/개발자/관리자 모드 전환 유도
 - `INJ_MULTI_STEP_EXTRACTION_ATTEMPT`: 단계적 내부 기준 추출 시도
 - `INJ_OBFUSCATED_INJECTION_ATTEMPT`: 난독화된 prompt injection 시도
+- `INJ_EN_DIRECT_OVERRIDE`: 영어 직접 지시 무시/override 패턴
+- `INJ_EN_SYSTEM_PROMPT_LEAK`: 영어 system prompt/hidden instruction 공개 요청
+- `INJ_EN_POLICY_BYPASS`: 영어 policy/safety 우회 요청
+- `INJ_EN_JAILBREAK`: 영어 jailbreak/DAN/developer mode 유도
+- `INJ_MIXED_DIRECT_OVERRIDE`: 한국어-영어 혼합 지시 무시/override 표현
+- `INJ_MIXED_SYSTEM_PROMPT_LEAK`: 한국어-영어 혼합 system prompt 공개 요청
+- `INJ_MIXED_POLICY_BYPASS`: 한국어-영어 혼합 policy/filter 우회 요청
 - `SAFE_INPUT`: 위험 신호 미탐지
 
 ## 정책 우선순위 / Threshold

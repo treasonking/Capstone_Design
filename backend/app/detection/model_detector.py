@@ -26,8 +26,13 @@ _SAFE_CONTEXT_TERMS = (
     "설명",
     "방법",
     "이유",
+    "어떻게",
+    "공격",
+    "위험",
     "방어",
     "예방",
+    "막을",
+    "막는",
     "마스킹",
     "비식별화",
     "익명화",
@@ -44,6 +49,8 @@ _SAFE_CONTEXT_TERMS = (
     "defense",
     "prevention",
     "why",
+    "dangerous",
+    "unsafe",
 )
 _AGGRESSIVE_TERMS = (
     "무시하고",
@@ -71,6 +78,10 @@ _POLICY_BYPASS_PATTERNS: tuple[re.Pattern[str], ...] = (
     ),
     re.compile(
         r"(bypass|disable|ignore).{0,40}(policy|policies|filter|filters|restriction|restrictions|safety\s*policy|safety\s*filter)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(skip).{0,20}(every|all|the)?\s*safety\s*rules?",
         re.IGNORECASE,
     ),
     re.compile(

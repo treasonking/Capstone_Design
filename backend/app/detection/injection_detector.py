@@ -67,6 +67,54 @@ _DIRECT_OVERRIDE_REQUEST_PATTERNS: tuple[re.Pattern[str], ...] = (
         re.IGNORECASE,
     ),
 )
+_EN_DIRECT_OVERRIDE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\bignore\s+(?:all\s+)?(?:previous|prior)\s+instructions?\b", re.IGNORECASE),
+    re.compile(r"\bdisregard\s+(?:all\s+)?(?:previous|prior)\s+instructions?\b", re.IGNORECASE),
+    re.compile(r"\bforget\s+(?:all\s+)?(?:previous|prior)\s+instructions?\b", re.IGNORECASE),
+    re.compile(r"\bdo\s+not\s+follow\s+(?:all\s+)?(?:previous|prior)\s+instructions?\b", re.IGNORECASE),
+    re.compile(r"\boverride\s+(?:the\s+)?(?:system\s+prompt|previous\s+instructions?)\b", re.IGNORECASE),
+)
+_EN_SYSTEM_PROMPT_LEAK_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\breveal\s+(?:the\s+)?system\s+prompt\b", re.IGNORECASE),
+    re.compile(r"\b(?:show|display)\s+(?:me\s+)?(?:your\s+)?hidden\s+instructions?\b", re.IGNORECASE),
+    re.compile(r"\b(?:show|display)\s+(?:me\s+)?(?:the\s+)?system\s+prompt\b", re.IGNORECASE),
+    re.compile(r"\b(?:print|output)\s+(?:the\s+)?system\s+prompt\b", re.IGNORECASE),
+    re.compile(r"\b(?:reveal|print|output)\s+(?:your\s+)?hidden\s+(?:prompt|instructions?|rules?)\b", re.IGNORECASE),
+)
+_EN_POLICY_BYPASS_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\bbypass\s+(?:the\s+)?(?:safety\s+)?polic(?:y|ies)\b", re.IGNORECASE),
+    re.compile(r"\bdisable\s+(?:the\s+)?safety\s+polic(?:y|ies)\b", re.IGNORECASE),
+    re.compile(r"\bdo\s+not\s+follow\s+(?:the\s+)?polic(?:y|ies)\b", re.IGNORECASE),
+    re.compile(r"\bskip\s+(?:every|all|the)\s+safety\s+rules?\b", re.IGNORECASE),
+    re.compile(r"\b(?:output|leak|reveal|exfiltrate)\s+(?:confidential|private|personal)\s+(?:data|information)\b", re.IGNORECASE),
+)
+_EN_JAILBREAK_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\byou\s+are\s+now\s+in\s+developer\s+mode\b", re.IGNORECASE),
+    re.compile(r"\bact\s+as\s+dan\b", re.IGNORECASE),
+    re.compile(r"\bjailbreak\b", re.IGNORECASE),
+    re.compile(r"\broleplay\s+as\s+an?\s+unrestricted\s+assistant\b", re.IGNORECASE),
+    re.compile(r"\bno\s+restrictions\b", re.IGNORECASE),
+)
+_MIXED_DIRECT_OVERRIDE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"이전\s+instructions?\s*무시", re.IGNORECASE),
+    re.compile(r"previous\s+instructions?\s*무시", re.IGNORECASE),
+    re.compile(r"ignore\s+이전\s*(?:지시|명령)", re.IGNORECASE),
+    re.compile(r"(?:규칙\s*ignore|rule\s*무시)", re.IGNORECASE),
+    re.compile(r"instructions?\s*override", re.IGNORECASE),
+    re.compile(r"정책\s*override", re.IGNORECASE),
+    re.compile(r"(?:관리자|developer)\s*mode\s*로\s*동작", re.IGNORECASE),
+)
+_MIXED_SYSTEM_PROMPT_LEAK_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"system\s*prompt\s*(?:보여줘|출력|공개|알려줘)", re.IGNORECASE),
+    re.compile(r"시스템\s*prompt\s*(?:보여줘|출력|공개|알려줘)", re.IGNORECASE),
+    re.compile(r"hidden\s*instructions?\s*(?:보여줘|출력|공개|알려줘)", re.IGNORECASE),
+)
+_MIXED_POLICY_BYPASS_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"policy\s*bypass\s*해줘", re.IGNORECASE),
+    re.compile(r"safety\s*policy\s*(?:꺼줘|끄고|비활성화|disable)", re.IGNORECASE),
+    re.compile(r"개인정보\s*(?:filter|필터)\s*(?:꺼줘|끄고|disable|비활성화)", re.IGNORECASE),
+    re.compile(r"보안\s*정책\s*bypass", re.IGNORECASE),
+)
 _DEFENSIVE_TERMS = (
     "do not",
     "don't",
@@ -99,6 +147,10 @@ _SENSITIVE_BOUNDARY_TERMS = (
     "internal rules",
     "internal instruction",
     "policy hierarchy",
+    "private information",
+    "personal information",
+    "confidential data",
+    "private data",
     "숨겨진 프롬프트",
     "숨겨진 지시",
     "시스템 프롬프트",
@@ -213,6 +265,8 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             ),
         ),
     ),
+    "EN_DIRECT_OVERRIDE": _CategoryRule(5),
+    "MIXED_DIRECT_OVERRIDE": _CategoryRule(5),
     "SYSTEM_PROMPT": _CategoryRule(
         5,
         (
@@ -229,6 +283,8 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "system instruction",
         ),
     ),
+    "EN_SYSTEM_PROMPT_LEAK": _CategoryRule(5),
+    "MIXED_SYSTEM_PROMPT_LEAK": _CategoryRule(5),
     "RULE_DISCLOSURE": _CategoryRule(
         3,
         (
@@ -369,6 +425,9 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
             "no restrictions",
         ),
     ),
+    "EN_POLICY_BYPASS": _CategoryRule(5),
+    "EN_JAILBREAK": _CategoryRule(5),
+    "MIXED_POLICY_BYPASS": _CategoryRule(5),
     "POLICY_BYPASS_REQUEST": _CategoryRule(5),
     "DIRECT_OVERRIDE_REQUEST": _CategoryRule(5),
     "MULTI_STEP": _CategoryRule(
@@ -440,12 +499,19 @@ _CATEGORY_RULES: dict[str, _CategoryRule] = {
 _CATEGORY_REASON_CODES = {
     "DIRECT_OVERRIDE_REQUEST": ReasonCode.INJ_DIRECT_OVERRIDE.value,
     "DIRECT_OVERRIDE": ReasonCode.INJ_DIRECT_OVERRIDE_ATTEMPT.value,
+    "EN_DIRECT_OVERRIDE": ReasonCode.INJ_EN_DIRECT_OVERRIDE.value,
+    "MIXED_DIRECT_OVERRIDE": ReasonCode.INJ_MIXED_DIRECT_OVERRIDE.value,
     "SYSTEM_PROMPT": ReasonCode.INJ_SYSTEM_PROMPT_EXTRACTION_ATTEMPT.value,
+    "EN_SYSTEM_PROMPT_LEAK": ReasonCode.INJ_EN_SYSTEM_PROMPT_LEAK.value,
+    "MIXED_SYSTEM_PROMPT_LEAK": ReasonCode.INJ_MIXED_SYSTEM_PROMPT_LEAK.value,
     "RULE_DISCLOSURE": ReasonCode.INJ_RULE_DISCLOSURE_ATTEMPT.value,
     "ROLE_OVERRIDE": ReasonCode.INJ_ROLE_OVERRIDE_ATTEMPT.value,
     "DEBUG_MODE": ReasonCode.INJ_DEBUG_MODE_ATTEMPT.value,
     "POLICY_BYPASS_REQUEST": ReasonCode.INJ_POLICY_BYPASS.value,
     "POLICY_BYPASS": ReasonCode.INJ_POLICY_BYPASS_ATTEMPT.value,
+    "EN_POLICY_BYPASS": ReasonCode.INJ_EN_POLICY_BYPASS.value,
+    "EN_JAILBREAK": ReasonCode.INJ_EN_JAILBREAK.value,
+    "MIXED_POLICY_BYPASS": ReasonCode.INJ_MIXED_POLICY_BYPASS.value,
     "MULTI_STEP": ReasonCode.INJ_MULTI_STEP_EXTRACTION_ATTEMPT.value,
     "OBFUSCATED": ReasonCode.INJ_OBFUSCATED_INJECTION_ATTEMPT.value,
 }
@@ -478,8 +544,13 @@ _SAFE_EDUCATIONAL_CONTEXT_TERMS = (
     "설명",
     "방법",
     "이유",
+    "어떻게",
+    "공격",
+    "위험",
     "방어",
     "예방",
+    "막을",
+    "막는",
     "마스킹",
     "비식별화",
     "익명화",
@@ -497,6 +568,8 @@ _SAFE_EDUCATIONAL_CONTEXT_TERMS = (
     "defense",
     "prevention",
     "why",
+    "dangerous",
+    "unsafe",
     "guide",
 )
 _SAFE_NEGATION_TERMS = (
@@ -508,6 +581,33 @@ _SAFE_NEGATION_TERMS = (
     "do not bypass",
     "should not bypass",
     "must not bypass",
+)
+_SAFE_META_DISCUSSION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"\b(?:explain|what\s+is|how\s+(?:can|do|to)|why\s+is|write\s+a\s+policy\s+about|prevent)\b"
+        r".{0,120}\b(?:prompt\s+injection|hidden\s+prompts?|system\s+prompts?|previous\s+instructions?)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:prompt\s+injection|hidden\s+prompts?|system\s+prompts?|previous\s+instructions?)\b"
+        r".{0,120}\b(?:dangerous|unsafe|prevention|prevent|policy|explain)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(프롬프트\s*인젝션|시스템\s*프롬프트|이전\s*지시|숨겨진\s*프롬프트|공격)"
+        r".{0,80}(무엇인지|설명|왜|위험|어떻게|막을|막는|방지|예방)",
+        re.IGNORECASE,
+    ),
+)
+_ATTACK_EXECUTION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\b(?:ignore|disregard|forget)\s+(?:all\s+)?(?:previous|prior)\s+instructions?\b", re.IGNORECASE),
+    re.compile(r"\bdo\s+not\s+follow\s+(?:all\s+)?(?:previous|prior)\s+instructions?\b", re.IGNORECASE),
+    re.compile(r"\bbypass\s+(?:the\s+)?(?:safety\s+)?polic(?:y|ies)\b", re.IGNORECASE),
+    re.compile(r"\bdisable\s+(?:the\s+)?safety\s+polic(?:y|ies)\b", re.IGNORECASE),
+    re.compile(r"\b(?:reveal|show|print|display|output)\s+(?:me\s+)?(?:your\s+|the\s+)?(?:system\s+prompt|hidden\s+(?:prompt|instructions?|rules?))\b", re.IGNORECASE),
+    re.compile(r"(이전|앞선|기존|상위).{0,12}(지시|명령|규칙|정책).{0,12}(무시하고|따르지\s*말고|잊고|폐기하고)", re.IGNORECASE),
+    re.compile(r"(시스템\s*프롬프트|system\s*prompt|hidden\s*instructions?).{0,20}(보여줘|출력|공개|알려줘)", re.IGNORECASE),
+    re.compile(r"(정책|규칙|필터|policy|filter).{0,20}(우회해|bypass|disable|꺼줘|끄고|해제)", re.IGNORECASE),
 )
 
 
@@ -610,6 +710,25 @@ def _is_safe_educational_context(text: str, normalized_text: str) -> bool:
     return (has_safe_term or has_negation) and not has_hard_attack
 
 
+def _is_safe_meta_discussion(text: str, normalized_text: str) -> bool:
+    combined = f"{text.lower()} {normalized_text}"
+    if not any(pattern.search(combined) for pattern in _SAFE_META_DISCUSSION_PATTERNS):
+        return False
+    return not any(pattern.search(combined) for pattern in _ATTACK_EXECUTION_PATTERNS)
+
+
+def _apply_specific_pattern_group(
+    signal_text: str,
+    matches: dict[str, list[str]],
+    category: str,
+    patterns: tuple[re.Pattern[str], ...],
+) -> None:
+    for pattern in patterns:
+        match = pattern.search(signal_text)
+        if match:
+            _add_match(matches, category, match.group(0))
+
+
 def _apply_pattern_signals(text: str, normalized: str, matches: dict[str, list[str]]) -> None:
     for pattern in _KOREAN_DIRECT_OVERRIDE_PATTERNS:
         match = pattern.search(text)
@@ -620,6 +739,55 @@ def _apply_pattern_signals(text: str, normalized: str, matches: dict[str, list[s
     risk_target_count = _count_terms(normalized, _RISK_TARGET_TERMS)
     if (multi_step_count >= 2 and risk_target_count >= 1) or (multi_step_count >= 1 and risk_target_count >= 2):
         _add_match(matches, "MULTI_STEP", "multi-step-risk-target")
+
+
+def _apply_language_specific_signals(text: str, normalized: str, matches: dict[str, list[str]]) -> None:
+    if _is_safe_educational_context(text, normalized) or _is_defensive_boundary_context(text, normalized):
+        return
+
+    signal_text = f"{text.lower()} {normalized}"
+    _apply_specific_pattern_group(
+        signal_text,
+        matches,
+        "EN_DIRECT_OVERRIDE",
+        _EN_DIRECT_OVERRIDE_PATTERNS,
+    )
+    _apply_specific_pattern_group(
+        signal_text,
+        matches,
+        "EN_SYSTEM_PROMPT_LEAK",
+        _EN_SYSTEM_PROMPT_LEAK_PATTERNS,
+    )
+    _apply_specific_pattern_group(
+        signal_text,
+        matches,
+        "EN_POLICY_BYPASS",
+        _EN_POLICY_BYPASS_PATTERNS,
+    )
+    _apply_specific_pattern_group(
+        signal_text,
+        matches,
+        "EN_JAILBREAK",
+        _EN_JAILBREAK_PATTERNS,
+    )
+    _apply_specific_pattern_group(
+        signal_text,
+        matches,
+        "MIXED_DIRECT_OVERRIDE",
+        _MIXED_DIRECT_OVERRIDE_PATTERNS,
+    )
+    _apply_specific_pattern_group(
+        signal_text,
+        matches,
+        "MIXED_SYSTEM_PROMPT_LEAK",
+        _MIXED_SYSTEM_PROMPT_LEAK_PATTERNS,
+    )
+    _apply_specific_pattern_group(
+        signal_text,
+        matches,
+        "MIXED_POLICY_BYPASS",
+        _MIXED_POLICY_BYPASS_PATTERNS,
+    )
 
 
 def _apply_request_intent_signals(text: str, normalized: str, matches: dict[str, list[str]]) -> None:
@@ -701,6 +869,7 @@ def detect_injection(text: str) -> list[DetectionResult]:
     normalized_matches = _find_category_matches(normalized)
     matches = _merge_matches(raw_matches, normalized_matches)
     _apply_pattern_signals(text, signal_text, matches)
+    _apply_language_specific_signals(text, normalized, matches)
     _apply_request_intent_signals(text, signal_text, matches)
     matched_categories = set(matches)
     obfuscated = _has_obfuscation_signal(text, normalized)
@@ -711,6 +880,9 @@ def detect_injection(text: str) -> list[DetectionResult]:
     ):
         matched_categories.add("OBFUSCATED")
         matches.setdefault("OBFUSCATED", ["normalized-obfuscated-pattern"])
+
+    if _is_safe_meta_discussion(text, normalized):
+        return []
 
     if _is_defensive_boundary_context(text, normalized):
         for category in ("SYSTEM_PROMPT", "RULE_DISCLOSURE", "EXFILTRATION_VERB", "OBFUSCATED"):
@@ -786,12 +958,19 @@ def detect_injection(text: str) -> list[DetectionResult]:
     fallback_categories = {
         "DIRECT_OVERRIDE_REQUEST",
         "DIRECT_OVERRIDE",
+        "EN_DIRECT_OVERRIDE",
+        "MIXED_DIRECT_OVERRIDE",
         "SYSTEM_PROMPT",
+        "EN_SYSTEM_PROMPT_LEAK",
+        "MIXED_SYSTEM_PROMPT_LEAK",
         "RULE_DISCLOSURE",
         "ROLE_OVERRIDE",
         "DEBUG_MODE",
         "POLICY_BYPASS_REQUEST",
         "POLICY_BYPASS",
+        "EN_POLICY_BYPASS",
+        "EN_JAILBREAK",
+        "MIXED_POLICY_BYPASS",
         "OBFUSCATED",
     }
     if not results and matched_terms and matched_categories & fallback_categories:

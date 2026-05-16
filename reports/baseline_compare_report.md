@@ -1,53 +1,52 @@
-# Multi-layered Detection Ablation Report
+# Rule Only vs Hybrid Baseline Comparison
 
-> 이 리포트는 동일한 내부 회귀 데이터셋에서 다층형 탐지 파이프라인의 계층별 기여도를 비교한 요약이다. 현재 보고서는 경량 분류 계층 artifact 또는 의존성이 없는 환경에서 실행되었기 때문에 Lightweight Classification Layer only 결과는 `N/A`로 표시된다. 따라서 이 보고서는 최종 계층별 성능 비교가 아니라, 현재 MVP가 경량 분류 계층 비활성화 상황에서도 Regex Pattern Layer와 Heuristic Rule Layer를 통해 안정적으로 동작하는지 확인하는 중간 보고서이다.
+본 프로젝트는 범용 Prompt Injection 탐지기가 아니라, 한국어 공공기관·사내망 환경에서 발생할 수 있는 개인정보 유출 및 정책 우회형 Prompt Injection을 우선 방어 대상으로 설계한 LLM 보안 프록시이다.
 
-## Dataset
+외부 영어 데이터셋에서 낮은 Recall이 측정된 것은 현재 탐지 정책과 학습 데이터가 한국어 공공기관 시나리오에 집중되어 있기 때문이다. 이 결과는 시스템 실패로 숨기기보다, 범용 환경 확장을 위한 개선 지점으로 해석한다.
 
-- Path: `evaluation/sample_dataset.json`
-- Size: 113
+## Execution Status
 
-## Ablation Groups
+이 파일은 `evaluation/baseline_compare.py`가 생성하는 최종 출력 형식에 맞춰 정리되어 있다. 현재 작업 환경에서는 Python 런타임이 없어 스크립트를 실제 실행하지 못했으므로, 아래 표의 수치는 `N/A`로 남긴다. Python이 설치된 환경에서는 다음 명령으로 같은 파일과 JSON 결과를 재생성한다.
 
-| Group | Configuration | Purpose |
-|---|---|---|
-| A | Regex Pattern Layer only | 정규식 계층이 정형 PII 탐지에서 얼마나 효과적인지 확인한다. |
-| B | Heuristic Rule Layer only | 휴리스틱 규칙 계층이 프롬프트 인젝션 탐지 성능에 얼마나 기여하는지 확인한다. |
-| C | Lightweight Classification Layer only | 경량 분류 계층이 비정형 공격 탐지에 기여하는지 확인한다. |
-| D | Regex Pattern Layer + Heuristic Rule Layer | 정형 PII와 명시적 인젝션 단서 결합 시 탐지 안정성을 확인한다. |
-| E | Full Multi-layered Detection Pipeline | 최종 다층형 구조가 단일 계층 구조보다 Recall과 안정성을 높이는지 확인한다. |
+```bash
+python -m evaluation.baseline_compare \
+  --report reports/baseline_compare_report.md \
+  --results reports/baseline_compare_results.json
+```
 
-향후 최종 비교에서는 경량 분류 계층 artifact를 생성한 뒤 다음 실험군을 모두 비교한다.
-
-1. A. Regex Pattern Layer only
-2. B. Heuristic Rule Layer only
-3. C. Lightweight Classification Layer only
-4. D. Regex Pattern Layer + Heuristic Rule Layer
-5. E. Full Multi-layered Detection Pipeline
-
-## Lightweight Classification Layer Status
+## Lightweight Classifier Status
 
 | Item | Value |
 |---|---|
-| Lightweight classification layer enabled | false |
-| Lightweight classification layer status | dependency_missing |
-| Interpretation | 경량 분류 계층 artifact 또는 의존성이 없어 `Lightweight Classification Layer only`는 실행 불가이며, Full Multi-layered Pipeline은 `regex+heuristic fallback` 경로로 동작 |
+| model_status | not_executed_python_missing |
+| enabled | unknown |
+| vectorizer_path | `models/lightweight/vectorizer.joblib` |
+| classifier_path | `models/lightweight/classifier.joblib` |
+| note | Python 런타임이 없어 artifact load 상태를 확인하지 못했다. |
+
+Lightweight classifier artifact가 존재하지 않는 경우 시스템은 실행 중단 대신 rule-based fallback으로 동작한다. 이는 데모 안정성을 위한 설계이나, Hybrid 성능 평가에서는 `model_status`를 `artifact_missing`으로 분리 표시한다. 따라서 fallback 상태의 결과를 완전한 Hybrid 성능으로 해석하지 않는다.
+
+## Datasets
+
+| Dataset | Samples | Status | Note |
+|---|---:|---|---|
+| internal | 105 | prepared | `evaluation/sample_dataset.json` injection rows + 영어/혼합 보강셋 |
+| deepset | N/A | not_executed_python_missing | Hugging Face dataset load requires Python/eval dependencies and network/cache availability |
 
 ## Results
 
-| Mode | Task | Precision | Recall | F1 | Accuracy | Status |
-|---|---|---:|---:|---:|---:|---|
-| A. Regex Pattern Layer only | pii | 1.000 | 1.000 | 1.000 | 1.000 | available |
-| B. Heuristic Rule Layer only | injection | 1.000 | 1.000 | 1.000 | 1.000 | available |
-| C. Lightweight Classification Layer only | pii | N/A | N/A | N/A | N/A | unavailable |
-| C. Lightweight Classification Layer only | injection | N/A | N/A | N/A | N/A | unavailable |
-| D. Regex Pattern Layer + Heuristic Rule Layer | pii | 1.000 | 1.000 | 1.000 | 1.000 | available |
-| D. Regex Pattern Layer + Heuristic Rule Layer | injection | 1.000 | 1.000 | 1.000 | 1.000 | available |
-| E. Full Multi-layered Pipeline | pii | 1.000 | 1.000 | 1.000 | 1.000 | regex+heuristic fallback |
-| E. Full Multi-layered Pipeline | injection | 1.000 | 1.000 | 1.000 | 1.000 | regex+heuristic fallback |
+| Dataset | Mode | Precision | Recall | F1 | TP | FP | FN | Avg Latency(ms) | Model Status |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| internal | Rule Only | N/A | N/A | N/A | N/A | N/A | N/A | N/A | not_executed_python_missing |
+| internal | Model Only | N/A | N/A | N/A | N/A | N/A | N/A | N/A | not_executed_python_missing |
+| internal | Hybrid | N/A | N/A | N/A | N/A | N/A | N/A | N/A | not_executed_python_missing |
+| deepset | Rule Only | N/A | N/A | N/A | N/A | N/A | N/A | N/A | not_executed_python_missing |
+| deepset | Model Only | N/A | N/A | N/A | N/A | N/A | N/A | N/A | not_executed_python_missing |
+| deepset | Hybrid | N/A | N/A | N/A | N/A | N/A | N/A | N/A | not_executed_python_missing |
 
 ## Reading Guide
 
-- `N/A`는 성능이 0이라는 뜻이 아니라, 현재 실행 환경에서 경량 분류 계층 artifact 또는 모델 의존성이 없어 해당 단독 모드를 평가하지 못했다는 뜻이다.
-- `regex+heuristic fallback`은 전체 파이프라인이 실패한 것이 아니라, 경량 분류 계층 artifact가 없는 환경에서도 정규식 패턴 계층과 휴리스틱 규칙 계층 중심으로 계속 동작했다는 뜻이다.
-- 따라서 이 표는 경량 분류 계층 단독 성능 우위를 보여주는 자료가 아니라, 현재 MVP가 artifact 부재 상황에서도 회귀 테스트를 안정적으로 통과하는지 확인하는 운영형 비교표로 해석해야 한다.
+- `Rule Only`는 regex/rule 기반 Prompt Injection 탐지만 사용한다.
+- `Model Only`는 `models/lightweight/vectorizer.joblib`, `models/lightweight/classifier.joblib`가 모두 로드된 경우에만 측정한다. artifact가 없으면 `N/A`로 표시한다.
+- `Hybrid(fallback)`은 경량 분류 artifact가 없거나 사용할 수 없어 rule 기반 fallback 경로로 평가된 상태이다. 이 값은 완전한 Hybrid 성능으로 과장하지 않는다.
+- Python이 설치된 검증 환경에서 스크립트를 실행하면 `reports/baseline_compare_results.json`에 동일한 row 구조로 실제 수치가 저장된다.

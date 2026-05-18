@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-05-18T21:36:05",
+  "random_seed": 42,
+  "train_ratio": 0.7,
+  "eval_ratio": 0.3,
+  "train_path": "datasets\\external_splits\\train_external_prompt_injection.jsonl",
+  "eval_path": "datasets\\external_splits\\eval_external_prompt_injection.jsonl",
+  "train_size": 3421,
+  "eval_size": 1468,
+  "train_counts": {
+    "Lakera/gandalf_ignore_instructions": {
+      "injection": 700
+    },
+    "deepset/prompt-injections": {
+      "injection": 184,
+      "safe": 279
+    },
+    "protectai/prompt-injection-validation": {
+      "injection": 974,
+      "safe": 1284
+    }
+  },
+  "eval_counts": {
+    "Lakera/gandalf_ignore_instructions": {
+      "injection": 300
+    },
+    "deepset/prompt-injections": {
+      "injection": 79,
+      "safe": 120
+    },
+    "protectai/prompt-injection-validation": {
+      "injection": 418,
+      "safe": 551
+    }
+  },
+  "train_eval_overlap": 0,
+  "leakage_check": "passed",
+  "note": "Lakera/gandalf_ignore_instructions is attack-focused; precision/F1 for that dataset should be interpreted only when safe negatives are present."
+}

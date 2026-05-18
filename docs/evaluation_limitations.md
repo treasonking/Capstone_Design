@@ -38,29 +38,32 @@
 - `reports/external_dataset_compare_results.csv`
 - `reports/external_overlap_analysis_report.md`
 - `reports/external_threshold_sweep_report.md`
+- `reports/external_threshold_optimizer_report.md`
 - `reports/external_model_confidence_report.md`
 
-요약하면 `deepset/prompt-injections`에서는 Rule Only와 Hybrid의 Recall이 모두 0.0760으로 같았고, `protectai/prompt-injection-validation`에서는 둘 다 Recall 0.1997, F1 0.3227이었다. `Lakera/gandalf_ignore_instructions`에서는 Hybrid Recall이 0.4680으로 Rule Only 0.4400보다 소폭 높았다.
+internal-only baseline에서는 `deepset/prompt-injections`의 Rule Only와 Hybrid Recall이 모두 0.0760으로 같았고, `protectai/prompt-injection-validation`에서도 둘 다 Recall 0.1997, F1 0.3227이었다. `Lakera/gandalf_ignore_instructions`에서는 Hybrid Recall이 0.4680으로 Rule Only 0.4400보다 소폭 높았다.
 
-반면 Lightweight Model Only는 `deepset` Recall 0.0038, `protectai` Recall 0.0136, `Lakera` Recall 0.1110으로 낮게 측정되었다. 따라서 현재 artifact는 내부/데모 시나리오 보완에는 사용할 수 있지만, 외부 영어 Prompt Injection 데이터셋을 일반화해서 탐지한다고 주장하면 안 된다. 외부 데이터셋 기반 재학습, threshold 조정, hard negative 보강이 필요하다.
+이를 보완하기 위해 외부 공개 데이터셋을 random seed 42로 train 70% / eval 30%로 분리하고, eval 샘플이 학습에 들어가지 않도록 id overlap을 검사했다. 현재 split 기준 train/eval overlap은 0이며, external-tuned 모델은 내부 한국어 시나리오와 외부 영어 train split만 사용해 학습했다.
+
+held-out eval split에서 external-tuned Hybrid Recall은 `deepset=0.2278`, `protectai=0.7392`, `Lakera=0.9500`으로 측정되었다. 같은 eval split의 internal-only Hybrid Recall은 각각 `0.0886`, `0.2344`, `0.4600`이었으므로, 외부 영어 train split을 포함한 재학습은 모델 계층의 영어 일반화 성능을 크게 개선했다.
 
 ## 6. Hybrid Pipeline Limitation on English Datasets
 
-Hybrid 구조가 항상 Rule Only보다 높은 성능을 보장하는 것은 아니다. Hybrid가 성능을 개선하려면 모델 계층이 Rule 계층이 놓친 샘플을 추가 탐지해야 한다. 이번 외부 영어 데이터셋 평가에서는 경량 모델의 추가 탐지 기여도가 낮아 Hybrid와 Rule Only 성능이 유사하게 나타났다.
+Hybrid 구조가 항상 Rule Only보다 높은 성능을 보장하는 것은 아니다. Hybrid가 성능을 개선하려면 모델 계층이 Rule 계층이 놓친 샘플을 추가 탐지해야 한다. internal-only baseline에서는 경량 모델의 추가 탐지 기여도가 낮아 Hybrid와 Rule Only 성능이 유사하게 나타났다.
 
-Overlap 분석에서 `Model Only Unique TP`는 `deepset=0`, `protectai=0`, `Lakera=19`로 측정되었다. 즉, deepset과 protectai에서는 모델이 Rule 계층이 놓친 공격을 추가로 맞추지 못했기 때문에 Hybrid TP가 Rule TP와 같았다. Lakera에서는 일부 보완 효과가 있었지만 전체 성능은 여전히 Rule 계층에 크게 의존했다.
+internal-only overlap 분석에서 `Model Only Unique TP`는 held-out eval split 기준 `deepset=0`, `protectai=0`, `Lakera=6`으로 측정되었다. external-tuned 모델에서는 이 값이 `deepset=11`, `protectai=211`, `Lakera=156`으로 증가했다. 즉, 새 Hybrid 개선은 Rule 계층이 아니라 모델 계층이 rule miss를 추가 탐지한 결과다.
 
-Threshold sweep과 confidence 분석은 현재 threshold 0.70이 외부 영어 데이터셋에서 매우 보수적으로 동작한다는 점을 보여준다. 다만 threshold를 낮추면 Recall과 함께 FP도 크게 증가하므로, 운영 threshold를 단순히 낮추기보다 외부 영어 데이터 기반 재학습, validation split 기반 threshold calibration, hard negative 보강이 필요하다.
+Threshold optimizer는 external-tuned 모델의 held-out eval split에서 `0.30`을 추천했다. 이 값은 F1과 Recall을 높였지만, 운영 데이터 분포에서는 FP가 달라질 수 있으므로 배포 고정값이 아니라 검증 후보로 해석해야 한다.
 
-따라서 본 프로젝트의 현재 Hybrid 구조는 한국어 공공기관 시나리오에서는 설명 가능성과 안정성을 제공하지만, 영어 범용 Prompt Injection 환경에서는 외부 데이터 기반 재학습 및 threshold 조정이 필요하다.
+따라서 본 프로젝트의 Hybrid 구조는 한국어 공공기관 시나리오에서는 설명 가능성과 안정성을 제공하고, 영어 범용 Prompt Injection 환경으로 확장하려면 외부 데이터 기반 재학습, validation split 기반 threshold calibration, hard negative 보강을 함께 수행해야 한다.
 
 ## 7. 발표 시 설명 문장
 
 - "현재 1.0 점수는 내부 검증셋 기준이며, 운영 성능을 보장하는 수치로 주장하지 않습니다."
-- "이번 MVP에서는 정책 회귀와 시연 재현성을 우선했고, 외부 영어 데이터셋에서 낮은 Recall이 나온 부분은 대표 패턴 보강과 개선 과제로 분리했습니다."
+- "이번 MVP에서는 정책 회귀와 시연 재현성을 우선했고, 외부 영어 데이터셋은 train/eval split을 분리해 재학습 개선 가능성을 별도로 검증했습니다."
 - "외부 공개 데이터셋 3종에 대해서는 `reports/external_dataset_compare_report.md`에서 Rule Only, Lightweight Model Only, Hybrid / Full Pipeline을 분리해 확인합니다."
-- "현재 외부 영어 데이터셋에서는 Lightweight Model Only의 Recall이 낮으므로, Hybrid 개선의 대부분을 모델이 만들었다고 주장하지 않습니다."
-- "Rule Only와 Hybrid가 비슷한 이유는 overlap 분석에서 Model Only Unique TP가 거의 없다는 점으로 확인했습니다."
+- "internal-only baseline에서 Rule Only와 Hybrid가 비슷했던 이유는 overlap 분석에서 Model Only Unique TP가 거의 없다는 점으로 확인했습니다."
+- "external-tuned 모델에서는 Model Only Unique TP가 증가했지만, 영어 공개 데이터셋 train split을 사용한 별도 모델이므로 내부 한국어 시나리오 성능은 별도 회귀 검증이 필요합니다."
 - "artifact가 없는 fallback 상태는 완전한 Hybrid 성능으로 해석하지 않습니다."
 
 ## 8. 향후 개선 계획

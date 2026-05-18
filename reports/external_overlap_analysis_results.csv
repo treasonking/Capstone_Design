@@ -1,4 +1,4 @@
-dataset_name,size,attack_samples,rule_tp,model_tp,both_tp,rule_only_tp,model_only_unique_tp,hybrid_tp,hybrid_extra_tp,hybrid_tp_equals_rule_plus_model_unique,hybrid_tp_equals_rule_plus_hybrid_extra,dataset_status,note
-deepset/prompt-injections,662,263,20,1,1,19,0,20,0,True,True,loaded,
-protectai/prompt-injection-validation,3227,1392,278,19,19,259,0,278,0,True,True,loaded,
-Lakera/gandalf_ignore_instructions,1000,1000,440,111,92,348,19,468,28,False,True,loaded,
+dataset_name,model_version,size,attack_samples,rule_tp,model_tp,both_tp,rule_only_tp,model_only_unique_tp,hybrid_tp,hybrid_extra_tp,hybrid_tp_equals_rule_plus_model_unique,hybrid_tp_equals_rule_plus_hybrid_extra,dataset_status,note
+deepset/prompt-injections,external-tuned,199,79,7,13,2,5,11,18,11,True,True,loaded,Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl
+protectai/prompt-injection-validation,external-tuned,969,418,98,306,95,3,211,309,211,True,True,loaded,Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl
+Lakera/gandalf_ignore_instructions,external-tuned,300,300,129,284,128,1,156,285,156,True,True,loaded,Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl

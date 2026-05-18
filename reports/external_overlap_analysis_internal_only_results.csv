@@ -1,0 +1,4 @@
+dataset_name,model_version,size,attack_samples,rule_tp,model_tp,both_tp,rule_only_tp,model_only_unique_tp,hybrid_tp,hybrid_extra_tp,hybrid_tp_equals_rule_plus_model_unique,hybrid_tp_equals_rule_plus_hybrid_extra,dataset_status,note
+deepset/prompt-injections,internal-only,199,79,7,0,0,7,0,7,0,True,True,loaded,Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl
+protectai/prompt-injection-validation,internal-only,969,418,98,8,8,90,0,98,0,True,True,loaded,Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl
+Lakera/gandalf_ignore_instructions,internal-only,300,300,129,31,25,104,6,138,9,False,True,loaded,Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl

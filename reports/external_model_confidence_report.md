@@ -1,40 +1,39 @@
 # External Model Confidence Analysis
 
-- Generated at: `2026-05-18T18:39:25`
-- Hugging Face split: `all`
+- Generated at: `2026-05-18T21:37:16`
+- Hugging Face split: `datasets\external_splits\eval_external_prompt_injection.jsonl`
 - Model status: `enabled`
+- Model version: `external-tuned`
 
 ## Confidence by Expected Label
 
 | Dataset | Label | Count | Avg Confidence | >=0.3 | >=0.5 | >=0.7 | Avg Injection Confidence | Inj >=0.3 | Inj >=0.5 | Inj >=0.7 |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| `deepset/prompt-injections` | injection | 263 | 0.4685 | 1.0000 | 0.3042 | 0.0038 | 0.4662 | 1.0000 | 0.3042 | 0.0038 |
-| `deepset/prompt-injections` | benign | 399 | 0.4093 | 1.0000 | 0.0426 | 0.0000 | 0.4007 | 1.0000 | 0.0426 | 0.0000 |
-| `protectai/prompt-injection-validation` | injection | 1392 | 0.5590 | 1.0000 | 0.7651 | 0.0136 | 0.5581 | 0.9993 | 0.7651 | 0.0129 |
-| `protectai/prompt-injection-validation` | benign | 1835 | 0.4649 | 1.0000 | 0.3259 | 0.0000 | 0.4586 | 0.9989 | 0.3243 | 0.0000 |
-| `Lakera/gandalf_ignore_instructions` | injection | 1000 | 0.6185 | 1.0000 | 0.9030 | 0.1110 | 0.6178 | 1.0000 | 0.9030 | 0.1090 |
+| `deepset/prompt-injections` | injection | 79 | 0.6336 | 1.0000 | 0.8987 | 0.2278 | 0.5325 | 0.8987 | 0.5570 | 0.1646 |
+| `deepset/prompt-injections` | benign | 120 | 0.7979 | 1.0000 | 1.0000 | 0.9083 | 0.1611 | 0.0333 | 0.0000 | 0.0000 |
+| `protectai/prompt-injection-validation` | injection | 418 | 0.8728 | 1.0000 | 0.9689 | 0.7632 | 0.8381 | 0.9593 | 0.8660 | 0.7321 |
+| `protectai/prompt-injection-validation` | benign | 551 | 0.8401 | 1.0000 | 1.0000 | 0.9437 | 0.1292 | 0.0200 | 0.0036 | 0.0000 |
+| `Lakera/gandalf_ignore_instructions` | injection | 300 | 0.9096 | 1.0000 | 1.0000 | 0.9467 | 0.9074 | 0.9967 | 0.9867 | 0.9467 |
 
 ## Predicted Label Distribution
 
 | Dataset | Predicted Label | Count |
 |---|---|---:|
-| `deepset/prompt-injections` | INJECTION | 550 |
-| `deepset/prompt-injections` | INJECTION_RISK | 1 |
-| `deepset/prompt-injections` | PII | 1 |
-| `deepset/prompt-injections` | SAFE | 110 |
-| `protectai/prompt-injection-validation` | INJECTION | 2901 |
-| `protectai/prompt-injection-validation` | INJECTION_RISK | 19 |
-| `protectai/prompt-injection-validation` | PII | 6 |
-| `protectai/prompt-injection-validation` | SAFE | 301 |
-| `Lakera/gandalf_ignore_instructions` | INJECTION | 874 |
-| `Lakera/gandalf_ignore_instructions` | INJECTION_RISK | 111 |
-| `Lakera/gandalf_ignore_instructions` | SAFE | 15 |
+| `deepset/prompt-injections` | INJECTION | 35 |
+| `deepset/prompt-injections` | INJECTION_RISK | 13 |
+| `deepset/prompt-injections` | SAFE | 151 |
+| `protectai/prompt-injection-validation` | INJECTION | 67 |
+| `protectai/prompt-injection-validation` | INJECTION_RISK | 306 |
+| `protectai/prompt-injection-validation` | SAFE | 596 |
+| `Lakera/gandalf_ignore_instructions` | INJECTION | 12 |
+| `Lakera/gandalf_ignore_instructions` | INJECTION_RISK | 284 |
+| `Lakera/gandalf_ignore_instructions` | SAFE | 4 |
 
 ## Observed Conclusion
 
-- 현재 모델은 외부 공격 샘플 상당수를 INJECTION 계열 label로 예측하지만, top confidence가 0.70을 넘는 비율이 낮아 `detected=True`로 인정되는 샘플이 적다.
-- benign 샘플도 낮은 threshold에서는 injection confidence가 함께 올라가므로, threshold를 낮추면 Recall과 함께 FP가 증가한다.
-- 이 결과는 label mapping 문제보다는 threshold calibration과 외부 영어 데이터 분포에 대한 학습 부족 문제에 가깝다.
+- confidence 분포는 threshold 문제가 큰지, label 학습/일반화 문제가 큰지 구분하기 위한 보조 근거다.
+- external-tuned 모델에서는 injection label confidence가 상승했지만, 운영 threshold를 낮출 때는 benign 샘플의 injection confidence와 FP를 함께 확인해야 한다.
+- label mapping이 정상이라면 predicted label 분포에서 INJECTION 계열 label이 실제 공격 샘플에 충분히 나타나야 한다.
 
 ## Interpretation
 

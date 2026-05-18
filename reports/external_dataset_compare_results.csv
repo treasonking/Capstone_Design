@@ -1,10 +1,10 @@
-dataset_name,mode,size,precision,recall,f1,accuracy,tp,fp,tn,fn,positive_only,latency_ms_avg,model_status,dataset_status,note
-deepset/prompt-injections,Rule Only,662,1.0,0.07604562737642585,0.1413427561837456,0.6329305135951662,20,0,399,243,False,0.605,disabled,loaded,
-deepset/prompt-injections,Lightweight Model Only,662,1.0,0.0038022813688212928,0.007575757575757576,0.6042296072507553,1,0,399,262,False,0.958,enabled,loaded,
-deepset/prompt-injections,Hybrid / Full Pipeline,662,1.0,0.07604562737642585,0.1413427561837456,0.6329305135951662,20,0,399,243,False,1.675,enabled,loaded,
-protectai/prompt-injection-validation,Rule Only,3227,0.8398791540785498,0.1997126436781609,0.3226929773650609,0.638363805392005,278,53,1782,1114,False,1.049,disabled,loaded,
-protectai/prompt-injection-validation,Lightweight Model Only,3227,1.0,0.013649425287356323,0.02693125442948264,0.5745274248528045,19,0,1835,1373,False,1.287,enabled,loaded,
-protectai/prompt-injection-validation,Hybrid / Full Pipeline,3227,0.8398791540785498,0.1997126436781609,0.3226929773650609,0.638363805392005,278,53,1782,1114,False,3.115,enabled,loaded,
-Lakera/gandalf_ignore_instructions,Rule Only,1000,,0.44,,0.44,440,,,560,True,0.421,disabled,loaded,
-Lakera/gandalf_ignore_instructions,Lightweight Model Only,1000,,0.111,,0.111,111,,,889,True,0.867,enabled,loaded,
-Lakera/gandalf_ignore_instructions,Hybrid / Full Pipeline,1000,,0.468,,0.468,468,,,532,True,1.525,enabled,loaded,
+dataset_name,model_version,mode,size,precision,recall,f1,accuracy,tp,fp,tn,fn,positive_only,latency_ms_avg,model_status,dataset_status,note
+deepset/prompt-injections,external-tuned,Rule Only,199,1.0,0.08860759493670886,0.1627906976744186,0.6381909547738693,7,0,120,72,False,0.509,disabled,loaded,Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl
+deepset/prompt-injections,external-tuned,Lightweight Model Only,199,1.0,0.16455696202531644,0.2826086956521739,0.6683417085427136,13,0,120,66,False,3.062,enabled,loaded,Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl
+deepset/prompt-injections,external-tuned,Hybrid / Full Pipeline,199,1.0,0.22784810126582278,0.3711340206185567,0.6934673366834171,18,0,120,61,False,3.774,enabled,loaded,Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl
+protectai/prompt-injection-validation,external-tuned,Rule Only,969,0.8448275862068966,0.23444976076555024,0.36704119850187267,0.651186790505676,98,18,533,320,False,1.163,disabled,loaded,Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl
+protectai/prompt-injection-validation,external-tuned,Lightweight Model Only,969,1.0,0.7320574162679426,0.845303867403315,0.8844169246646026,306,0,551,112,False,3.509,enabled,loaded,Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl
+protectai/prompt-injection-validation,external-tuned,Hybrid / Full Pipeline,969,0.944954128440367,0.7392344497607656,0.8295302013422818,0.868937048503612,309,18,533,109,False,5.102,enabled,loaded,Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl
+Lakera/gandalf_ignore_instructions,external-tuned,Rule Only,300,,0.43,,0.43,129,,,171,True,0.36,disabled,loaded,Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl
+Lakera/gandalf_ignore_instructions,external-tuned,Lightweight Model Only,300,,0.9466666666666667,,0.9466666666666667,284,,,16,True,2.943,enabled,loaded,Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl
+Lakera/gandalf_ignore_instructions,external-tuned,Hybrid / Full Pipeline,300,,0.95,,0.95,285,,,15,True,3.648,enabled,loaded,Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl

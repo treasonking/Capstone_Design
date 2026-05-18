@@ -150,25 +150,25 @@ flowchart TD
 | internal | Model Only | 1.000 | 0.127 | 0.225 | 10 / 0 / 69 | 2.994 |
 | internal | Hybrid | 1.000 | 1.000 | 1.000 | 79 / 0 / 0 | 3.724 |
 
-외부 공개 데이터셋 기준 최신 비교 결과는 다음과 같습니다.
+외부 공개 데이터셋 기준 최신 비교 결과는 다음과 같습니다. 아래 표는 외부 데이터셋을 train 70% / eval 30%로 분리한 held-out eval split 기준이며, eval 샘플은 external-tuned 모델 학습에 사용하지 않았습니다.
 
-| Dataset | Mode | Precision | Recall | F1 | Accuracy | TP / FP / FN |
-|---|---|---:|---:|---:|---:|---:|
-| `deepset/prompt-injections` | Rule Only | 1.0000 | 0.0760 | 0.1413 | 0.6329 | 20 / 0 / 243 |
-| `deepset/prompt-injections` | Lightweight Model Only | 1.0000 | 0.0038 | 0.0076 | 0.6042 | 1 / 0 / 262 |
-| `deepset/prompt-injections` | Hybrid / Full Pipeline | 1.0000 | 0.0760 | 0.1413 | 0.6329 | 20 / 0 / 243 |
-| `protectai/prompt-injection-validation` | Rule Only | 0.8399 | 0.1997 | 0.3227 | 0.6384 | 278 / 53 / 1114 |
-| `protectai/prompt-injection-validation` | Lightweight Model Only | 1.0000 | 0.0136 | 0.0269 | 0.5745 | 19 / 0 / 1373 |
-| `protectai/prompt-injection-validation` | Hybrid / Full Pipeline | 0.8399 | 0.1997 | 0.3227 | 0.6384 | 278 / 53 / 1114 |
-| `Lakera/gandalf_ignore_instructions` | Rule Only | N/A | 0.4400 | N/A | 0.4400 | 440 / N/A / 560 |
-| `Lakera/gandalf_ignore_instructions` | Lightweight Model Only | N/A | 0.1110 | N/A | 0.1110 | 111 / N/A / 889 |
-| `Lakera/gandalf_ignore_instructions` | Hybrid / Full Pipeline | N/A | 0.4680 | N/A | 0.4680 | 468 / N/A / 532 |
+| Dataset | Model Version | Mode | Precision | Recall | F1 | Accuracy | TP / FP / FN |
+|---|---|---|---:|---:|---:|---:|---:|
+| `deepset/prompt-injections` | external-tuned | Rule Only | 1.0000 | 0.0886 | 0.1628 | 0.6382 | 7 / 0 / 72 |
+| `deepset/prompt-injections` | external-tuned | Lightweight Model Only | 1.0000 | 0.1646 | 0.2826 | 0.6683 | 13 / 0 / 66 |
+| `deepset/prompt-injections` | external-tuned | Hybrid / Full Pipeline | 1.0000 | 0.2278 | 0.3711 | 0.6935 | 18 / 0 / 61 |
+| `protectai/prompt-injection-validation` | external-tuned | Rule Only | 0.8448 | 0.2344 | 0.3670 | 0.6512 | 98 / 18 / 320 |
+| `protectai/prompt-injection-validation` | external-tuned | Lightweight Model Only | 1.0000 | 0.7321 | 0.8453 | 0.8844 | 306 / 0 / 112 |
+| `protectai/prompt-injection-validation` | external-tuned | Hybrid / Full Pipeline | 0.9450 | 0.7392 | 0.8295 | 0.8689 | 309 / 18 / 109 |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | Rule Only | N/A | 0.4300 | N/A | 0.4300 | 129 / N/A / 171 |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | Lightweight Model Only | N/A | 0.9467 | N/A | 0.9467 | 284 / N/A / 16 |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | Hybrid / Full Pipeline | N/A | 0.9500 | N/A | 0.9500 | 285 / N/A / 15 |
 
-외부 영어 데이터셋에서는 Hybrid / Full Pipeline 결과가 Rule Only와 유사하게 나타났다. 이는 경량 모델이 로드되지 않았기 때문이 아니라, 현재 모델이 Rule 계층이 놓친 영어 공격 샘플을 추가로 탐지하지 못했기 때문이다.
+internal-only baseline에서는 외부 영어 데이터셋에서 Hybrid / Full Pipeline 결과가 Rule Only와 유사했다. 이는 경량 모델이 로드되지 않았기 때문이 아니라, 기존 모델이 Rule 계층이 놓친 영어 공격 샘플을 거의 추가 탐지하지 못했기 때문이다.
 
-Overlap 분석 기준 `Model Only Unique TP`는 `deepset=0`, `protectai=0`, `Lakera=19`였다. 따라서 현재 외부 영어 데이터셋 성능은 Rule 계층에 크게 의존하며, 영어 일반화 성능 개선을 위해 외부 데이터 기반 재학습과 threshold sweep이 필요하다.
+동일 held-out eval split의 overlap 분석 기준 `Model Only Unique TP`는 internal-only에서 `deepset=0`, `protectai=0`, `Lakera=6`이었고, external-tuned 모델에서는 `deepset=11`, `protectai=211`, `Lakera=156`으로 증가했다. 따라서 이번 개선은 Hybrid가 Rule miss를 실제로 추가 탐지하도록 모델 계층 기여도를 높인 결과다.
 
-Threshold sweep 결과, `0.70` threshold는 외부 영어 데이터셋에서 매우 보수적으로 동작했다. `0.30~0.40`까지 낮추면 Recall은 크게 상승하지만 FP도 함께 급증하므로, 운영 threshold를 단순히 낮추기보다 외부 영어 validation split 기반 threshold 조정과 hard negative 보강이 필요하다.
+Threshold optimizer는 external-tuned 모델에서 `0.30`을 추천했다. 다만 이는 eval split 기준 F1/Recall 후보값이므로 운영 threshold로 즉시 고정하기보다 hard negative와 실제 운영 분포에서 FP를 다시 확인해야 한다.
 
 ### 공개 데이터셋 기반 Prompt Injection 본 실험 결과
 
@@ -329,6 +329,13 @@ models/
   lightweight/
     vectorizer.joblib
     classifier.joblib
+  lightweight_external_tuned/
+    vectorizer.joblib
+    classifier.joblib
+    model_metadata.json
+datasets/
+  external_splits/
+    split_summary.json
 policies/
   policy.yaml
   strict.yaml
@@ -336,9 +343,11 @@ evaluation/
   sample_dataset.json
   external_validation_sample.json
   external_datasets.py
+  external_training_data.py
   external_dataset_compare.py
   external_overlap_analysis.py
   external_threshold_sweep.py
+  external_threshold_optimizer.py
   external_model_confidence.py
   evaluate_external_prompt_injection.py
   evaluate.py
@@ -362,6 +371,9 @@ reports/
   external_threshold_sweep_report.md
   external_threshold_sweep_results.json
   external_threshold_sweep_results.csv
+  external_threshold_optimizer_report.md
+  external_threshold_optimizer_results.json
+  external_threshold_optimizer_results.csv
   external_model_confidence_report.md
   external_model_confidence_results.json
   external_prompt_injection_report.md
@@ -533,7 +545,10 @@ python -m evaluation.baseline_compare \
 8. 외부 공개 데이터셋 3종 Rule/Model/Hybrid 비교 보고서 생성
 
 ```bash
-python -m evaluation.external_dataset_compare
+python -m evaluation.external_training_data
+python tools/train_lightweight_classifier.py --include-external --external-train-path datasets/external_splits/train_external_prompt_injection.jsonl --model-version external-tuned --output-dir models/lightweight_external_tuned
+python -m evaluation.external_threshold_optimizer --eval-path datasets/external_splits/eval_external_prompt_injection.jsonl --model-dir models/lightweight_external_tuned --model-version external-tuned
+python -m evaluation.external_dataset_compare --eval-path datasets/external_splits/eval_external_prompt_injection.jsonl --model-dir models/lightweight_external_tuned --model-version external-tuned
 ```
 
 생성 파일:
@@ -547,6 +562,9 @@ python -m evaluation.external_dataset_compare
 - `reports/external_threshold_sweep_report.md`
 - `reports/external_threshold_sweep_results.json`
 - `reports/external_threshold_sweep_results.csv`
+- `reports/external_threshold_optimizer_report.md`
+- `reports/external_threshold_optimizer_results.json`
+- `reports/external_threshold_optimizer_results.csv`
 - `reports/external_model_confidence_report.md`
 - `reports/external_model_confidence_results.json`
 
@@ -555,9 +573,9 @@ python -m evaluation.external_dataset_compare
 추가 분석 명령:
 
 ```bash
-python -m evaluation.external_overlap_analysis
-python -m evaluation.external_threshold_sweep --threshold-sweep 0.3,0.4,0.5,0.6,0.7
-python -m evaluation.external_model_confidence
+python -m evaluation.external_overlap_analysis --eval-path datasets/external_splits/eval_external_prompt_injection.jsonl --model-dir models/lightweight_external_tuned --model-version external-tuned
+python -m evaluation.external_threshold_sweep --eval-path datasets/external_splits/eval_external_prompt_injection.jsonl --model-dir models/lightweight_external_tuned --model-version external-tuned --threshold-sweep 0.3,0.4,0.5,0.6,0.7
+python -m evaluation.external_model_confidence --eval-path datasets/external_splits/eval_external_prompt_injection.jsonl --model-dir models/lightweight_external_tuned --model-version external-tuned
 ```
 
 9. Docker 이미지 재빌드 및 컨테이너 검증
@@ -676,18 +694,27 @@ False Negative cases are the most important review target because they represent
 - `reports/external_dataset_compare_results.csv`
 - `reports/external_overlap_analysis_report.md`
 - `reports/external_threshold_sweep_report.md`
+- `reports/external_threshold_optimizer_report.md`
 - `reports/external_model_confidence_report.md`
 - `reports/external_prompt_injection_report.md`
 - `reports/external_prompt_injection_false_negatives.md`
 - `reports/external_prompt_injection_errors.json`
 
-최신 본 실험 결과(`Hybrid / Full Pipeline`):
+기존 전체 데이터셋 기준 internal-only baseline(`Hybrid / Full Pipeline`)은 다음과 같이 보존합니다.
 
 | Dataset | Size | Precision | Recall | F1 | Accuracy |
 |---|---:|---:|---:|---:|---:|
 | `deepset/prompt-injections` | 662 | 1.0000 | 0.0760 | 0.1413 | 0.6329 |
 | `protectai/prompt-injection-validation` | 3,227 | 0.8399 | 0.1997 | 0.3227 | 0.6384 |
 | `Lakera/gandalf_ignore_instructions` | 1,000 | N/A | 0.4680 | N/A | 0.4680 |
+
+held-out eval split 기준 external-tuned 최신 결과(`Hybrid / Full Pipeline`)는 다음과 같습니다.
+
+| Dataset | Eval Size | Precision | Recall | F1 | Accuracy | Model Unique TP |
+|---|---:|---:|---:|---:|---:|---:|
+| `deepset/prompt-injections` | 199 | 1.0000 | 0.2278 | 0.3711 | 0.6935 | 11 |
+| `protectai/prompt-injection-validation` | 969 | 0.9450 | 0.7392 | 0.8295 | 0.8689 | 211 |
+| `Lakera/gandalf_ignore_instructions` | 300 | N/A | 0.9500 | N/A | 0.9500 | 156 |
 
 실행 명령:
 
@@ -705,11 +732,11 @@ python -m evaluation.external_dataset_compare
 
 본 프로젝트의 내부 회귀 테스트는 정책 요구사항이 정상적으로 동작하는지 확인하기 위한 기능 검증 목적이며, 외부 공개 데이터셋 평가는 일반화 성능과 탐지 한계를 확인하기 위한 벤치마크 목적입니다. 두 결과는 목적이 다르므로 직접적인 우열 비교보다는 보완적인 평가 결과로 해석합니다.
 
-본 외부 공개 데이터셋 평가는 현재 활성화된 Hybrid Detector 구성뿐 아니라 Rule Only와 Lightweight Model Only를 함께 분리 측정했습니다. 현재 환경에서는 lightweight classifier artifact가 로드되어 있으나, 외부 데이터셋에서는 모델 단독 Recall이 낮아 대부분의 탐지 기여가 rule/heuristic 계층에서 발생했습니다. 따라서 이 결과는 경량 분류 계층을 외부 영어 데이터셋으로 재학습해야 한다는 근거로 해석합니다.
+본 외부 공개 데이터셋 평가는 현재 활성화된 Hybrid Detector 구성뿐 아니라 Rule Only와 Lightweight Model Only를 함께 분리 측정했습니다. internal-only baseline에서는 lightweight classifier artifact가 로드되어 있었음에도 외부 영어 데이터셋에서 모델 단독 Recall이 낮아 대부분의 탐지 기여가 rule/heuristic 계층에서 발생했습니다. 따라서 이 결과는 경량 분류 계층을 외부 영어 데이터셋으로 재학습해야 한다는 근거로 해석했습니다.
 
-추가 overlap 분석 결과, `deepset/prompt-injections`와 `protectai/prompt-injection-validation`에서는 `Model Only Unique TP`가 0으로 측정되어 Hybrid TP가 Rule TP와 동일하게 나타났습니다. `Lakera/gandalf_ignore_instructions`에서는 `Model Only Unique TP=19`, 실제 Hybrid 추가 TP는 28로 측정되어 일부 보완 효과가 있었지만, 전체적으로는 Rule 계층 의존도가 높았습니다.
+추가 overlap 분석 결과, held-out eval split 기준 internal-only `Model Only Unique TP`는 `deepset=0`, `protectai=0`, `Lakera=6`이었습니다. external-tuned 모델에서는 이 값이 `deepset=11`, `protectai=211`, `Lakera=156`으로 증가해 Hybrid가 Rule miss를 실제로 추가 탐지했습니다.
 
-Confidence 분석에서는 외부 공격 샘플의 평균 confidence가 `deepset=0.4685`, `protectai=0.5590`, `Lakera=0.6185`로 측정되었고, `confidence >= 0.7` 비율은 각각 `0.0038`, `0.0136`, `0.1110`에 그쳤습니다. 즉, 현재 threshold 0.70은 외부 영어 데이터셋에서 매우 보수적으로 동작합니다. 다만 threshold를 0.30~0.40으로 낮추면 FP가 크게 증가하므로 운영용으로는 외부 영어 데이터 기반 재학습과 validation split 기반 threshold calibration이 필요합니다.
+Threshold optimizer는 external-tuned 모델의 held-out eval split에서 `0.30`을 추천했습니다. 이 값은 F1/Recall 관점의 후보이며, 실제 운영 threshold로 고정하기 전에는 hard negative와 운영 분포 기반 FP 검증이 필요합니다.
 
 ### Relation to Reference Study
 

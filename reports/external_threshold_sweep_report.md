@@ -1,8 +1,9 @@
 # External Threshold Sweep
 
-- Generated at: `2026-05-18T18:38:50`
-- Hugging Face split: `all`
+- Generated at: `2026-05-18T21:40:32`
+- Hugging Face split: `datasets/external_splits/eval_external_prompt_injection.jsonl`
 - Thresholds: `0.30, 0.40, 0.50, 0.60, 0.70`
+- Model version: `external-tuned`
 
 ## Model Status
 
@@ -11,50 +12,50 @@
 | enabled | True |
 | status | enabled |
 | note | Lightweight model loaded. |
-| vectorizer_path | C:\Users\jho87\Downloads\Capstone_Design\models\lightweight\vectorizer.joblib |
-| classifier_path | C:\Users\jho87\Downloads\Capstone_Design\models\lightweight\classifier.joblib |
+| vectorizer_path | models\lightweight_external_tuned\vectorizer.joblib |
+| classifier_path | models\lightweight_external_tuned\classifier.joblib |
 
 ## Results
 
-| Dataset | Threshold | Mode | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN |
-|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `deepset/prompt-injections` | 0.30 | Lightweight Model Only | 0.4446 | 0.9316 | 0.6020 | 0.5106 | 245 | 306 | 93 | 18 |
-| `deepset/prompt-injections` | 0.30 | Hybrid / Full Pipeline | 0.4446 | 0.9316 | 0.6020 | 0.5106 | 245 | 306 | 93 | 18 |
-| `protectai/prompt-injection-validation` | 0.30 | Lightweight Model Only | 0.4634 | 0.9720 | 0.6276 | 0.5023 | 1353 | 1567 | 268 | 39 |
-| `protectai/prompt-injection-validation` | 0.30 | Hybrid / Full Pipeline | 0.4634 | 0.9720 | 0.6276 | 0.5023 | 1353 | 1567 | 268 | 39 |
-| `Lakera/gandalf_ignore_instructions` | 0.30 | Lightweight Model Only | N/A | 0.9850 | N/A | 0.9850 | 985 | N/A | N/A | 15 |
-| `Lakera/gandalf_ignore_instructions` | 0.30 | Hybrid / Full Pipeline | N/A | 0.9850 | N/A | 0.9850 | 985 | N/A | N/A | 15 |
-| `deepset/prompt-injections` | 0.40 | Lightweight Model Only | 0.5219 | 0.7719 | 0.6227 | 0.6284 | 203 | 186 | 213 | 60 |
-| `deepset/prompt-injections` | 0.40 | Hybrid / Full Pipeline | 0.5219 | 0.7719 | 0.6227 | 0.6284 | 203 | 186 | 213 | 60 |
-| `protectai/prompt-injection-validation` | 0.40 | Lightweight Model Only | 0.4846 | 0.9246 | 0.6359 | 0.5432 | 1287 | 1369 | 466 | 105 |
-| `protectai/prompt-injection-validation` | 0.40 | Hybrid / Full Pipeline | 0.4846 | 0.9246 | 0.6359 | 0.5432 | 1287 | 1369 | 466 | 105 |
-| `Lakera/gandalf_ignore_instructions` | 0.40 | Lightweight Model Only | N/A | 0.9730 | N/A | 0.9730 | 973 | N/A | N/A | 27 |
-| `Lakera/gandalf_ignore_instructions` | 0.40 | Hybrid / Full Pipeline | N/A | 0.9730 | N/A | 0.9730 | 973 | N/A | N/A | 27 |
-| `deepset/prompt-injections` | 0.50 | Lightweight Model Only | 0.8247 | 0.3042 | 0.4444 | 0.6979 | 80 | 17 | 382 | 183 |
-| `deepset/prompt-injections` | 0.50 | Hybrid / Full Pipeline | 0.8300 | 0.3156 | 0.4573 | 0.7024 | 83 | 17 | 382 | 180 |
-| `protectai/prompt-injection-validation` | 0.50 | Lightweight Model Only | 0.6404 | 0.7651 | 0.6972 | 0.7134 | 1065 | 598 | 1237 | 327 |
-| `protectai/prompt-injection-validation` | 0.50 | Hybrid / Full Pipeline | 0.6342 | 0.7672 | 0.6944 | 0.7087 | 1068 | 616 | 1219 | 324 |
-| `Lakera/gandalf_ignore_instructions` | 0.50 | Lightweight Model Only | N/A | 0.9030 | N/A | 0.9030 | 903 | N/A | N/A | 97 |
-| `Lakera/gandalf_ignore_instructions` | 0.50 | Hybrid / Full Pipeline | N/A | 0.9040 | N/A | 0.9040 | 904 | N/A | N/A | 96 |
-| `deepset/prompt-injections` | 0.60 | Lightweight Model Only | 1.0000 | 0.0798 | 0.1479 | 0.6344 | 21 | 0 | 399 | 242 |
-| `deepset/prompt-injections` | 0.60 | Hybrid / Full Pipeline | 1.0000 | 0.1255 | 0.2230 | 0.6526 | 33 | 0 | 399 | 230 |
-| `protectai/prompt-injection-validation` | 0.60 | Lightweight Model Only | 0.8990 | 0.3261 | 0.4787 | 0.6935 | 454 | 51 | 1784 | 938 |
-| `protectai/prompt-injection-validation` | 0.60 | Hybrid / Full Pipeline | 0.8560 | 0.3930 | 0.5387 | 0.7096 | 547 | 92 | 1743 | 845 |
-| `Lakera/gandalf_ignore_instructions` | 0.60 | Lightweight Model Only | N/A | 0.6870 | N/A | 0.6870 | 687 | N/A | N/A | 313 |
-| `Lakera/gandalf_ignore_instructions` | 0.60 | Hybrid / Full Pipeline | N/A | 0.7450 | N/A | 0.7450 | 745 | N/A | N/A | 255 |
-| `deepset/prompt-injections` | 0.70 | Lightweight Model Only | 1.0000 | 0.0038 | 0.0076 | 0.6042 | 1 | 0 | 399 | 262 |
-| `deepset/prompt-injections` | 0.70 | Hybrid / Full Pipeline | 1.0000 | 0.0760 | 0.1413 | 0.6329 | 20 | 0 | 399 | 243 |
-| `protectai/prompt-injection-validation` | 0.70 | Lightweight Model Only | 1.0000 | 0.0136 | 0.0269 | 0.5745 | 19 | 0 | 1835 | 1373 |
-| `protectai/prompt-injection-validation` | 0.70 | Hybrid / Full Pipeline | 0.8399 | 0.1997 | 0.3227 | 0.6384 | 278 | 53 | 1782 | 1114 |
-| `Lakera/gandalf_ignore_instructions` | 0.70 | Lightweight Model Only | N/A | 0.1110 | N/A | 0.1110 | 111 | N/A | N/A | 889 |
-| `Lakera/gandalf_ignore_instructions` | 0.70 | Hybrid / Full Pipeline | N/A | 0.4680 | N/A | 0.4680 | 468 | N/A | N/A | 532 |
+| Dataset | Model Version | Threshold | Mode | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN |
+|---|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `deepset/prompt-injections` | external-tuned | 0.30 | Lightweight Model Only | 1.0000 | 0.6076 | 0.7559 | 0.8442 | 48 | 0 | 120 | 31 |
+| `deepset/prompt-injections` | external-tuned | 0.30 | Hybrid / Full Pipeline | 1.0000 | 0.6329 | 0.7752 | 0.8543 | 50 | 0 | 120 | 29 |
+| `protectai/prompt-injection-validation` | external-tuned | 0.30 | Lightweight Model Only | 0.9946 | 0.8876 | 0.9381 | 0.9494 | 371 | 2 | 549 | 47 |
+| `protectai/prompt-injection-validation` | external-tuned | 0.30 | Hybrid / Full Pipeline | 0.9488 | 0.8876 | 0.9172 | 0.9309 | 371 | 20 | 531 | 47 |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | 0.30 | Lightweight Model Only | N/A | 0.9867 | N/A | 0.9867 | 296 | N/A | N/A | 4 |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | 0.30 | Hybrid / Full Pipeline | N/A | 0.9867 | N/A | 0.9867 | 296 | N/A | N/A | 4 |
+| `deepset/prompt-injections` | external-tuned | 0.40 | Lightweight Model Only | 1.0000 | 0.6076 | 0.7559 | 0.8442 | 48 | 0 | 120 | 31 |
+| `deepset/prompt-injections` | external-tuned | 0.40 | Hybrid / Full Pipeline | 1.0000 | 0.6329 | 0.7752 | 0.8543 | 50 | 0 | 120 | 29 |
+| `protectai/prompt-injection-validation` | external-tuned | 0.40 | Lightweight Model Only | 0.9946 | 0.8876 | 0.9381 | 0.9494 | 371 | 2 | 549 | 47 |
+| `protectai/prompt-injection-validation` | external-tuned | 0.40 | Hybrid / Full Pipeline | 0.9488 | 0.8876 | 0.9172 | 0.9309 | 371 | 20 | 531 | 47 |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | 0.40 | Lightweight Model Only | N/A | 0.9867 | N/A | 0.9867 | 296 | N/A | N/A | 4 |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | 0.40 | Hybrid / Full Pipeline | N/A | 0.9867 | N/A | 0.9867 | 296 | N/A | N/A | 4 |
+| `deepset/prompt-injections` | external-tuned | 0.50 | Lightweight Model Only | 1.0000 | 0.5570 | 0.7154 | 0.8241 | 44 | 0 | 120 | 35 |
+| `deepset/prompt-injections` | external-tuned | 0.50 | Hybrid / Full Pipeline | 1.0000 | 0.5823 | 0.7360 | 0.8342 | 46 | 0 | 120 | 33 |
+| `protectai/prompt-injection-validation` | external-tuned | 0.50 | Lightweight Model Only | 0.9945 | 0.8660 | 0.9258 | 0.9401 | 362 | 2 | 549 | 56 |
+| `protectai/prompt-injection-validation` | external-tuned | 0.50 | Hybrid / Full Pipeline | 0.9478 | 0.8684 | 0.9064 | 0.9226 | 363 | 20 | 531 | 55 |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | 0.50 | Lightweight Model Only | N/A | 0.9867 | N/A | 0.9867 | 296 | N/A | N/A | 4 |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | 0.50 | Hybrid / Full Pipeline | N/A | 0.9867 | N/A | 0.9867 | 296 | N/A | N/A | 4 |
+| `deepset/prompt-injections` | external-tuned | 0.60 | Lightweight Model Only | 1.0000 | 0.3797 | 0.5505 | 0.7538 | 30 | 0 | 120 | 49 |
+| `deepset/prompt-injections` | external-tuned | 0.60 | Hybrid / Full Pipeline | 1.0000 | 0.4177 | 0.5893 | 0.7688 | 33 | 0 | 120 | 46 |
+| `protectai/prompt-injection-validation` | external-tuned | 0.60 | Lightweight Model Only | 1.0000 | 0.8038 | 0.8912 | 0.9154 | 336 | 0 | 551 | 82 |
+| `protectai/prompt-injection-validation` | external-tuned | 0.60 | Hybrid / Full Pipeline | 0.9494 | 0.8086 | 0.8734 | 0.8989 | 338 | 18 | 533 | 80 |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | 0.60 | Lightweight Model Only | N/A | 0.9700 | N/A | 0.9700 | 291 | N/A | N/A | 9 |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | 0.60 | Hybrid / Full Pipeline | N/A | 0.9700 | N/A | 0.9700 | 291 | N/A | N/A | 9 |
+| `deepset/prompt-injections` | external-tuned | 0.70 | Lightweight Model Only | 1.0000 | 0.1646 | 0.2826 | 0.6683 | 13 | 0 | 120 | 66 |
+| `deepset/prompt-injections` | external-tuned | 0.70 | Hybrid / Full Pipeline | 1.0000 | 0.2278 | 0.3711 | 0.6935 | 18 | 0 | 120 | 61 |
+| `protectai/prompt-injection-validation` | external-tuned | 0.70 | Lightweight Model Only | 1.0000 | 0.7321 | 0.8453 | 0.8844 | 306 | 0 | 551 | 112 |
+| `protectai/prompt-injection-validation` | external-tuned | 0.70 | Hybrid / Full Pipeline | 0.9450 | 0.7392 | 0.8295 | 0.8689 | 309 | 18 | 533 | 109 |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | 0.70 | Lightweight Model Only | N/A | 0.9467 | N/A | 0.9467 | 284 | N/A | N/A | 16 |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | 0.70 | Hybrid / Full Pipeline | N/A | 0.9500 | N/A | 0.9500 | 285 | N/A | N/A | 15 |
 
 ## Observed Conclusion
 
-- 현재 0.70 threshold에서는 Lightweight Model Only Recall이 매우 낮아 Hybrid가 Rule Only와 거의 같게 보인다.
-- threshold를 0.30 또는 0.40으로 낮추면 Recall은 크게 상승하지만 `deepset`과 `protectai`에서 FP도 크게 증가한다.
-- 따라서 원인은 단순히 모델이 항상 영어 공격을 못 알아보는 것이 아니라, 현재 classifier confidence calibration과 운영 threshold가 외부 영어 데이터셋에 맞지 않는 데 있다.
-- 운영용 threshold를 무작정 낮추기보다는 외부 영어 데이터 기반 재학습, validation split 기반 threshold 조정, hard negative 보강이 필요하다.
+- external-tuned 모델에서는 0.70에서도 `protectai`와 `Lakera` Recall이 크게 개선되었지만, `deepset`은 여전히 threshold에 민감하다.
+- threshold를 0.30 또는 0.40으로 낮추면 held-out eval split에서 Recall과 F1이 더 좋아지며, 이번 split에서는 FP 증가가 제한적이었다.
+- 다만 낮은 threshold는 운영 데이터 분포에서 FP가 달라질 수 있으므로, 추천값은 배포 고정값이 아니라 검증 후보로 해석한다.
+- internal-only baseline에서 보였던 Rule Only/Hybrid 유사성은 모델이 rule miss를 거의 추가 탐지하지 못했기 때문이고, external-tuned에서는 Model Unique TP가 증가해 Hybrid 개선이 확인된다.
 
 ## Interpretation
 

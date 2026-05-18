@@ -35,6 +35,13 @@ REPORT_PATH = Path("reports/external_dataset_compare_report.md")
 RESULTS_JSON_PATH = Path("reports/external_dataset_compare_results.json")
 RESULTS_CSV_PATH = Path("reports/external_dataset_compare_results.csv")
 MODEL_METADATA_FILENAME = "model_metadata.json"
+VECTORIZER_FILENAME = "vectorizer.joblib"
+CLASSIFIER_FILENAME = "classifier.joblib"
+DEFAULT_EVAL_PATH = Path("datasets/external_splits/eval_external_prompt_injection.jsonl")
+BASELINE_COMPARE_JSON_PATH = Path("reports/external_dataset_compare_internal_only_results.json")
+BASELINE_OVERLAP_JSON_PATH = Path("reports/external_overlap_analysis_internal_only_results.json")
+CURRENT_OVERLAP_JSON_PATH = Path("reports/external_overlap_analysis_results.json")
+THRESHOLD_OPTIMIZER_JSON_PATH = Path("reports/external_threshold_optimizer_results.json")
 PROJECT_SCOPE = (
     "본 프로젝트는 범용 Prompt Injection 탐지기가 아니라, 한국어 공공기관·사내망 환경에서 "
     "발생할 수 있는 개인정보 유출 및 정책 우회형 Prompt Injection을 우선 방어 대상으로 "
@@ -202,9 +209,61 @@ def _load_dataset(spec: DatasetSpec, split: str, max_samples: int | None) -> Dat
     return DatasetBundle(spec=spec, samples=samples)
 
 
+def _expected_from_external_label(value: Any) -> bool:
+    normalized = str(value).strip().lower()
+    if normalized in {"injection", "attack", "malicious", "prompt_injection", "prompt-injection"}:
+        return True
+    if normalized in {"safe", "benign", "normal", "not_injection", "not-injection"}:
+        return False
+    raise ValueError(f"Unsupported external eval label: {value!r}")
+
+
+def _load_eval_path(path: Path, max_samples: int | None) -> list[DatasetBundle]:
+    grouped: dict[str, list[ExternalSample]] = {spec.name: [] for spec in DATASET_SPECS}
+    if not path.exists():
+        raise SystemExit(f"External eval split not found: {path}")
+
+    with path.open("r", encoding="utf-8") as handle:
+        for line_no, line in enumerate(handle, start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            row = json.loads(stripped)
+            dataset_name = str(row.get("dataset", "")).strip()
+            if dataset_name not in grouped:
+                raise ValueError(f"Unknown dataset at {path}:{line_no}: {dataset_name!r}")
+            text = str(row.get("text", "")).strip()
+            if not text:
+                continue
+            grouped[dataset_name].append(
+                ExternalSample(
+                    id=str(row.get("id", f"{dataset_name}:{line_no}")),
+                    source=dataset_name,
+                    text=text,
+                    expected_injection=_expected_from_external_label(row.get("label")),
+                )
+            )
+
+    bundles: list[DatasetBundle] = []
+    for spec in DATASET_SPECS:
+        samples = grouped[spec.name]
+        if max_samples is not None:
+            samples = samples[:max_samples]
+        bundles.append(
+            DatasetBundle(
+                spec=spec,
+                samples=samples,
+                status="loaded" if samples else "empty",
+                note=f"Loaded from held-out eval split: {path}",
+            )
+        )
+    return bundles
+
+
 def _metric_result(
     *,
     dataset: DatasetBundle,
+    model_version: str,
     mode: str,
     predictor: Predictor,
     model_status: str,
@@ -235,6 +294,7 @@ def _metric_result(
 
     return {
         "dataset_name": dataset.spec.name,
+        "model_version": model_version,
         "mode": mode,
         "size": size,
         "precision": precision,
@@ -253,9 +313,15 @@ def _metric_result(
     }
 
 
-def _na_result(dataset: DatasetBundle, mode: str, model_status: str) -> dict[str, Any]:
+def _na_result(
+    dataset: DatasetBundle,
+    mode: str,
+    model_status: str,
+    model_version: str = "",
+) -> dict[str, Any]:
     return {
         "dataset_name": dataset.spec.name,
+        "model_version": model_version,
         "mode": mode,
         "size": len(dataset.samples),
         "precision": None,
@@ -279,6 +345,7 @@ def _evaluate_dataset(
     classifier: LightweightClassifier,
     classifier_status: LightweightModelStatus,
     threshold: float,
+    model_version: str,
 ) -> list[dict[str, Any]]:
     if dataset.status != "loaded" or not dataset.samples:
         status = dataset.status if dataset.status != "loaded" else "empty"
@@ -289,15 +356,16 @@ def _evaluate_dataset(
             note=dataset.note,
         )
         return [
-            _na_result(unavailable, "Rule Only", "disabled"),
-            _na_result(unavailable, "Lightweight Model Only", classifier_status.status),
-            _na_result(unavailable, "Hybrid / Full Pipeline", classifier_status.status),
+            _na_result(unavailable, "Rule Only", "disabled", model_version),
+            _na_result(unavailable, "Lightweight Model Only", classifier_status.status, model_version),
+            _na_result(unavailable, "Hybrid / Full Pipeline", classifier_status.status, model_version),
         ]
 
     classifier.threshold = threshold
     rows = [
         _metric_result(
             dataset=dataset,
+            model_version=model_version,
             mode="Rule Only",
             predictor=_rule_only,
             model_status="disabled",
@@ -308,17 +376,19 @@ def _evaluate_dataset(
         rows.append(
             _metric_result(
                 dataset=dataset,
+                model_version=model_version,
                 mode="Lightweight Model Only",
                 predictor=_model_only(classifier),
                 model_status=classifier_status.status,
             )
         )
     else:
-        rows.append(_na_result(dataset, "Lightweight Model Only", classifier_status.status))
+        rows.append(_na_result(dataset, "Lightweight Model Only", classifier_status.status, model_version))
 
     rows.append(
         _metric_result(
             dataset=dataset,
+            model_version=model_version,
             mode="Hybrid / Full Pipeline",
             predictor=_hybrid_pipeline(classifier, threshold),
             model_status=classifier_status.status,
@@ -375,6 +445,66 @@ def _model_metadata(classifier_status: LightweightModelStatus) -> dict[str, str]
         "model_version": str(raw.get("model_version", "unknown")),
         "training_data": str(raw.get("training_data", "unknown")),
         "note": str(raw.get("note", "")),
+    }
+
+
+def _apply_model_version_override(
+    metadata: dict[str, str],
+    model_version: str | None,
+) -> dict[str, str]:
+    if not model_version:
+        return metadata
+    updated = dict(metadata)
+    updated["model_version"] = model_version
+    return updated
+
+
+def _classifier_from_model_dir(model_dir: Path | None, threshold: float) -> LightweightClassifier:
+    if model_dir is None:
+        return LightweightClassifier(threshold=threshold)
+    return LightweightClassifier(
+        vectorizer_path=model_dir / VECTORIZER_FILENAME,
+        classifier_path=model_dir / CLASSIFIER_FILENAME,
+        threshold=threshold,
+    )
+
+
+def _read_json(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _row_by_mode(rows: list[dict[str, Any]], mode: str) -> dict[str, dict[str, Any]]:
+    return {
+        row["dataset_name"]: row
+        for row in rows
+        if row.get("mode") == mode
+    }
+
+
+def _rows_from_json(path: Path) -> list[dict[str, Any]]:
+    payload = _read_json(path)
+    if not payload:
+        return []
+    rows = payload.get("results", [])
+    return rows if isinstance(rows, list) else []
+
+
+def _summary_rows_from_overlap(path: Path) -> dict[str, dict[str, Any]]:
+    payload = _read_json(path)
+    if not payload:
+        return {}
+    rows = payload.get("results", [])
+    if not isinstance(rows, list):
+        return {}
+    return {
+        str(row.get("dataset_name")): row
+        for row in rows
+        if isinstance(row, dict)
     }
 
 
@@ -475,14 +605,15 @@ def _render_markdown(
             "",
             "## Current Mode Comparison",
             "",
-            "| Dataset | Mode | Size | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN | Avg Latency(ms) | Model Status |",
-            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+            "| Dataset | Model Version | Mode | Size | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN | Avg Latency(ms) | Model Status |",
+            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
         ]
     )
 
     for row in rows:
         lines.append(
             f"| `{row['dataset_name']}` "
+            f"| {row.get('model_version', model_metadata['model_version'])} "
             f"| {row['mode']} "
             f"| {_fmt(row['size'])} "
             f"| {_fmt(row['precision'])} "
@@ -497,10 +628,102 @@ def _render_markdown(
             f"| {row['model_status']} |"
         )
 
+    baseline_rows = _rows_from_json(BASELINE_COMPARE_JSON_PATH)
+    baseline_hybrid_by_dataset = _row_by_mode(baseline_rows, "Hybrid / Full Pipeline")
+    current_rule_by_dataset = _row_by_mode(rows, "Rule Only")
+    current_hybrid_by_dataset = _row_by_mode(rows, "Hybrid / Full Pipeline")
+    if baseline_hybrid_by_dataset:
+        lines.extend(
+            [
+                "",
+                "## Improvement Summary",
+                "",
+                "동일한 held-out eval split에서 internal-only 모델과 external-tuned 모델을 비교한다. 기존 전체 데이터셋 기준 baseline은 위 `Previous Reference`에 보존했다.",
+                "",
+                "| Dataset | Rule Only Recall | Old Hybrid Recall | New Hybrid Recall | Improvement over Rule | Improvement over Old Hybrid |",
+                "|---|---:|---:|---:|---:|---:|",
+            ]
+        )
+        for spec in DATASET_SPECS:
+            rule_row = current_rule_by_dataset.get(spec.name, {})
+            old_hybrid = baseline_hybrid_by_dataset.get(spec.name, {})
+            new_hybrid = current_hybrid_by_dataset.get(spec.name, {})
+            lines.append(
+                f"| `{spec.name}` "
+                f"| {_fmt(rule_row.get('recall'))} "
+                f"| {_fmt(old_hybrid.get('recall'))} "
+                f"| {_fmt(new_hybrid.get('recall'))} "
+                f"| {_delta(new_hybrid.get('recall'), rule_row.get('recall'))} "
+                f"| {_delta(new_hybrid.get('recall'), old_hybrid.get('recall'))} |"
+            )
+
+    old_overlap = _summary_rows_from_overlap(BASELINE_OVERLAP_JSON_PATH)
+    new_overlap = _summary_rows_from_overlap(CURRENT_OVERLAP_JSON_PATH)
+    if old_overlap and new_overlap:
+        lines.extend(
+            [
+                "",
+                "## Model Contribution",
+                "",
+                "| Dataset | Old Model Unique TP | New Model Unique TP | Change |",
+                "|---|---:|---:|---:|",
+            ]
+        )
+        for spec in DATASET_SPECS:
+            old_unique = old_overlap.get(spec.name, {}).get("model_only_unique_tp")
+            new_unique = new_overlap.get(spec.name, {}).get("model_only_unique_tp")
+            lines.append(
+                f"| `{spec.name}` "
+                f"| {_fmt(old_unique)} "
+                f"| {_fmt(new_unique)} "
+                f"| {_delta(new_unique, old_unique)} |"
+            )
+
+    optimizer_payload = _read_json(THRESHOLD_OPTIMIZER_JSON_PATH)
+    recommendations = optimizer_payload.get("recommendations", []) if optimizer_payload else []
+    if isinstance(recommendations, list) and recommendations:
+        lines.extend(
+            [
+                "",
+                "## Threshold",
+                "",
+                "| Dataset | Model Version | Mode | Old Threshold | New Recommended Threshold | Reason |",
+                "|---|---|---|---:|---:|---|",
+            ]
+        )
+        for item in recommendations:
+            if not isinstance(item, dict) or item.get("mode") != "Hybrid / Full Pipeline":
+                continue
+            lines.append(
+                f"| `{item.get('dataset_name')}` "
+                f"| {item.get('model_version')} "
+                f"| {item.get('mode')} "
+                f"| 0.70 "
+                f"| {_fmt(item.get('threshold'), 2)} "
+                f"| {item.get('recommendation_reason', '')} |"
+            )
+
+    split_summary = _read_json(DEFAULT_EVAL_PATH.parent / "split_summary.json")
+    if split_summary:
+        lines.extend(
+            [
+                "",
+                "## Data Leakage Control",
+                "",
+                "- External datasets were split into train/eval subsets.",
+                "- Eval samples were not used for training.",
+                f"- Random seed: `{split_summary.get('random_seed')}`",
+                f"- Train/eval id overlap: `{split_summary.get('train_eval_overlap')}`",
+                f"- Train size: `{split_summary.get('train_size')}`, eval size: `{split_summary.get('eval_size')}`",
+            ]
+        )
+
     lines.extend(
         [
             "",
             "## Hybrid Delta vs Previous",
+            "",
+            "아래 표는 기존 전체 데이터셋 기준 수치와의 참고 비교다. 현재 표는 held-out eval split 기준이므로, 같은 split에서의 전/후 비교는 위 `Improvement Summary`를 우선 해석한다.",
             "",
             "| Dataset | Recall Delta | F1 Delta | Accuracy Delta | TP Delta | FP Delta | FN Delta |",
             "|---|---:|---:|---:|---:|---:|---:|",
@@ -525,11 +748,11 @@ def _render_markdown(
             "",
             "## Why Rule Only and Hybrid are Similar",
             "",
-            "현재 외부 영어 데이터셋에서는 Hybrid / Full Pipeline 결과가 Rule Only와 거의 동일하게 나타났다. 이는 경량 모델 artifact가 로드되지 않았기 때문이 아니라, 로드된 모델이 Rule 계층이 놓친 영어 공격 샘플을 추가로 거의 탐지하지 못했기 때문이다.",
+            "internal-only baseline에서는 Hybrid / Full Pipeline 결과가 Rule Only와 거의 동일하게 나타났다. 이는 경량 모델 artifact가 로드되지 않았기 때문이 아니라, 로드된 모델이 Rule 계층이 놓친 영어 공격 샘플을 추가로 거의 탐지하지 못했기 때문이다.",
             "",
-            "즉, 현재 Hybrid 성능은 대부분 Rule 계층에 의해 결정된다. `Lakera/gandalf_ignore_instructions`에서는 Hybrid가 Rule Only보다 Recall을 0.028 높였으나, `deepset/prompt-injections`와 `protectai/prompt-injection-validation`에서는 모델 계층의 unique TP가 거의 없어 성능 차이가 나타나지 않았다.",
+            "external-tuned 모델에서는 held-out eval split 기준으로 Model Only Unique TP가 증가했다. 따라서 새 Hybrid 성능은 더 이상 Rule 계층만으로 결정되지 않으며, 모델 계층이 rule miss를 실제로 추가 탐지한다.",
             "",
-            "이 결과는 경량 분류 계층의 구조적 실패라기보다, 현재 학습 데이터가 한국어 공공기관 시나리오에 집중되어 있어 영어 공개 데이터셋에 대한 일반화가 부족하다는 근거로 해석한다. 정량적인 unique TP 근거는 `reports/external_overlap_analysis_report.md`에서 확인한다.",
+            "다만 external-tuned 모델은 영어 공개 데이터셋 train split을 포함한 별도 artifact이므로, 내부 한국어 공공기관 시나리오 성능은 별도로 회귀 검증해야 한다. 정량적인 unique TP 근거는 `reports/external_overlap_analysis_report.md`에서 확인한다.",
             "",
             "## Reading Guide",
             "",
@@ -594,6 +817,7 @@ def _write_json(
 def _write_csv(rows: list[dict[str, Any]], path: Path) -> None:
     fieldnames = [
         "dataset_name",
+        "model_version",
         "mode",
         "size",
         "precision",
@@ -669,6 +893,21 @@ def _parse_args() -> argparse.Namespace:
         description="Compare Rule Only, Lightweight Model Only, and Hybrid/Full Pipeline on public prompt injection datasets."
     )
     parser.add_argument("--split", default="all", help="Hugging Face split to load. Use 'all' for every split.")
+    parser.add_argument(
+        "--eval-path",
+        default="",
+        help="Held-out external eval JSONL path. When set, this replaces direct Hugging Face split loading.",
+    )
+    parser.add_argument(
+        "--model-dir",
+        default="",
+        help="Directory containing vectorizer.joblib and classifier.joblib. Defaults to models/lightweight.",
+    )
+    parser.add_argument(
+        "--model-version",
+        default="",
+        help="Model version label to record in result rows.",
+    )
     parser.add_argument("--threshold", type=float, default=0.7, help="Lightweight model threshold.")
     parser.add_argument("--max-samples", type=int, default=-1, help="Global sample cap per dataset. -1 means full dataset.")
     parser.add_argument("--report", default=str(REPORT_PATH), help="Markdown report output path.")
@@ -680,13 +919,21 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     args = _parse_args()
     max_samples = _optional_limit(args.max_samples)
-    datasets = [
-        _load_dataset(spec, args.split, max_samples)
-        for spec in DATASET_SPECS
-    ]
+    eval_path = Path(args.eval_path) if args.eval_path else None
+    datasets = (
+        _load_eval_path(eval_path, max_samples)
+        if eval_path is not None
+        else [_load_dataset(spec, args.split, max_samples) for spec in DATASET_SPECS]
+    )
 
-    classifier = LightweightClassifier(threshold=args.threshold)
+    model_dir = Path(args.model_dir) if args.model_dir else None
+    classifier = _classifier_from_model_dir(model_dir, args.threshold)
     classifier_status = classifier.status()
+    model_metadata = _apply_model_version_override(
+        _model_metadata(classifier_status),
+        args.model_version or None,
+    )
+    model_version = model_metadata["model_version"]
     rows: list[dict[str, Any]] = []
     for dataset in datasets:
         rows.extend(
@@ -695,15 +942,15 @@ def main() -> None:
                 classifier=classifier,
                 classifier_status=classifier_status,
                 threshold=args.threshold,
+                model_version=model_version,
             )
         )
 
     generated_at = datetime.now().isoformat(timespec="seconds")
     runtime_versions = _runtime_versions()
-    model_metadata = _model_metadata(classifier_status)
     _write_outputs(
         generated_at=generated_at,
-        split=args.split,
+        split=str(eval_path) if eval_path is not None else args.split,
         threshold=args.threshold,
         datasets=datasets,
         rows=rows,

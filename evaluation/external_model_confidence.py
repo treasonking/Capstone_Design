@@ -13,11 +13,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.app.detection.lightweight_classifier import LightweightClassifier
 from evaluation.external_dataset_compare import (
     DATASET_SPECS,
+    DEFAULT_EVAL_PATH,
+    _apply_model_version_override,
+    _classifier_from_model_dir,
     _fmt,
     _load_dataset,
+    _load_eval_path,
     _model_metadata,
     _optional_limit,
     _runtime_versions,
@@ -89,15 +92,27 @@ def _summarize_group(
 def _analyze(
     *,
     split: str,
+    eval_path: Path | None,
+    model_dir: Path | None,
+    model_version_override: str | None,
     max_samples: int | None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
-    classifier = LightweightClassifier(threshold=0.7)
+    classifier = _classifier_from_model_dir(model_dir, 0.7)
     classifier_status = classifier.status()
+    model_metadata = _apply_model_version_override(
+        _model_metadata(classifier_status),
+        model_version_override,
+    )
     summaries: list[dict[str, Any]] = []
     label_distribution: list[dict[str, Any]] = []
+    datasets = (
+        _load_eval_path(eval_path, max_samples)
+        if eval_path is not None
+        else [_load_dataset(spec, split, max_samples) for spec in DATASET_SPECS]
+    )
 
-    for spec in DATASET_SPECS:
-        dataset = _load_dataset(spec, split, max_samples)
+    for dataset in datasets:
+        spec = dataset.spec
         if dataset.status != "loaded" or not dataset.samples:
             summaries.append(
                 {
@@ -165,7 +180,7 @@ def _analyze(
             "vectorizer_path": str(classifier_status.vectorizer_path),
             "classifier_path": str(classifier_status.classifier_path),
         },
-        "model_metadata": _model_metadata(classifier_status),
+        "model_metadata": model_metadata,
         "runtime_versions": _runtime_versions(),
     }
     return summaries, label_distribution, metadata
@@ -185,6 +200,7 @@ def _render_report(
         f"- Generated at: `{generated_at}`",
         f"- Hugging Face split: `{split}`",
         f"- Model status: `{metadata['classifier_status']['status']}`",
+        f"- Model version: `{metadata['model_metadata']['model_version']}`",
         "",
         "## Confidence by Expected Label",
         "",
@@ -225,9 +241,9 @@ def _render_report(
             "",
             "## Observed Conclusion",
             "",
-            "- 현재 모델은 외부 공격 샘플 상당수를 INJECTION 계열 label로 예측하지만, top confidence가 0.70을 넘는 비율이 낮아 `detected=True`로 인정되는 샘플이 적다.",
-            "- benign 샘플도 낮은 threshold에서는 injection confidence가 함께 올라가므로, threshold를 낮추면 Recall과 함께 FP가 증가한다.",
-            "- 이 결과는 label mapping 문제보다는 threshold calibration과 외부 영어 데이터 분포에 대한 학습 부족 문제에 가깝다.",
+            "- confidence 분포는 threshold 문제가 큰지, label 학습/일반화 문제가 큰지 구분하기 위한 보조 근거다.",
+            "- external-tuned 모델에서는 injection label confidence가 상승했지만, 운영 threshold를 낮출 때는 benign 샘플의 injection confidence와 FP를 함께 확인해야 한다.",
+            "- label mapping이 정상이라면 predicted label 분포에서 INJECTION 계열 label이 실제 공격 샘플에 충분히 나타나야 한다.",
             "",
             "## Interpretation",
             "",
@@ -266,6 +282,17 @@ def _parse_args() -> argparse.Namespace:
         description="Analyze lightweight model confidence distribution on external datasets."
     )
     parser.add_argument("--split", default="all", help="Hugging Face split to load.")
+    parser.add_argument(
+        "--eval-path",
+        default=str(DEFAULT_EVAL_PATH),
+        help="Held-out external eval JSONL path. Use an empty string to load Hugging Face splits directly.",
+    )
+    parser.add_argument(
+        "--model-dir",
+        default="",
+        help="Directory containing vectorizer.joblib and classifier.joblib. Defaults to models/lightweight.",
+    )
+    parser.add_argument("--model-version", default="", help="Model version label to record in report metadata.")
     parser.add_argument("--max-samples", type=int, default=-1, help="Sample cap per dataset. -1 means full dataset.")
     parser.add_argument("--report", default=str(CONFIDENCE_REPORT_PATH), help="Markdown report output path.")
     parser.add_argument("--json", default=str(CONFIDENCE_JSON_PATH), help="JSON output path.")
@@ -274,14 +301,18 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = _parse_args()
+    eval_path = Path(args.eval_path) if args.eval_path else None
     summaries, label_distribution, metadata = _analyze(
         split=args.split,
+        eval_path=eval_path,
+        model_dir=Path(args.model_dir) if args.model_dir else None,
+        model_version_override=args.model_version or None,
         max_samples=_optional_limit(args.max_samples),
     )
     generated_at = datetime.now().isoformat(timespec="seconds")
     report = _render_report(
         generated_at=generated_at,
-        split=args.split,
+        split=str(eval_path) if eval_path is not None else args.split,
         summaries=summaries,
         label_distribution=label_distribution,
         metadata=metadata,
@@ -291,7 +322,7 @@ def main() -> None:
     report_path.write_text(report, encoding="utf-8")
     _write_json(
         generated_at=generated_at,
-        split=args.split,
+        split=str(eval_path) if eval_path is not None else args.split,
         summaries=summaries,
         label_distribution=label_distribution,
         metadata=metadata,

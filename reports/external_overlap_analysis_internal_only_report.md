@@ -1,18 +1,18 @@
 # External Rule/Model Overlap Analysis
 
-- Generated at: `2026-05-18T21:37:23`
+- Generated at: `2026-05-18T21:36:49`
 - Hugging Face split: `datasets/external_splits/eval_external_prompt_injection.jsonl`
 - Lightweight threshold: `0.70`
 - Model status: `enabled`
-- Model version: `external-tuned`
+- Model version: `internal-only`
 
 ## Summary
 
 | Dataset | Model Version | Rule TP | Model TP | Both TP | Rule Only TP | Model Only Unique TP | Hybrid TP | Hybrid Extra TP |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| `deepset/prompt-injections` | external-tuned | 7 | 13 | 2 | 5 | 11 | 18 | 11 |
-| `protectai/prompt-injection-validation` | external-tuned | 98 | 306 | 95 | 3 | 211 | 309 | 211 |
-| `Lakera/gandalf_ignore_instructions` | external-tuned | 129 | 284 | 128 | 1 | 156 | 285 | 156 |
+| `deepset/prompt-injections` | internal-only | 7 | 0 | 0 | 7 | 0 | 7 | 0 |
+| `protectai/prompt-injection-validation` | internal-only | 98 | 8 | 8 | 90 | 0 | 98 | 0 |
+| `Lakera/gandalf_ignore_instructions` | internal-only | 129 | 31 | 25 | 104 | 6 | 138 | 9 |
 
 ## Interpretation
 

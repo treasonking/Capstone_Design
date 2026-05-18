@@ -60,16 +60,17 @@ A.
 
 A.
 - 현재 버전은 범용 글로벌 Prompt Injection 탐지기가 아니라 한국어 공공기관·사내망 환경을 우선 대상으로 한 PoC이다.
-- 영어·혼합언어 공격 패턴은 현재 개선 과제로 식별했고, 일부 대표 패턴은 룰에 추가했다.
-- 실제 운영 수준으로 확장하려면 영어 데이터셋 기반 재학습과 threshold 조정이 필요하다.
+- internal-only baseline에서는 영어 공개 데이터셋에 대한 모델 기여도가 낮았고, 이를 한계로 명시했다.
+- 이번 개선에서는 외부 공개 데이터셋을 train/eval로 분리해 external-tuned 경량 모델을 학습했고, held-out eval split에서 Hybrid Recall과 Model Unique TP가 증가했다.
+- 실제 운영 수준으로 확장하려면 영어 데이터셋 기반 재학습을 계속하되, hard negative 보강과 threshold calibration을 함께 해야 한다.
 
 ## Q10. Hybrid가 Rule Only보다 좋은 근거가 있나요?
 
 A.
 - 최종 평가에서는 외부 공개 데이터셋 3종에 대해 Rule Only, Lightweight Model Only, Hybrid / Full Pipeline을 분리하여 Precision, Recall, F1, Accuracy, latency를 비교했다.
-- `deepset/prompt-injections`에서는 Rule Only와 Hybrid Recall이 모두 0.0760으로 같았고, `protectai/prompt-injection-validation`에서는 둘 다 Recall 0.1997, F1 0.3227이었다.
-- `Lakera/gandalf_ignore_instructions`에서는 Hybrid Recall이 0.4680으로 Rule Only 0.4400보다 소폭 높았다.
-- 따라서 현재 결과는 "Hybrid가 항상 Rule Only보다 압도적으로 좋다"가 아니라, "모드별 기여를 분리했고 현재 외부 영어 데이터셋에서는 경량 모델 단독 기여가 제한적"이라고 설명하는 것이 맞다.
+- internal-only baseline에서는 `deepset`과 `protectai`에서 Rule Only와 Hybrid가 거의 같았고, `Lakera`에서만 소폭 개선됐다.
+- external-tuned 모델은 held-out eval split 기준 Hybrid Recall을 `deepset=0.2278`, `protectai=0.7392`, `Lakera=0.9500`까지 올렸다.
+- 따라서 답변은 "Hybrid가 항상 자동으로 좋아진다"가 아니라, "모델 계층이 Rule miss를 추가 탐지할 때 Hybrid가 좋아지며, 이번 external-tuned 결과에서는 그 기여가 overlap 분석으로 확인됐다"가 정확하다.
 
 ## Q11. 모델 artifact가 없으면 하이브리드라고 볼 수 있나요?
 
@@ -111,7 +112,7 @@ A.
 
 A.
 - Hybrid 구조가 의미 있으려면 모델 계층이 Rule 계층이 놓친 샘플을 추가로 탐지해야 한다.
-- 이번 외부 영어 데이터셋 평가에서는 경량 모델이 영어 공격 표현을 충분히 일반화하지 못해 Rule Only와 Hybrid 성능이 유사하게 나타났다.
-- overlap 분석에서 `Model Only Unique TP`는 `deepset=0`, `protectai=0`, `Lakera=19`였다. 특히 deepset과 protectai에서는 모델이 Rule 계층이 놓친 공격을 추가로 맞추지 못했다.
-- 즉, 이 결과는 Hybrid 구조 자체가 불필요하다는 뜻이라기보다, 현재 경량 모델의 학습 데이터가 한국어 공공기관 시나리오에 집중되어 있어 영어 외부 데이터셋에 대한 모델 기여도가 낮다는 의미다.
-- 향후에는 외부 영어 데이터셋 기반 재학습, threshold 조정, 혼합언어 우회 표현 확장을 통해 모델 계층의 unique TP를 늘리는 방향으로 개선할 수 있다.
+- internal-only baseline에서는 경량 모델이 영어 공격 표현을 충분히 일반화하지 못해 Rule Only와 Hybrid 성능이 유사했다.
+- held-out eval split 기준 internal-only `Model Only Unique TP`는 `deepset=0`, `protectai=0`, `Lakera=6`이었다.
+- external-tuned 모델에서는 같은 eval split에서 `Model Only Unique TP`가 `deepset=11`, `protectai=211`, `Lakera=156`으로 증가했다.
+- 즉, Hybrid 구조 자체가 불필요했던 것이 아니라, 기존 모델 학습 데이터가 영어 공개 데이터셋에 맞지 않았던 것이다. 외부 데이터 기반 재학습과 threshold optimizer를 통해 모델 계층의 독립 기여도를 늘릴 수 있음을 확인했다.

@@ -12,15 +12,17 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.app.detection.lightweight_classifier import LightweightClassifier
 from evaluation.external_dataset_compare import (
     DATASET_SPECS,
     RESULTS_CSV_PATH,
     RESULTS_JSON_PATH,
     REPORT_PATH,
+    _apply_model_version_override,
+    _classifier_from_model_dir,
     _fmt,
     _hybrid_pipeline,
     _load_dataset,
+    _load_eval_path,
     _metric_result,
     _model_metadata,
     _model_only,
@@ -53,6 +55,7 @@ def _parse_thresholds(raw: str) -> list[float]:
 def _na_row(dataset_name: str, threshold: float, mode: str, model_status: str) -> dict[str, Any]:
     return {
         "dataset_name": dataset_name,
+        "model_version": "",
         "threshold": threshold,
         "mode": mode,
         "size": None,
@@ -77,12 +80,23 @@ def _evaluate(
     *,
     thresholds: list[float],
     split: str,
+    eval_path: Path | None,
+    model_dir: Path | None,
+    model_version_override: str | None,
     max_samples: int | None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    classifier = LightweightClassifier()
+    classifier = _classifier_from_model_dir(model_dir, thresholds[0] if thresholds else 0.7)
     classifier_status = classifier.status()
-    model_metadata = _model_metadata(classifier_status)
-    datasets = [_load_dataset(spec, split, max_samples) for spec in DATASET_SPECS]
+    model_metadata = _apply_model_version_override(
+        _model_metadata(classifier_status),
+        model_version_override,
+    )
+    model_version = model_metadata["model_version"]
+    datasets = (
+        _load_eval_path(eval_path, max_samples)
+        if eval_path is not None
+        else [_load_dataset(spec, split, max_samples) for spec in DATASET_SPECS]
+    )
     rows: list[dict[str, Any]] = []
 
     for threshold in thresholds:
@@ -105,11 +119,14 @@ def _evaluate(
                         classifier_status.status,
                     )
                 )
+                rows[-2]["model_version"] = model_version
+                rows[-1]["model_version"] = model_version
                 continue
 
             if classifier_status.enabled:
                 model_row = _metric_result(
                     dataset=dataset,
+                    model_version=model_version,
                     mode="Lightweight Model Only",
                     predictor=_model_only(classifier),
                     model_status=classifier_status.status,
@@ -124,9 +141,11 @@ def _evaluate(
                         classifier_status.status,
                     )
                 )
+                rows[-1]["model_version"] = model_version
 
             hybrid_row = _metric_result(
                 dataset=dataset,
+                model_version=model_version,
                 mode="Hybrid / Full Pipeline",
                 predictor=_hybrid_pipeline(classifier, threshold),
                 model_status=classifier_status.status,
@@ -170,6 +189,7 @@ def _render_report(
         f"- Generated at: `{generated_at}`",
         f"- Hugging Face split: `{split}`",
         f"- Thresholds: `{', '.join(f'{item:.2f}' for item in thresholds)}`",
+        f"- Model version: `{metadata['model_metadata']['model_version']}`",
         "",
         "## Model Status",
         "",
@@ -185,13 +205,14 @@ def _render_report(
             "",
             "## Results",
             "",
-            "| Dataset | Threshold | Mode | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN |",
-            "|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Dataset | Model Version | Threshold | Mode | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN |",
+            "|---|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     for row in rows:
         lines.append(
             f"| `{row['dataset_name']}` "
+            f"| {row.get('model_version', metadata['model_metadata']['model_version'])} "
             f"| {_fmt(row['threshold'], 2)} "
             f"| {row['mode']} "
             f"| {_fmt(row['precision'])} "
@@ -209,10 +230,10 @@ def _render_report(
             "",
             "## Observed Conclusion",
             "",
-            "- 현재 0.70 threshold에서는 Lightweight Model Only Recall이 매우 낮아 Hybrid가 Rule Only와 거의 같게 보인다.",
-            "- threshold를 0.30 또는 0.40으로 낮추면 Recall은 크게 상승하지만 `deepset`과 `protectai`에서 FP도 크게 증가한다.",
-            "- 따라서 원인은 단순히 모델이 항상 영어 공격을 못 알아보는 것이 아니라, 현재 classifier confidence calibration과 운영 threshold가 외부 영어 데이터셋에 맞지 않는 데 있다.",
-            "- 운영용 threshold를 무작정 낮추기보다는 외부 영어 데이터 기반 재학습, validation split 기반 threshold 조정, hard negative 보강이 필요하다.",
+            "- external-tuned 모델에서는 0.70에서도 `protectai`와 `Lakera` Recall이 크게 개선되었지만, `deepset`은 여전히 threshold에 민감하다.",
+            "- threshold를 0.30 또는 0.40으로 낮추면 held-out eval split에서 Recall과 F1이 더 좋아지며, 이번 split에서는 FP 증가가 제한적이었다.",
+            "- 다만 낮은 threshold는 운영 데이터 분포에서 FP가 달라질 수 있으므로, 추천값은 배포 고정값이 아니라 검증 후보로 해석한다.",
+            "- internal-only baseline에서 보였던 Rule Only/Hybrid 유사성은 모델이 rule miss를 거의 추가 탐지하지 못했기 때문이고, external-tuned에서는 Model Unique TP가 증가해 Hybrid 개선이 확인된다.",
             "",
             "## Interpretation",
             "",
@@ -248,6 +269,7 @@ def _write_json(
 def _write_csv(rows: list[dict[str, Any]], path: Path) -> None:
     fieldnames = [
         "dataset_name",
+        "model_version",
         "threshold",
         "mode",
         "size",
@@ -280,6 +302,21 @@ def _parse_args() -> argparse.Namespace:
         help="Comma-separated threshold list, for example 0.3,0.4,0.5,0.6,0.7.",
     )
     parser.add_argument("--split", default="all", help="Hugging Face split to load.")
+    parser.add_argument(
+        "--eval-path",
+        default="",
+        help="Held-out external eval JSONL path. When set, this replaces direct Hugging Face split loading.",
+    )
+    parser.add_argument(
+        "--model-dir",
+        default="",
+        help="Directory containing vectorizer.joblib and classifier.joblib. Defaults to models/lightweight.",
+    )
+    parser.add_argument(
+        "--model-version",
+        default="",
+        help="Model version label to record in result rows.",
+    )
     parser.add_argument("--max-samples", type=int, default=-1, help="Sample cap per dataset. -1 means full dataset.")
     parser.add_argument("--report", default=str(SWEEP_REPORT_PATH), help="Markdown report output path.")
     parser.add_argument("--json", default=str(SWEEP_JSON_PATH), help="JSON output path.")
@@ -293,12 +330,15 @@ def main() -> None:
     rows, metadata = _evaluate(
         thresholds=thresholds,
         split=args.split,
+        eval_path=Path(args.eval_path) if args.eval_path else None,
+        model_dir=Path(args.model_dir) if args.model_dir else None,
+        model_version_override=args.model_version or None,
         max_samples=_optional_limit(args.max_samples),
     )
     generated_at = datetime.now().isoformat(timespec="seconds")
     report = _render_report(
         generated_at=generated_at,
-        split=args.split,
+        split=args.eval_path or args.split,
         thresholds=thresholds,
         rows=rows,
         metadata=metadata,
@@ -308,7 +348,7 @@ def main() -> None:
     report_path.write_text(report, encoding="utf-8")
     _write_json(
         generated_at=generated_at,
-        split=args.split,
+        split=args.eval_path or args.split,
         thresholds=thresholds,
         rows=rows,
         metadata=metadata,

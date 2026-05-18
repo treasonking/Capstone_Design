@@ -128,6 +128,16 @@ def _parse_args() -> argparse.Namespace:
         help="Include the train partition of selected external English prompt injection datasets.",
     )
     parser.add_argument(
+        "--include-external",
+        action="store_true",
+        help="Alias for --include-external-prompt-injection.",
+    )
+    parser.add_argument(
+        "--external-train-path",
+        default="datasets/external_splits/train_external_prompt_injection.jsonl",
+        help="JSONL train split created by evaluation/external_training_data.py.",
+    )
+    parser.add_argument(
         "--external-datasets",
         default="deepset,protectai,lakera",
         help="Comma-separated external datasets to include: deepset, protectai, lakera.",
@@ -143,6 +153,11 @@ def _parse_args() -> argparse.Namespace:
         type=int,
         default=-1,
         help="Optional cap before partitioning each external dataset. -1 means all rows.",
+    )
+    parser.add_argument(
+        "--model-version",
+        default="internal-only",
+        help="Model version recorded in model_metadata.json.",
     )
     return parser.parse_args()
 
@@ -253,6 +268,34 @@ def _collect_external_prompt_injection_samples(
     return samples, counts
 
 
+def _load_external_train_jsonl(path: Path) -> tuple[list[tuple[str, str]], dict[str, int]]:
+    if not path.exists():
+        raise SystemExit(f"Missing external train split: {path}")
+
+    samples: list[tuple[str, str]] = []
+    counts: dict[str, int] = {}
+    with path.open("r", encoding="utf-8") as handle:
+        for line_no, line in enumerate(handle, start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            row = json.loads(stripped)
+            text = str(row.get("text", "")).strip()
+            label = str(row.get("label", "")).strip().lower()
+            dataset = str(row.get("dataset", "unknown"))
+            if not text:
+                continue
+            if label in {"injection", "attack", "malicious"}:
+                normalized_label = INJECTION_LABEL
+            elif label in {"safe", "benign", "normal"}:
+                normalized_label = SAFE_LABEL
+            else:
+                raise ValueError(f"Unsupported external label at {path}:{line_no}: {label!r}")
+            samples.append((text, normalized_label))
+            counts[dataset] = counts.get(dataset, 0) + 1
+    return samples, counts
+
+
 def _vectorizer() -> TfidfVectorizer:
     return TfidfVectorizer(
         analyzer="char_wb",
@@ -301,23 +344,39 @@ def main() -> int:
     training_data_note = "internal Korean public-sector scenario data"
     model_version = "internal-only"
 
-    if args.include_external_prompt_injection:
-        external_names = _external_dataset_names(args.external_datasets)
-        external_samples, external_counts = _collect_external_prompt_injection_samples(
-            names=external_names,
-            train_ratio=args.external_train_ratio,
-            max_samples_per_dataset=args.external_max_samples_per_dataset,
-        )
+    include_external = bool(args.include_external_prompt_injection or args.include_external)
+    external_train_path = Path(args.external_train_path)
+    external_train_size = 0
+    training_sources = ["internal_korean_scenarios"]
+
+    if include_external:
+        if external_train_path.exists():
+            external_samples, external_counts = _load_external_train_jsonl(external_train_path)
+            training_sources.append(str(external_train_path))
+        else:
+            external_names = _external_dataset_names(args.external_datasets)
+            external_samples, external_counts = _collect_external_prompt_injection_samples(
+                names=external_names,
+                train_ratio=args.external_train_ratio,
+                max_samples_per_dataset=args.external_max_samples_per_dataset,
+            )
+            training_sources.extend(
+                f"{name} train split"
+                for name in external_names
+            )
         seen = set(samples)
         for sample in external_samples:
             if sample in seen:
                 continue
             seen.add(sample)
             samples.append(sample)
-        model_version = "external-tuned"
+        external_train_size = len(external_samples)
+        model_version = args.model_version
         training_data_note = (
             "internal Korean public-sector scenario data + external English prompt injection train partition"
         )
+    else:
+        model_version = args.model_version
 
     if len(samples) < 12:
         raise SystemExit("Not enough training samples were collected.")
@@ -371,16 +430,20 @@ def main() -> int:
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "model_version": model_version,
         "training_data": training_data_note,
+        "training_sources": training_sources,
         "note": (
             "External rows use a deterministic train partition. Evaluate external-tuned models on held-out external rows to avoid data leakage."
-            if args.include_external_prompt_injection
+            if include_external
             else "Internal-oriented lightweight classifier artifact."
         ),
+        "random_seed": 42,
         "dataset_paths": [str(path) for path in dataset_paths],
         "sample_counts": dict(sorted(label_counts.items())),
-        "include_external_prompt_injection": bool(args.include_external_prompt_injection),
+        "include_external_prompt_injection": include_external,
+        "external_train_path": str(external_train_path) if include_external else "",
+        "external_train_size": external_train_size,
         "external_datasets": _external_dataset_names(args.external_datasets)
-        if args.include_external_prompt_injection
+        if include_external and not external_train_path.exists()
         else [],
         "external_train_ratio": float(args.external_train_ratio),
         "external_selected_counts": external_counts,

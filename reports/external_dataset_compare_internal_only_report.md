@@ -1,6 +1,6 @@
 # External Dataset Rule/Model/Hybrid Comparison
 
-- Generated at: `2026-05-18T21:39:26`
+- Generated at: `2026-05-18T21:36:49`
 - Hugging Face split: `datasets\external_splits\eval_external_prompt_injection.jsonl`
 - Lightweight threshold: `0.70`
 
@@ -15,14 +15,14 @@
 | enabled | true |
 | status | enabled |
 | note | Lightweight model loaded. |
-| vectorizer_path | `models\lightweight_external_tuned\vectorizer.joblib` |
-| classifier_path | `models\lightweight_external_tuned\classifier.joblib` |
+| vectorizer_path | `C:\Users\jho87\Downloads\Capstone_Design\models\lightweight\vectorizer.joblib` |
+| classifier_path | `C:\Users\jho87\Downloads\Capstone_Design\models\lightweight\classifier.joblib` |
 
 ## Model Version
 
 | Model Version | Training Data | Note |
 |---|---|---|
-| external-tuned | internal Korean public-sector scenario data + external English prompt injection train partition | External rows use a deterministic train partition. Evaluate external-tuned models on held-out external rows to avoid data leakage. |
+| internal-only | internal Korean public-sector scenario data | No model metadata file found; interpreted as the current internal-oriented artifact. |
 
 ## Runtime Versions
 
@@ -55,15 +55,15 @@
 
 | Dataset | Model Version | Mode | Size | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN | Avg Latency(ms) | Model Status |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| `deepset/prompt-injections` | external-tuned | Rule Only | 199 | 1.0000 | 0.0886 | 0.1628 | 0.6382 | 7 | 0 | 120 | 72 | 0.509 | disabled |
-| `deepset/prompt-injections` | external-tuned | Lightweight Model Only | 199 | 1.0000 | 0.1646 | 0.2826 | 0.6683 | 13 | 0 | 120 | 66 | 3.062 | enabled |
-| `deepset/prompt-injections` | external-tuned | Hybrid / Full Pipeline | 199 | 1.0000 | 0.2278 | 0.3711 | 0.6935 | 18 | 0 | 120 | 61 | 3.774 | enabled |
-| `protectai/prompt-injection-validation` | external-tuned | Rule Only | 969 | 0.8448 | 0.2344 | 0.3670 | 0.6512 | 98 | 18 | 533 | 320 | 1.163 | disabled |
-| `protectai/prompt-injection-validation` | external-tuned | Lightweight Model Only | 969 | 1.0000 | 0.7321 | 0.8453 | 0.8844 | 306 | 0 | 551 | 112 | 3.509 | enabled |
-| `protectai/prompt-injection-validation` | external-tuned | Hybrid / Full Pipeline | 969 | 0.9450 | 0.7392 | 0.8295 | 0.8689 | 309 | 18 | 533 | 109 | 5.102 | enabled |
-| `Lakera/gandalf_ignore_instructions` | external-tuned | Rule Only | 300 | N/A | 0.4300 | N/A | 0.4300 | 129 | N/A | N/A | 171 | 0.360 | disabled |
-| `Lakera/gandalf_ignore_instructions` | external-tuned | Lightweight Model Only | 300 | N/A | 0.9467 | N/A | 0.9467 | 284 | N/A | N/A | 16 | 2.943 | enabled |
-| `Lakera/gandalf_ignore_instructions` | external-tuned | Hybrid / Full Pipeline | 300 | N/A | 0.9500 | N/A | 0.9500 | 285 | N/A | N/A | 15 | 3.648 | enabled |
+| `deepset/prompt-injections` | internal-only | Rule Only | 199 | 1.0000 | 0.0886 | 0.1628 | 0.6382 | 7 | 0 | 120 | 72 | 0.580 | disabled |
+| `deepset/prompt-injections` | internal-only | Lightweight Model Only | 199 | 0.0000 | 0.0000 | 0.0000 | 0.6030 | 0 | 0 | 120 | 79 | 1.210 | enabled |
+| `deepset/prompt-injections` | internal-only | Hybrid / Full Pipeline | 199 | 1.0000 | 0.0886 | 0.1628 | 0.6382 | 7 | 0 | 120 | 72 | 2.143 | enabled |
+| `protectai/prompt-injection-validation` | internal-only | Rule Only | 969 | 0.8448 | 0.2344 | 0.3670 | 0.6512 | 98 | 18 | 533 | 320 | 1.290 | disabled |
+| `protectai/prompt-injection-validation` | internal-only | Lightweight Model Only | 969 | 1.0000 | 0.0191 | 0.0376 | 0.5769 | 8 | 0 | 551 | 410 | 1.530 | enabled |
+| `protectai/prompt-injection-validation` | internal-only | Hybrid / Full Pipeline | 969 | 0.8448 | 0.2344 | 0.3670 | 0.6512 | 98 | 18 | 533 | 320 | 3.566 | enabled |
+| `Lakera/gandalf_ignore_instructions` | internal-only | Rule Only | 300 | N/A | 0.4300 | N/A | 0.4300 | 129 | N/A | N/A | 171 | 0.462 | disabled |
+| `Lakera/gandalf_ignore_instructions` | internal-only | Lightweight Model Only | 300 | N/A | 0.1033 | N/A | 0.1033 | 31 | N/A | N/A | 269 | 0.925 | enabled |
+| `Lakera/gandalf_ignore_instructions` | internal-only | Hybrid / Full Pipeline | 300 | N/A | 0.4600 | N/A | 0.4600 | 138 | N/A | N/A | 162 | 1.734 | enabled |
 
 ## Improvement Summary
 
@@ -71,17 +71,17 @@
 
 | Dataset | Rule Only Recall | Old Hybrid Recall | New Hybrid Recall | Improvement over Rule | Improvement over Old Hybrid |
 |---|---:|---:|---:|---:|---:|
-| `deepset/prompt-injections` | 0.0886 | 0.0886 | 0.2278 | +0.1392 | +0.1392 |
-| `protectai/prompt-injection-validation` | 0.2344 | 0.2344 | 0.7392 | +0.5048 | +0.5048 |
-| `Lakera/gandalf_ignore_instructions` | 0.4300 | 0.4600 | 0.9500 | +0.5200 | +0.4900 |
+| `deepset/prompt-injections` | 0.0886 | 0.0854 | 0.0886 | +0.0000 | +0.0032 |
+| `protectai/prompt-injection-validation` | 0.2344 | 0.1881 | 0.2344 | +0.0000 | +0.0463 |
+| `Lakera/gandalf_ignore_instructions` | 0.4300 | 0.4630 | 0.4600 | +0.0300 | -0.0030 |
 
 ## Model Contribution
 
 | Dataset | Old Model Unique TP | New Model Unique TP | Change |
 |---|---:|---:|---:|
 | `deepset/prompt-injections` | 0 | 11 | +11.0000 |
-| `protectai/prompt-injection-validation` | 0 | 211 | +211.0000 |
-| `Lakera/gandalf_ignore_instructions` | 6 | 156 | +150.0000 |
+| `protectai/prompt-injection-validation` | 0 | 229 | +229.0000 |
+| `Lakera/gandalf_ignore_instructions` | 6 | 164 | +158.0000 |
 
 ## Threshold
 
@@ -105,9 +105,9 @@
 
 | Dataset | Recall Delta | F1 Delta | Accuracy Delta | TP Delta | FP Delta | FN Delta |
 |---|---:|---:|---:|---:|---:|---:|
-| `deepset/prompt-injections` | +0.1518 | +0.2298 | +0.0606 | -2.0000 | +0.0000 | -182.0000 |
-| `protectai/prompt-injection-validation` | +0.5596 | +0.5345 | +0.2392 | +59.0000 | -35.0000 | -1033.0000 |
-| `Lakera/gandalf_ignore_instructions` | +0.5020 | N/A | +0.5020 | -163.0000 | N/A | -537.0000 |
+| `deepset/prompt-injections` | +0.0126 | +0.0215 | +0.0053 | -13.0000 | +0.0000 | -171.0000 |
+| `protectai/prompt-injection-validation` | +0.0548 | +0.0720 | +0.0215 | -152.0000 | -35.0000 | -822.0000 |
+| `Lakera/gandalf_ignore_instructions` | +0.0120 | N/A | +0.0120 | -310.0000 | N/A | -390.0000 |
 
 ## Why Rule Only and Hybrid are Similar
 

@@ -22,6 +22,8 @@ from .reason_codes import (
 
 logger = logging.getLogger(__name__)
 
+MODEL_HIGH_CONFIDENCE_THRESHOLD = 0.70
+
 _SAFE_CONTEXT_TERMS = (
     "설명",
     "방법",
@@ -48,9 +50,22 @@ _SAFE_CONTEXT_TERMS = (
     "anonymize",
     "defense",
     "prevention",
+    "prevent",
     "why",
     "dangerous",
     "unsafe",
+)
+_SECURITY_EXPLANATION_TERMS = (
+    "prompt injection",
+    "프롬프트 인젝션",
+    "jailbreak",
+    "security",
+    "보안",
+    "defense",
+    "prevention",
+    "prevent",
+    "방어",
+    "예방",
 )
 _AGGRESSIVE_TERMS = (
     "무시하고",
@@ -165,6 +180,13 @@ def _is_safe_context(text: str) -> bool:
     return has_safe_term and not has_aggressive_term
 
 
+def _is_safe_security_explanation(text: str) -> bool:
+    normalized = _normalized(text)
+    return _is_safe_context(text) and any(
+        term in normalized for term in _SECURITY_EXPLANATION_TERMS
+    )
+
+
 def _heuristic_reasons(text: str) -> list[str]:
     if _is_safe_context(text):
         return []
@@ -194,6 +216,8 @@ def _heuristic_reasons(text: str) -> list[str]:
 
 
 def _fallback_confidence(reasons: list[str], prediction: LightweightPrediction) -> float:
+    if reasons == [ReasonCode.SAFE_SECURITY_EXPLANATION.value]:
+        return prediction.confidence
     if len(reasons) >= 2:
         return max(prediction.confidence, 0.96)
     if reasons:
@@ -203,21 +227,44 @@ def _fallback_confidence(reasons: list[str], prediction: LightweightPrediction) 
     return 0.0
 
 
-def _prediction_reasons(prediction: LightweightPrediction) -> list[str]:
-    if not prediction.detected or not prediction.reason_code:
+def _prediction_reasons(
+    prediction: LightweightPrediction,
+    *,
+    medium_threshold: float,
+) -> list[str]:
+    if not prediction.detected:
         return []
-    return [prediction.reason_code]
+    reason_code = _prediction_reason_code(
+        prediction,
+        medium_threshold=medium_threshold,
+    )
+    return [reason_code] if reason_code else []
 
 
-def _prediction_reason_code(prediction: LightweightPrediction) -> str | None:
-    if prediction.reason_code:
-        return prediction.reason_code
-
+def _prediction_reason_code(
+    prediction: LightweightPrediction,
+    *,
+    medium_threshold: float = 0.7,
+) -> str | None:
     normalized = prediction.label.strip().lower()
+    raw_reason = str(prediction.reason_code or "").upper()
+
     if "pii" in normalized or "privacy" in normalized:
         return ReasonCode.MODEL_PII_RISK.value
-    if "inj" in normalized or "prompt" in normalized or "jailbreak" in normalized:
+    if (
+        "inj" in normalized
+        or "prompt" in normalized
+        or "jailbreak" in normalized
+        or "INJECTION" in raw_reason
+        or "INJ" in raw_reason
+    ):
+        if prediction.detected and prediction.confidence >= MODEL_HIGH_CONFIDENCE_THRESHOLD:
+            return ReasonCode.INJ_MODEL_HIGH_CONFIDENCE.value
+        if prediction.detected and prediction.confidence >= medium_threshold:
+            return ReasonCode.INJ_MODEL_MEDIUM_CONFIDENCE.value
         return ReasonCode.MODEL_INJECTION_RISK.value
+    if prediction.reason_code:
+        return prediction.reason_code
     return None
 
 
@@ -245,6 +292,8 @@ def _detection_type(reason_code: str) -> DetectorType:
 
 
 def _category(reason_code: str) -> str:
+    if reason_code == ReasonCode.SAFE_SECURITY_EXPLANATION.value:
+        return "MODEL_SAFE_SECURITY_EXPLANATION"
     if reason_code in {
         ReasonCode.PII_REQUEST_RRN.value,
         ReasonCode.PII_EXFILTRATION_REQUEST.value,
@@ -253,6 +302,8 @@ def _category(reason_code: str) -> str:
     if reason_code in {
         ReasonCode.INJ_POLICY_BYPASS.value,
         ReasonCode.INJ_DIRECT_OVERRIDE.value,
+        ReasonCode.INJ_MODEL_HIGH_CONFIDENCE.value,
+        ReasonCode.INJ_MODEL_MEDIUM_CONFIDENCE.value,
     }:
         return "MODEL_INJECTION_REQUEST"
     return "MODEL_STATUS"
@@ -327,10 +378,26 @@ def detect_model(
         classifier_status = active_classifier.status()
         prediction = detect_lightweight(text, active_classifier)
         heuristic_reasons = _heuristic_reasons(text)
-        prediction_reasons = _prediction_reasons(prediction)
-        predicted_reason_code = _prediction_reason_code(prediction)
+        safe_explanation = _is_safe_security_explanation(text)
+        prediction_reasons = (
+            []
+            if safe_explanation and not heuristic_reasons
+            else _prediction_reasons(
+                prediction,
+                medium_threshold=active_settings.model_detector_threshold,
+            )
+        )
+        safe_context_reasons = (
+            [ReasonCode.SAFE_SECURITY_EXPLANATION.value]
+            if safe_explanation and prediction.detected and not heuristic_reasons
+            else []
+        )
+        predicted_reason_code = _prediction_reason_code(
+            prediction,
+            medium_threshold=active_settings.model_detector_threshold,
+        )
         signal_reasons = ordered_reason_codes(
-            [*heuristic_reasons, *prediction_reasons]
+            [*heuristic_reasons, *prediction_reasons, *safe_context_reasons]
         )
         fallback_reason = (
             _fallback_reason_code(classifier_status.status)

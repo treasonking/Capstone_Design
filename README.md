@@ -142,7 +142,7 @@ flowchart TD
 
 ### Rule Only / Model Only / Hybrid 비교
 
-2026-05-18 로컬 baseline 비교는 내부 데이터셋 기준으로 재생성했습니다. 공개 deepset 평가는 실행 환경의 Hugging Face 접근 제한과 장시간 캐시 처리 때문에 이번 로컬 재평가에서는 `--max-deepset-samples 0`으로 제외했고, 기존 공개 데이터셋 보고서는 별도 참고 자료로 유지합니다.
+2026-05-18 재평가에서는 내부 baseline과 별도로 Hugging Face 공개 Prompt Injection 데이터셋 3종을 `Rule Only`, `Lightweight Model Only`, `Hybrid / Full Pipeline`으로 분리 측정했습니다. 경량 분류 artifact는 `models/lightweight/vectorizer.joblib`, `models/lightweight/classifier.joblib` 모두 로드된 `enabled` 상태였습니다.
 
 | Dataset | Mode | Precision | Recall | F1 | TP / FP / FN | Avg Latency(ms) |
 |---|---|---:|---:|---:|---:|---:|
@@ -150,15 +150,29 @@ flowchart TD
 | internal | Model Only | 1.000 | 0.127 | 0.225 | 10 / 0 / 69 | 2.994 |
 | internal | Hybrid | 1.000 | 1.000 | 1.000 | 79 / 0 / 0 | 3.724 |
 
+외부 공개 데이터셋 기준 최신 비교 결과는 다음과 같습니다.
+
+| Dataset | Mode | Precision | Recall | F1 | Accuracy | TP / FP / FN |
+|---|---|---:|---:|---:|---:|---:|
+| `deepset/prompt-injections` | Rule Only | 1.0000 | 0.0760 | 0.1413 | 0.6329 | 20 / 0 / 243 |
+| `deepset/prompt-injections` | Lightweight Model Only | 1.0000 | 0.0038 | 0.0076 | 0.6042 | 1 / 0 / 262 |
+| `deepset/prompt-injections` | Hybrid / Full Pipeline | 1.0000 | 0.0760 | 0.1413 | 0.6329 | 20 / 0 / 243 |
+| `protectai/prompt-injection-validation` | Rule Only | 0.8399 | 0.1997 | 0.3227 | 0.6384 | 278 / 53 / 1114 |
+| `protectai/prompt-injection-validation` | Lightweight Model Only | 1.0000 | 0.0136 | 0.0269 | 0.5745 | 19 / 0 / 1373 |
+| `protectai/prompt-injection-validation` | Hybrid / Full Pipeline | 0.8399 | 0.1997 | 0.3227 | 0.6384 | 278 / 53 / 1114 |
+| `Lakera/gandalf_ignore_instructions` | Rule Only | N/A | 0.4400 | N/A | 0.4400 | 440 / N/A / 560 |
+| `Lakera/gandalf_ignore_instructions` | Lightweight Model Only | N/A | 0.1110 | N/A | 0.1110 | 111 / N/A / 889 |
+| `Lakera/gandalf_ignore_instructions` | Hybrid / Full Pipeline | N/A | 0.4680 | N/A | 0.4680 | 468 / N/A / 532 |
+
 ### 공개 데이터셋 기반 Prompt Injection 본 실험 결과
 
-기준 데이터셋: Hugging Face 공개 Prompt Injection 데이터셋
+기준 데이터셋: Hugging Face 공개 Prompt Injection 데이터셋, `Hybrid / Full Pipeline` 모드
 
 | Dataset | Size | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | `deepset/prompt-injections` | 662 | 1.0000 | 0.0760 | 0.1413 | 0.6329 | 20 | 0 | 399 | 243 |
-| `protectai/prompt-injection-validation` | 3,227 | 0.8251 | 0.1796 | 0.2950 | 0.6297 | 250 | 53 | 1,782 | 1,142 |
-| `Lakera/gandalf_ignore_instructions` | 1,000 | N/A | 0.4480 | N/A | 0.4480 | 448 | N/A | N/A | 552 |
+| `protectai/prompt-injection-validation` | 3,227 | 0.8399 | 0.1997 | 0.3227 | 0.6384 | 278 | 53 | 1,782 | 1,114 |
+| `Lakera/gandalf_ignore_instructions` | 1,000 | N/A | 0.4680 | N/A | 0.4680 | 468 | N/A | N/A | 532 |
 
 이 평가는 Hugging Face 공개 데이터셋을 사용한 Prompt Injection 외부 벤치마크입니다. 해당 데이터셋들은 PII 탐지용 데이터셋이 아니므로 개인정보 탐지 성능에는 포함하지 않습니다.
 
@@ -316,6 +330,7 @@ evaluation/
   sample_dataset.json
   external_validation_sample.json
   external_datasets.py
+  external_dataset_compare.py
   evaluate_external_prompt_injection.py
   evaluate.py
   baseline_compare.py
@@ -329,6 +344,9 @@ reports/
   validator_agent_expected_effect.md
   deepset_prompt_injection_report.md
   external_dataset_performance_summary.md
+  external_dataset_compare_report.md
+  external_dataset_compare_results.json
+  external_dataset_compare_results.csv
   external_prompt_injection_report.md
   external_prompt_injection_false_negatives.md
   external_prompt_injection_errors.json
@@ -495,7 +513,21 @@ python -m evaluation.baseline_compare \
 
 현재 `baseline_compare.py`는 Prompt Injection 기준으로 `Rule Only`, `Model Only`, `Hybrid`를 분리 측정합니다. `Model Only`는 lightweight artifact가 로드된 경우에만 측정하고, artifact가 없으면 `N/A`로 표시합니다. `Hybrid`가 rule fallback 상태이면 `Hybrid(fallback)` 또는 `model_status=artifact_missing`으로 표시합니다.
 
-8. Docker 이미지 재빌드 및 컨테이너 검증
+8. 외부 공개 데이터셋 3종 Rule/Model/Hybrid 비교 보고서 생성
+
+```bash
+python -m evaluation.external_dataset_compare
+```
+
+생성 파일:
+
+- `reports/external_dataset_compare_report.md`
+- `reports/external_dataset_compare_results.json`
+- `reports/external_dataset_compare_results.csv`
+
+이 평가는 Hugging Face 공개 데이터셋 `deepset/prompt-injections`, `protectai/prompt-injection-validation`, `Lakera/gandalf_ignore_instructions`를 사용하며, `Rule Only`, `Lightweight Model Only`, `Hybrid / Full Pipeline`을 분리 측정합니다.
+
+9. Docker 이미지 재빌드 및 컨테이너 검증
 
 ```powershell
 docker compose build --no-cache
@@ -505,19 +537,19 @@ docker compose exec proxy ls -al /app/models/lightweight
 
 컨테이너 내부에는 `vectorizer.joblib`, `classifier.joblib`가 모두 보여야 하며, 이후 audit summary의 기존 호환성 필드인 `hybrid_detection.model_status`는 `enabled`로 바뀌어야 합니다.
 
-9. FastAPI 프록시 실행
+10. FastAPI 프록시 실행
 
 ```bash
 python -m uvicorn backend.app.api.proxy:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-10. Mock LLM 실행
+11. Mock LLM 실행
 
 ```bash
 python -m uvicorn tools.mock_llm:app --host 127.0.0.1 --port 8001 --app-dir .
 ```
 
-11. 발표용 정적 데모 페이지 실행
+12. 발표용 정적 데모 페이지 실행
 
 ```bash
 cd frontend
@@ -606,23 +638,28 @@ False Negative cases are the most important review target because they represent
 
 평가 결과는 다음 파일에서 확인할 수 있습니다.
 
+- `reports/external_dataset_compare_report.md`
+- `reports/external_dataset_compare_results.json`
+- `reports/external_dataset_compare_results.csv`
 - `reports/external_prompt_injection_report.md`
 - `reports/external_prompt_injection_false_negatives.md`
 - `reports/external_prompt_injection_errors.json`
 
-최신 본 실험 결과:
+최신 본 실험 결과(`Hybrid / Full Pipeline`):
 
 | Dataset | Size | Precision | Recall | F1 | Accuracy |
 |---|---:|---:|---:|---:|---:|
 | `deepset/prompt-injections` | 662 | 1.0000 | 0.0760 | 0.1413 | 0.6329 |
-| `protectai/prompt-injection-validation` | 3,227 | 0.8251 | 0.1796 | 0.2950 | 0.6297 |
-| `Lakera/gandalf_ignore_instructions` | 1,000 | N/A | 0.4480 | N/A | 0.4480 |
+| `protectai/prompt-injection-validation` | 3,227 | 0.8399 | 0.1997 | 0.3227 | 0.6384 |
+| `Lakera/gandalf_ignore_instructions` | 1,000 | N/A | 0.4680 | N/A | 0.4680 |
 
 실행 명령:
 
 ```bash
-python -m evaluation.evaluate_external_prompt_injection
+python -m evaluation.external_dataset_compare
 ```
+
+기존 `evaluation.evaluate_external_prompt_injection`은 Hybrid 단일 요약과 false negative 샘플 분석용으로 유지합니다. 모드별 성능 비교는 `evaluation.external_dataset_compare` 결과를 기준으로 합니다.
 
 ### External Benchmark Interpretation
 
@@ -632,7 +669,7 @@ python -m evaluation.evaluate_external_prompt_injection
 
 본 프로젝트의 내부 회귀 테스트는 정책 요구사항이 정상적으로 동작하는지 확인하기 위한 기능 검증 목적이며, 외부 공개 데이터셋 평가는 일반화 성능과 탐지 한계를 확인하기 위한 벤치마크 목적입니다. 두 결과는 목적이 다르므로 직접적인 우열 비교보다는 보완적인 평가 결과로 해석합니다.
 
-본 외부 공개 데이터셋 평가는 현재 활성화된 Hybrid Detector 구성을 기준으로 수행되었습니다. 현재 환경에서는 lightweight classifier artifact가 로드되어 있으므로, 보고된 결과는 rule/heuristic 탐지와 경량 분류 계층이 함께 동작한 현재 구현 기준 성능입니다.
+본 외부 공개 데이터셋 평가는 현재 활성화된 Hybrid Detector 구성뿐 아니라 Rule Only와 Lightweight Model Only를 함께 분리 측정했습니다. 현재 환경에서는 lightweight classifier artifact가 로드되어 있으나, 외부 데이터셋에서는 모델 단독 Recall이 낮아 대부분의 탐지 기여가 rule/heuristic 계층에서 발생했습니다. 따라서 이 결과는 경량 분류 계층을 외부 영어 데이터셋으로 재학습해야 한다는 근거로 해석합니다.
 
 ### Relation to Reference Study
 
@@ -716,6 +753,9 @@ Invoke-RestMethod `
 - `reports/validator_agent_expected_effect.md`
 - `reports/deepset_prompt_injection_report.md`
 - `reports/external_dataset_performance_summary.md`
+- `reports/external_dataset_compare_report.md`
+- `reports/external_dataset_compare_results.json`
+- `reports/external_dataset_compare_results.csv`
 - `reports/external_prompt_injection_report.md`
 - `reports/external_prompt_injection_false_negatives.md`
 - `reports/external_prompt_injection_errors.json`
@@ -724,5 +764,5 @@ Invoke-RestMethod `
 
 - 정규식만으로는 우회 표현과 문맥 기반 공격 탐지에 한계가 있습니다.
 - 경량 분류 계층은 비정형 공격 문장을 보완적으로 분류하지만, 실제 artifact가 없을 때는 `regex + heuristic rule + fallback heuristic` 경로로 동작합니다.
-- 학습 스크립트는 `tools/train_lightweight_classifier.py`에 포함되어 있으며, 모델 단독 성능은 `evaluation/baseline_compare.py`에서 artifact 로드 여부에 따라 별도 측정합니다.
+- 학습 스크립트는 `tools/train_lightweight_classifier.py`에 포함되어 있으며, 모델 단독 성능은 내부 baseline은 `evaluation/baseline_compare.py`, 외부 공개 데이터셋 3종은 `evaluation/external_dataset_compare.py`에서 artifact 로드 여부에 따라 별도 측정합니다.
 - 외부 스타일 검증과 확장 난이도 데이터셋을 계속 늘려 일반화 성능을 점검해야 합니다.

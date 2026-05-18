@@ -4,7 +4,7 @@
 
 A.
 - 맞다. 내부 데이터셋은 한국어 공공기관 업무 시나리오 중심으로 구성되어 있기 때문에 높은 성능이 나올 수 있다.
-- 그래서 외부 공개 데이터셋인 `deepset/prompt-injections`를 추가로 적용했고, 영어 기반 공격에서는 Recall이 낮다는 한계를 확인했다.
+- 그래서 외부 공개 데이터셋인 `deepset/prompt-injections`, `protectai/prompt-injection-validation`, `Lakera/gandalf_ignore_instructions`를 추가로 적용했고, 영어 기반 공격에서는 Recall이 낮다는 한계를 확인했다.
 - 본 프로젝트는 이 결과를 숨기지 않고 한계와 개선 과제로 명시했다.
 
 ## Q2. 왜 false positive가 0개인가요?
@@ -66,16 +66,18 @@ A.
 ## Q10. Hybrid가 Rule Only보다 좋은 근거가 있나요?
 
 A.
-- 최종 평가에서는 Rule Only, Lightweight Model Only, Hybrid를 분리하여 Precision, Recall, F1, latency를 비교했다.
-- 이를 통해 규칙 기반 탐지의 안정성과 경량 모델 기반 탐지의 보완 가능성을 비교했다.
-- 단, 모델 artifact가 없는 fallback 상태는 별도로 표시하여 완전한 Hybrid 성능으로 과장하지 않았다.
+- 최종 평가에서는 외부 공개 데이터셋 3종에 대해 Rule Only, Lightweight Model Only, Hybrid / Full Pipeline을 분리하여 Precision, Recall, F1, Accuracy, latency를 비교했다.
+- `deepset/prompt-injections`에서는 Rule Only와 Hybrid Recall이 모두 0.0760으로 같았고, `protectai/prompt-injection-validation`에서는 둘 다 Recall 0.1997, F1 0.3227이었다.
+- `Lakera/gandalf_ignore_instructions`에서는 Hybrid Recall이 0.4680으로 Rule Only 0.4400보다 소폭 높았다.
+- 따라서 현재 결과는 "Hybrid가 항상 Rule Only보다 압도적으로 좋다"가 아니라, "모드별 기여를 분리했고 현재 외부 영어 데이터셋에서는 경량 모델 단독 기여가 제한적"이라고 설명하는 것이 맞다.
 
 ## Q11. 모델 artifact가 없으면 하이브리드라고 볼 수 있나요?
 
 A.
 - 모델 artifact가 없는 실행 환경에서는 rule fallback으로 동작한다.
 - 이는 시스템 중단을 방지하기 위한 안정성 설계이다.
-- 다만 평가 보고서에서는 `model_status`를 `loaded` 또는 `artifact_missing`으로 분리하여 해석한다.
+- 다만 평가 보고서에서는 `model_status`를 `enabled`, `artifact_missing`, `dependency_missing` 등으로 분리하여 해석한다.
+- 이번 외부 3종 재평가에서는 `vectorizer.joblib`와 `classifier.joblib`가 모두 로드되어 `model_status=enabled`였다.
 
 ## Q12. 이 프로젝트는 범용 Prompt Injection 탐지기인가요?
 

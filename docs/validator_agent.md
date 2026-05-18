@@ -25,6 +25,8 @@ Validator Agent는 LLM 또는 Mock LLM이 생성한 출력값을 최종 사용�
 
 Validator Agent는 입력 검사 전에 실행하지 않는다. 입력 탐지는 기존 detector와 policy engine이 수행하고, Validator Agent는 LLM 응답 생성 이후에만 출력 검증 역할을 수행한다.
 
+`/proxy/analyze`는 LLM 호출이 없는 사전 분석 API이므로 Validator Agent 출력 재검사는 `SKIPPED`로 기록된다. 이 API는 AI 전송 전 입력 위험도와 마스킹 결과를 미리 확인하기 위한 경로다.
+
 ## 검사 항목
 
 - 출력 내 개인정보 잔존 여부: 이메일, 전화번호, 주민등록번호, 계좌번호, 주소 등 기존 PII detector가 지원하는 패턴
@@ -61,4 +63,4 @@ BLOCK > MASK > WARN > ALLOW
 
 - Validator Agent는 규칙 기반 검증 모듈이므로 모든 우회 표현을 탐지하지는 못한다.
 - 출력 검증 단계가 추가되어 latency가 증가한다.
-- 스트리밍 응답은 최종 검증 전 사용자에게 unsafe token이 전달되지 않도록 버퍼링 후 검증된 내용을 반환한다.
+- SSE 엔드포인트는 보안 검증을 위해 upstream 응답을 버퍼링한 뒤 Validator Agent 검증 후 안전한 응답만 반환한다. 따라서 이 구현은 실시간 토큰 스트리밍이 아니라 검증 후 일괄 반환 구조에 가깝다.

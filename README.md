@@ -28,7 +28,7 @@ Request
 
 Validator Agent는 LLM 응답 생성 이후 최종 사용자 반환 이전 단계에서 출력 재검사를 수행합니다. 출력 내 개인정보 잔존, 정책 위반 응답, 마스킹 누락을 검사하고 `output_action`을 `ALLOW`, `MASK`, `BLOCK`, `WARN`으로 분리 기록합니다.
 
-PQC는 탐지 성능 개선이 아니라 감사 로그 무결성 보호를 위한 확장 기능입니다. 감사 로그의 normalized JSON에서 `integrity.signature` 필드를 제외하고 SHA-256 해시를 만든 뒤, 개발 환경에서는 `MOCK-ML-DSA` signer로 서명합니다. 실제 운영 환경에서는 동일 인터페이스를 ML-DSA signer로 교체할 수 있습니다.
+PQC는 탐지 성능 개선이 아니라 감사 로그 무결성 보호를 위한 확장 기능입니다. 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니며, 현재 구현은 ML-DSA 교체가 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조입니다. 감사 로그의 normalized JSON에서 `integrity.signature` 필드를 제외하고 SHA-256 해시를 만든 뒤, 개발 환경에서는 내부적으로 HMAC-SHA256을 사용하는 `MOCK-ML-DSA` signer로 서명합니다.
 
 `logs/audit_log.jsonl`에는 raw prompt, raw response, API key, system prompt, 개인정보 원문을 저장하지 않습니다. 감사 로그에는 `input_action`, `output_action`, `final_action`, Validator Agent 결과, detector 요약, integrity signature만 저장합니다.
 
@@ -37,6 +37,8 @@ PQC는 탐지 성능 개선이 아니라 감사 로그 무결성 보호를 위�
 > Validator Agent는 LLM 응답 생성 이후 최종 사용자 반환 이전 단계에 배치하여, 출력 내 개인정보 잔존 여부와 정책 위반 응답을 재검사하는 출력 검증 계층이다.
 
 > PQC는 개인정보 탐지나 프롬프트 인젝션 탐지 성능을 향상시키기 위한 기술이 아니라, 탐지 결과와 정책 판정이 기록된 감사 로그의 장기 무결성을 보장하기 위한 보안 확장 요소로 적용한다.
+
+> 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니며, 현재 구현은 ML-DSA 교체가 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조이다.
 
 > 본 시스템은 입력 탐지, 정책엔진, 출력 검증, 감사 로그, PQC 기반 무결성 검증으로 구성되며, 이를 통해 LLM 사용 과정에서 발생할 수 있는 개인정보 유출과 정책 위반 응답을 단계적으로 차단한다.
 
@@ -354,6 +356,8 @@ tools/
 12. audit summary에는 입력/출력 탐지 요약, Validator Agent 결과, 기존 호환성 필드인 `hybrid_detection.model_status` 메타데이터를 남깁니다.
 13. 저장된 audit log에는 PQC-compatible integrity signature를 추가합니다.
    `detector_counts`는 match가 나온 detector 개수이며, `detectors_invoked`는 실제로 실행된 detector 목록입니다.
+
+`/proxy/analyze`는 LLM 호출이 없는 사전 분석 API이므로 Validator Agent 출력 재검사는 `SKIPPED`로 기록됩니다. SSE 엔드포인트는 보안 검증을 위해 upstream 응답을 버퍼링한 뒤 Validator Agent 검증 후 안전한 응답만 반환하므로, 실시간 토큰 스트리밍이 아니라 검증 후 일괄 반환에 가깝습니다.
 
 ## API 예시
 
@@ -686,7 +690,7 @@ Invoke-RestMethod `
 - `policy_id`는 `default`와 `strict`만 허용되며, 각각 `policies/policy.yaml`과 `policies/strict.yaml`을 사용합니다.
 - `logs/audit_log.jsonl`에는 원문 prompt/response를 저장하지 않고 메타데이터만 기록합니다.
 - 입력 정책 평가, Validator Agent 출력 검증, `final_action`이 audit summary와 audit log에 분리 기록됩니다.
-- audit log는 `MOCK-ML-DSA` 기반 PQC-compatible signer로 무결성 서명을 남깁니다. 이는 실제 ML-DSA 구현이 아니라 개발용 mock signer입니다.
+- audit log는 `MOCK-ML-DSA` 기반 PQC-compatible signer로 무결성 서명을 남깁니다. 이는 실제 ML-DSA 구현이 아니라 내부적으로 HMAC-SHA256을 사용하는 개발용 mock signer입니다.
 
 ## 문서
 

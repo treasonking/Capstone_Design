@@ -2,6 +2,8 @@
 
 PQC is applied only to audit log integrity protection. It signs the normalized audit record hash to detect post-hoc tampering of security decisions.
 
+Important wording: this project does not embed a production ML-DSA library. The current implementation provides an ML-DSA-replaceable audit-log signing interface plus a Mock signer based verification structure.
+
 ## 적용 범위
 
 PQC는 탐지 파이프라인 내부가 아니라 감사 로그 저장 이후의 무결성 보호 계층으로 적용한다.
@@ -27,6 +29,8 @@ PQC는 탐지 파이프라인 내부가 아니라 감사 로그 저장 이후의
 
 > PQC는 개인정보 탐지나 프롬프트 인젝션 탐지 성능을 향상시키기 위한 기술이 아니라, 탐지 결과와 정책 판정이 기록된 감사 로그의 장기 무결성을 보장하기 위한 보안 확장 요소로 적용한다.
 
+> 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니며, 현재 구현은 ML-DSA 교체가 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조이다.
+
 ## 서명 구조
 
 ```text
@@ -34,7 +38,7 @@ PQC는 탐지 파이프라인 내부가 아니라 감사 로그 저장 이후의
   -> integrity.signature 제외
   -> canonical JSON 생성
   -> SHA-256 해시 생성
-  -> PQC-compatible signer로 서명
+  -> PQC-compatible Mock signer로 서명
   -> integrity.signature 저장
   -> 공개 검증 인터페이스로 검증
 ```
@@ -43,9 +47,25 @@ PQC는 탐지 파이프라인 내부가 아니라 감사 로그 저장 이후의
 
 ## 현재 구현
 
-현재 구현은 `backend/app/integrity/pqc_signer.py`의 `MockMLDSASigner`를 사용한다. 이는 개발 및 테스트용 MOCK-ML-DSA signer이며 실제 ML-DSA 구현이 아니다.
+현재 구현은 `backend/app/integrity/pqc_signer.py`의 `MockMLDSASigner`를 사용한다. 이는 개발 및 테스트용 MOCK-ML-DSA signer이며 실제 ML-DSA 구현이 아니다. 내부 서명 구현은 HMAC-SHA256이다.
+
+따라서 발표, 논문, 보고서에서는 "PQC를 직접 구현했다"라고 표현하지 않는다. 정확한 표현은 "ML-DSA로 교체 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조를 구현했다"이다.
 
 운영 환경에서는 같은 인터페이스를 유지하면서 실제 ML-DSA 서명 라이브러리로 교체할 수 있다. ML-KEM은 키 교환용이므로 감사 로그 서명 목적에는 사용하지 않는다.
+
+## 발표 및 보고서 표현 가이드
+
+권장 표현:
+
+- ML-DSA 교체 가능한 감사 로그 서명 인터페이스를 구현했다.
+- 현재 프로토타입은 Mock signer로 감사 로그 위변조 검증 흐름을 재현한다.
+- PQC는 탐지 정확도 향상이 아니라 감사 로그의 장기 무결성 보장을 위한 확장 요소다.
+
+피해야 할 표현:
+
+- 실제 PQC 서명을 구현했다.
+- ML-DSA를 직접 탑재했다.
+- PQC가 PII 또는 Prompt Injection 탐지 성능을 높인다.
 
 ## 저장 금지 필드
 

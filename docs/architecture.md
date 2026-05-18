@@ -21,8 +21,14 @@
 6. action이 `MASK`이면 민감정보를 치환한 뒤 upstream LLM으로 전달한다.
 7. action이 `BLOCK`이면 upstream LLM 호출 없이 차단 응답을 반환한다.
 8. action이 `ALLOW`이면 요청을 그대로 upstream LLM으로 전달한다.
-9. 출력 응답에 대해서도 필요한 경우 동일한 다층형 탐지 과정을 적용한다.
+9. LLM 또는 Mock LLM 응답 생성 이후 Validator Agent가 최종 사용자 반환 전에 출력을 재검사한다.
+10. Validator Agent는 출력 내 PII 잔존, 시스템 프롬프트 또는 내부 정책 노출, 정책 우회 성공 징후, 마스킹 누락을 검사한다.
+11. 최종 응답 이후 audit log에는 `input_action`, `output_action`, `final_action`, Validator Agent 결과가 분리 기록되고, PQC-compatible integrity signature가 추가된다.
 
 ## 구현 메모
 
 현재 코드에는 기존 구현 호환성을 위해 `backend/app/detection/hybrid_detector.py`와 `hybrid_detection` audit 필드명이 남아 있다. 문서상 대표 명칭은 다층형 탐지 파이프라인이며, 본 시스템은 정책·패턴 기반 탐지와 경량 분류를 결합한다는 점에서 넓은 의미의 하이브리드 구조로만 설명한다.
+
+Validator Agent는 입력 검사 전에 배치하지 않는다. 입력 검사는 detector와 policy engine이 담당하고, Validator Agent는 LLM 출력 생성 이후에만 실행되는 출력 검증 계층이다.
+
+PQC는 탐지 성능 개선이 아니라 감사 로그 무결성 보호를 위한 확장 기능이다. 현재 개발 구현은 `MOCK-ML-DSA` signer를 사용하며, 운영 환경에서는 실제 ML-DSA signer로 교체할 수 있도록 인터페이스를 분리한다.

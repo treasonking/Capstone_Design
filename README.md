@@ -12,6 +12,34 @@ Multi-layered LLM Security Proxy for Public-sector and Internal Network Environm
 
 정규식 패턴 계층은 주민등록번호, 전화번호, 이메일, 계좌번호처럼 형식이 명확한 개인정보를 빠르게 탐지합니다. 휴리스틱 규칙 계층은 정책 우회, 시스템 프롬프트 탈취, 지시 무시와 같은 명시적 공격 단서를 규칙 조합으로 판단합니다. 경량 분류 계층은 정규식과 휴리스틱 규칙만으로 탐지하기 어려운 비정형 프롬프트 인젝션과 문맥형 위험 표현을 보완적으로 분류합니다. 최종 정책 결정 계층은 각 계층의 탐지 결과를 종합하여 `ALLOW`, `MASK`, `BLOCK`, `WARN` 중 하나의 조치를 결정합니다.
 
+## Security Pipeline
+
+```text
+Request
+  → Proxy
+  → Input Detector
+  → Policy Engine
+  → LLM / Mock LLM
+  → Validator Agent
+  → Response
+  → Audit Log
+  → PQC-based Integrity Signature
+```
+
+Validator Agent는 LLM 응답 생성 이후 최종 사용자 반환 이전 단계에서 출력 재검사를 수행합니다. 출력 내 개인정보 잔존, 정책 위반 응답, 마스킹 누락을 검사하고 `output_action`을 `ALLOW`, `MASK`, `BLOCK`, `WARN`으로 분리 기록합니다.
+
+PQC는 탐지 성능 개선이 아니라 감사 로그 무결성 보호를 위한 확장 기능입니다. 감사 로그의 normalized JSON에서 `integrity.signature` 필드를 제외하고 SHA-256 해시를 만든 뒤, 개발 환경에서는 `MOCK-ML-DSA` signer로 서명합니다. 실제 운영 환경에서는 동일 인터페이스를 ML-DSA signer로 교체할 수 있습니다.
+
+`logs/audit_log.jsonl`에는 raw prompt, raw response, API key, system prompt, 개인정보 원문을 저장하지 않습니다. 감사 로그에는 `input_action`, `output_action`, `final_action`, Validator Agent 결과, detector 요약, integrity signature만 저장합니다.
+
+발표용 요약:
+
+> Validator Agent는 LLM 응답 생성 이후 최종 사용자 반환 이전 단계에 배치하여, 출력 내 개인정보 잔존 여부와 정책 위반 응답을 재검사하는 출력 검증 계층이다.
+
+> PQC는 개인정보 탐지나 프롬프트 인젝션 탐지 성능을 향상시키기 위한 기술이 아니라, 탐지 결과와 정책 판정이 기록된 감사 로그의 장기 무결성을 보장하기 위한 보안 확장 요소로 적용한다.
+
+> 본 시스템은 입력 탐지, 정책엔진, 출력 검증, 감사 로그, PQC 기반 무결성 검증으로 구성되며, 이를 통해 LLM 사용 과정에서 발생할 수 있는 개인정보 유출과 정책 위반 응답을 단계적으로 차단한다.
+
 ## 프로젝트 배경
 
 - 동사무소, 행정복지센터, 사내 업무망에서도 생성형 AI 활용 수요가 빠르게 증가하고 있습니다.
@@ -37,9 +65,13 @@ Multi-layered Detection Pipeline
   ↓
 Upstream LLM 또는 Mock LLM
   ↓
-Output Inspection
+Validator Agent
   ↓
-User Response + Audit Log
+User Response
+  ↓
+Audit Log
+  ↓
+PQC-based Integrity Signature
 ```
 
 ```mermaid
@@ -51,10 +83,10 @@ flowchart TD
     B --> M["Layer 3. Lightweight Classification Layer"]
     M --> E["Layer 4. Decision Layer<br/>ALLOW / MASK / BLOCK / WARN"]
     E --> L["Upstream LLM or Mock LLM"]
-    L --> O["Output Inspection"]
-    O --> R2["Multi-layered Detection Pipeline"]
-    R2 --> E2["Decision Layer"]
-    E2 --> A["User Response + Audit Log"]
+    L --> V["Validator Agent<br/>Output Re-check"]
+    V --> A["User Response"]
+    A --> G["Audit Log"]
+    G --> S["PQC-based Integrity Signature"]
 ```
 
 ## 왜 정규식만 사용하지 않는가?
@@ -90,8 +122,10 @@ flowchart TD
 
 | Task | Precision | Recall | F1 | TP / FP / FN |
 |---|---:|---:|---:|---:|
-| PII Detection | 1.000 | 1.000 | 1.000 | 29 / 0 / 0 |
-| Prompt Injection Detection | 1.000 | 1.000 | 1.000 | 104 / 0 / 0 |
+| PII Detection | 0.879 | 1.000 | 0.935 | 29 / 4 / 0 |
+| Prompt Injection Detection | 0.852 | 1.000 | 0.920 | 104 / 18 / 0 |
+
+2026-05-18 재평가 기준이며, 경량 분류 artifact가 활성화된 환경에서 reason_code 단위로 집계한 결과입니다. 입력 탐지 성능표에는 Validator Agent와 PQC 무결성 서명이 탐지 성능 향상 요소로 포함되지 않습니다.
 
 ### 외부 스타일 예비 검증 결과
 
@@ -99,10 +133,20 @@ flowchart TD
 
 | Task | Precision | Recall | F1 | TP / FP / FN |
 |---|---:|---:|---:|---:|
-| PII Detection | 1.000 | 1.000 | 1.000 | 7 / 0 / 0 |
-| Prompt Injection Detection | 0.846 | 0.957 | 0.898 | 22 / 4 / 1 |
+| PII Detection | 0.875 | 1.000 | 0.933 | 7 / 1 / 0 |
+| Prompt Injection Detection | 0.767 | 1.000 | 0.868 | 23 / 7 / 0 |
 
 이 결과는 실제 운영 일반화 성능 추정치가 아니라, 내부 회귀셋과 표현이 다른 외부 스타일 샘플에서 오탐/미탐 패턴을 확인하기 위한 예비 검증 결과입니다. 표본 수가 작기 때문에 본 논문의 주요 성능 비교 결과에는 포함하지 않습니다.
+
+### Rule Only / Model Only / Hybrid 비교
+
+2026-05-18 로컬 baseline 비교는 내부 데이터셋 기준으로 재생성했습니다. 공개 deepset 평가는 실행 환경의 Hugging Face 접근 제한과 장시간 캐시 처리 때문에 이번 로컬 재평가에서는 `--max-deepset-samples 0`으로 제외했고, 기존 공개 데이터셋 보고서는 별도 참고 자료로 유지합니다.
+
+| Dataset | Mode | Precision | Recall | F1 | TP / FP / FN | Avg Latency(ms) |
+|---|---|---:|---:|---:|---:|---:|
+| internal | Rule Only | 1.000 | 1.000 | 1.000 | 79 / 0 / 0 | 1.154 |
+| internal | Model Only | 1.000 | 0.127 | 0.225 | 10 / 0 / 69 | 2.994 |
+| internal | Hybrid | 1.000 | 1.000 | 1.000 | 79 / 0 / 0 | 3.724 |
 
 ### 공개 데이터셋 기반 Prompt Injection 본 실험 결과
 
@@ -122,7 +166,7 @@ False Negative는 실제 Prompt Injection 문장인데 프록시가 차단하지
 
 ### 성능 결과 해석 주의
 
-`evaluation/sample_dataset.json` 기준 결과는 내부 회귀 테스트 성격입니다. 이 데이터셋은 현재 탐지 룰과 정책이 기존 케이스를 안정적으로 탐지하는지 확인하기 위한 목적이므로 F1 1.000이 나올 수 있습니다.
+`evaluation/sample_dataset.json` 기준 결과는 내부 회귀 테스트 성격입니다. 이 데이터셋은 현재 탐지 룰과 정책이 기존 케이스를 안정적으로 탐지하는지 확인하기 위한 목적이며, 실제 운영 환경의 일반화 성능으로 해석해서는 안 됩니다.
 
 그러나 이 결과를 실제 운영 환경에서의 일반화 성능으로 해석해서는 안 됩니다. 이를 보완하기 위해 `evaluation/external_validation_sample.json`을 별도로 구성했으며, 외부 스타일 검증에서는 Prompt Injection F1이 낮아지는 것을 확인했습니다. 향후 데이터셋을 확장하여 우회 표현, 비정형 개인정보, 공공기관 업무 문장에 대한 일반화 성능을 지속적으로 평가합니다.
 
@@ -150,10 +194,10 @@ False Negative는 실제 Prompt Injection 문장인데 프록시가 차단하지
 ## 벤치마크 비교 기준
 
 - 잘못된 표현: `정확도 100%`, `탐지율 100%`, `모든 공격 탐지 가능`
-- 올바른 표현: `내부 회귀 테스트 데이터셋 기준 F1 1.000`
-- 올바른 표현: `외부 스타일 검증 데이터셋 기준 Injection F1 0.898`
+- 올바른 표현: `내부 회귀 테스트 데이터셋 기준 PII F1 0.935, Injection F1 0.920`
+- 올바른 표현: `외부 스타일 검증 데이터셋 기준 Injection F1 0.868`
 - 올바른 표현: `Hugging Face deepset 공개 데이터셋 기준 Injection F1 0.1413`
-- 올바른 표현: `내부 데이터셋 F1 1.000은 내부 회귀 테스트 결과이며, 일반화 성능은 외부 스타일 검증으로 별도 확인한다.`
+- 올바른 표현: `내부 회귀 테스트 결과와 외부 스타일 검증 결과는 목적이 다르며, 일반화 성능은 외부 스타일 검증과 공개 데이터셋 평가로 별도 확인한다.`
 
 ## 데이터셋 구성 방향
 
@@ -237,18 +281,28 @@ backend/
     engine/
       masking.py
       policy_engine.py
+    integrity/
+      audit_signer.py
+      canonical_json.py
+      pqc_signer.py
     policy/
       __init__.py
     services/
       audit_service.py
       llm_service.py
       proxy_service.py
+    validator/
+      output_validator.py
+      validator_agent.py
   tests/
+    test_audit_integrity.py
     test_lightweight_classifier.py
     test_hybrid_detector.py
+    test_pqc_signer.py
     test_pii_detector.py
     test_injection_detector.py
     test_proxy_api.py
+    test_validator_agent.py
 models/
   lightweight/
     vectorizer.joblib
@@ -270,6 +324,7 @@ reports/
   evaluation_report.md
   external_validation_report.md
   baseline_compare_report.md
+  validator_agent_expected_effect.md
   deepset_prompt_injection_report.md
   external_dataset_performance_summary.md
   external_prompt_injection_report.md
@@ -280,6 +335,7 @@ frontend/
 tools/
   mock_llm.py
   train_lightweight_classifier.py
+  verify_audit_log.py
 ```
 
 ## 프록시 동작 흐름
@@ -292,8 +348,11 @@ tools/
 6. `action`이 `MASK`이면 민감정보를 치환한 뒤 upstream LLM 또는 Mock LLM으로 전달합니다.
 7. `action`이 `BLOCK`이면 upstream LLM 호출 없이 차단 응답을 반환합니다.
 8. `action`이 `ALLOW`이면 요청을 그대로 upstream LLM 또는 Mock LLM으로 전달합니다.
-9. 출력 응답에 대해서도 필요한 경우 동일한 다층형 탐지 과정을 적용합니다.
-10. audit summary에는 입력/출력 탐지 요약과 기존 호환성 필드인 `hybrid_detection.model_status` 메타데이터를 남깁니다.
+9. LLM 응답 생성 이후 Validator Agent가 최종 사용자 반환 전에 출력을 재검사합니다.
+10. 출력에 마스킹 가능한 PII가 있으면 `output_action=MASK`로 마스킹 후 반환하고, 시스템 프롬프트 또는 내부 정책 노출은 `output_action=BLOCK`으로 차단합니다.
+11. `input_action`과 `output_action` 중 더 강한 조치를 `final_action`으로 기록합니다.
+12. audit summary에는 입력/출력 탐지 요약, Validator Agent 결과, 기존 호환성 필드인 `hybrid_detection.model_status` 메타데이터를 남깁니다.
+13. 저장된 audit log에는 PQC-compatible integrity signature를 추가합니다.
    `detector_counts`는 match가 나온 detector 개수이며, `detectors_invoked`는 실제로 실행된 detector 목록입니다.
 
 ## API 예시
@@ -320,6 +379,7 @@ curl -X POST "http://127.0.0.1:8000/proxy/chat" \
   "audit_summary": {
     "timestamp_utc": "2026-05-06T00:00:00+00:00",
     "latency_ms": 12.34,
+    "final_action": "MASK",
     "input": {
       "pii_detected": true,
       "injection_detected": false,
@@ -331,6 +391,8 @@ curl -X POST "http://127.0.0.1:8000/proxy/chat" \
       }
     },
     "output": {
+      "action": "ALLOW",
+      "reason_codes": ["SAFE_OUTPUT"],
       "pii_detected": false,
       "injection_detected": false,
       "hybrid_detection": {
@@ -339,10 +401,19 @@ curl -X POST "http://127.0.0.1:8000/proxy/chat" \
         "fallback_used": true,
         "fallback_reason": "artifact_missing"
       }
+    },
+    "validator": {
+      "validator_result": "PASS",
+      "output_action": "ALLOW",
+      "reason_codes": ["SAFE_OUTPUT"],
+      "residual_pii_detected": false,
+      "masking_leak_detected": false
     }
   }
 }
 ```
+
+실제 `logs/audit_log.jsonl` 저장 항목에는 위 요약에 더해 `integrity.hash_alg`, `integrity.signature_alg`, `integrity.public_key_id`, `integrity.signature`가 포함됩니다.
 
 ## 실행 방법
 
@@ -614,7 +685,8 @@ Invoke-RestMethod `
 - 관리자 API `/admin/stats`, `/admin/recent-blocks`, `/admin/reason-codes`, `/admin/upstream-config`는 `X-Admin-Token` 헤더와 `ADMIN_API_TOKEN`으로 보호됩니다.
 - `policy_id`는 `default`와 `strict`만 허용되며, 각각 `policies/policy.yaml`과 `policies/strict.yaml`을 사용합니다.
 - `logs/audit_log.jsonl`에는 원문 prompt/response를 저장하지 않고 메타데이터만 기록합니다.
-- 입력과 출력 모두에 대해 정책 평가와 audit summary가 남습니다.
+- 입력 정책 평가, Validator Agent 출력 검증, `final_action`이 audit summary와 audit log에 분리 기록됩니다.
+- audit log는 `MOCK-ML-DSA` 기반 PQC-compatible signer로 무결성 서명을 남깁니다. 이는 실제 ML-DSA 구현이 아니라 개발용 mock signer입니다.
 
 ## 문서
 
@@ -625,6 +697,8 @@ Invoke-RestMethod `
 - `docs/reason_codes.md`
 - `docs/demo_scenario.md`
 - `docs/logging_policy.md`
+- `docs/validator_agent.md`
+- `docs/pqc_audit_integrity.md`
 - `docs/evaluation_method.md`
 - `docs/evaluation_limitations.md`
 - `docs/security_limitations.md`
@@ -635,6 +709,7 @@ Invoke-RestMethod `
 - `reports/external_validation_report.md`
 - `reports/baseline_compare_report.md`
 - `reports/baseline_compare_results.json`
+- `reports/validator_agent_expected_effect.md`
 - `reports/deepset_prompt_injection_report.md`
 - `reports/external_dataset_performance_summary.md`
 - `reports/external_prompt_injection_report.md`

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
 import sys
 from collections import Counter, defaultdict
 from datetime import datetime
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
@@ -25,8 +27,11 @@ DEFAULT_OUTPUT_DIR = Path("datasets/external_splits")
 TRAIN_FILENAME = "train_external_prompt_injection.jsonl"
 EVAL_FILENAME = "eval_external_prompt_injection.jsonl"
 SUMMARY_FILENAME = "split_summary.json"
+LEAKAGE_REPORT_PATH = Path("reports/external_split_leakage_report.md")
 DEFAULT_RANDOM_SEED = 42
 DEFAULT_TRAIN_RATIO = 0.7
+NEAR_DUPLICATE_THRESHOLD = 0.95
+NEAR_DUPLICATE_DATASET = "deepset/prompt-injections"
 
 
 DATASET_LOADERS = {
@@ -43,6 +48,14 @@ def _record_from_sample(sample: ExternalSample, index: int) -> dict[str, Any]:
         "text": sample.text,
         "label": "injection" if sample.expected_injection else "safe",
     }
+
+
+def normalize_text(text: str) -> str:
+    return " ".join(text.strip().lower().split())
+
+
+def text_hash(text: str) -> str:
+    return hashlib.sha256(normalize_text(text).encode("utf-8")).hexdigest()
 
 
 def _split_records(
@@ -114,6 +127,82 @@ def _assert_no_overlap(train_rows: list[dict[str, Any]], eval_rows: list[dict[st
     return 0
 
 
+def _hashes_by_dataset(rows: list[dict[str, Any]]) -> dict[str, set[str]]:
+    grouped: dict[str, set[str]] = defaultdict(set)
+    for row in rows:
+        grouped[str(row["dataset"])].add(text_hash(str(row["text"])))
+    return grouped
+
+
+def _text_hash_overlap(
+    train_rows: list[dict[str, Any]],
+    eval_rows: list[dict[str, Any]],
+) -> tuple[int, dict[str, int]]:
+    train_hashes = _hashes_by_dataset(train_rows)
+    eval_hashes = _hashes_by_dataset(eval_rows)
+    by_dataset: dict[str, int] = {}
+    total_overlap: set[str] = set()
+
+    for dataset_name in sorted(DATASET_LOADERS):
+        overlap = train_hashes.get(dataset_name, set()) & eval_hashes.get(dataset_name, set())
+        by_dataset[dataset_name] = len(overlap)
+        total_overlap.update(overlap)
+
+    return len(total_overlap), by_dataset
+
+
+def _near_duplicate_count(
+    train_rows: list[dict[str, Any]],
+    eval_rows: list[dict[str, Any]],
+    *,
+    dataset_name: str = NEAR_DUPLICATE_DATASET,
+    threshold: float = NEAR_DUPLICATE_THRESHOLD,
+) -> tuple[int, list[dict[str, Any]]]:
+    train_grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
+    eval_grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
+
+    for row in train_rows:
+        if row["dataset"] != dataset_name:
+            continue
+        train_grouped[str(row["label"])].append(
+            {"id": str(row["id"]), "text": normalize_text(str(row["text"]))}
+        )
+
+    for row in eval_rows:
+        if row["dataset"] != dataset_name:
+            continue
+        eval_grouped[str(row["label"])].append(
+            {"id": str(row["id"]), "text": normalize_text(str(row["text"]))}
+        )
+
+    count = 0
+    examples: list[dict[str, Any]] = []
+    for label in sorted(set(train_grouped) | set(eval_grouped)):
+        for train_row in train_grouped.get(label, []):
+            for eval_row in eval_grouped.get(label, []):
+                similarity = SequenceMatcher(
+                    None,
+                    train_row["text"],
+                    eval_row["text"],
+                    autojunk=False,
+                ).ratio()
+                if similarity < threshold:
+                    continue
+                count += 1
+                if len(examples) < 10:
+                    examples.append(
+                        {
+                            "label": label,
+                            "similarity": round(similarity, 4),
+                            "train_id": train_row["id"],
+                            "eval_id": eval_row["id"],
+                            "train_text": train_row["text"][:180],
+                            "eval_text": eval_row["text"][:180],
+                        }
+                    )
+    return count, examples
+
+
 def _write_summary(
     *,
     path: Path,
@@ -123,8 +212,10 @@ def _write_summary(
     eval_rows: list[dict[str, Any]],
     random_seed: int,
     train_ratio: float,
-) -> None:
+) -> dict[str, Any]:
     overlap_count = _assert_no_overlap(train_rows, eval_rows)
+    text_overlap_count, text_overlap_by_dataset = _text_hash_overlap(train_rows, eval_rows)
+    near_duplicate_count, near_duplicate_examples = _near_duplicate_count(train_rows, eval_rows)
     payload = {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "random_seed": random_seed,
@@ -137,7 +228,13 @@ def _write_summary(
         "train_counts": _counts(train_rows),
         "eval_counts": _counts(eval_rows),
         "train_eval_overlap": overlap_count,
-        "leakage_check": "passed",
+        "train_eval_id_overlap": overlap_count,
+        "train_eval_text_hash_overlap": text_overlap_count,
+        "text_hash_overlap_by_dataset": text_overlap_by_dataset,
+        "deepset_near_duplicate_threshold": NEAR_DUPLICATE_THRESHOLD,
+        "deepset_near_duplicate_count_gte_threshold": near_duplicate_count,
+        "deepset_near_duplicate_examples": near_duplicate_examples,
+        "leakage_check": "passed" if text_overlap_count == 0 else "warning",
         "note": (
             "Lakera/gandalf_ignore_instructions is attack-focused; precision/F1 for that dataset "
             "should be interpreted only when safe negatives are present."
@@ -145,6 +242,65 @@ def _write_summary(
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return payload
+
+
+def _write_leakage_report(path: Path, summary: dict[str, Any]) -> None:
+    exact_by_dataset = summary["text_hash_overlap_by_dataset"]
+    near_duplicate_count = summary["deepset_near_duplicate_count_gte_threshold"]
+    lines = [
+        "# External Split Leakage Report",
+        "",
+        f"- Generated at: `{summary['generated_at']}`",
+        f"- Random seed: `{summary['random_seed']}`",
+        f"- Train/eval id overlap: `{summary['train_eval_id_overlap']}`",
+        f"- Train/eval normalized text-hash overlap: `{summary['train_eval_text_hash_overlap']}`",
+        "",
+        "## Leakage Summary",
+        "",
+        "| Dataset | Exact Text Overlap | Near Duplicate Count >= 0.95 | Note |",
+        "|---|---:|---:|---|",
+    ]
+    for dataset_name in sorted(DATASET_LOADERS):
+        near_count = near_duplicate_count if dataset_name == NEAR_DUPLICATE_DATASET else "N/A"
+        note = (
+            "deepset train/eval injection and safe pairs checked with SequenceMatcher"
+            if dataset_name == NEAR_DUPLICATE_DATASET
+            else "exact normalized text-hash check only"
+        )
+        lines.append(
+            f"| `{dataset_name}` | {exact_by_dataset.get(dataset_name, 0)} | {near_count} | {note} |"
+        )
+
+    examples = summary.get("deepset_near_duplicate_examples", [])
+    if examples:
+        lines.extend(
+            [
+                "",
+                "## Near Duplicate Examples",
+                "",
+                "| Label | Similarity | Train ID | Eval ID |",
+                "|---|---:|---|---|",
+            ]
+        )
+        for item in examples:
+            lines.append(
+                f"| {item['label']} | {item['similarity']:.4f} | `{item['train_id']}` | `{item['eval_id']}` |"
+            )
+
+    lines.extend(
+        [
+            "",
+            "## Interpretation",
+            "",
+            "- Exact text overlap uses SHA-256 over normalized lowercase whitespace-collapsed text.",
+            "- Near duplicate check is intentionally limited to `deepset/prompt-injections` and same-label train/eval pairs.",
+            "- If exact overlap or many near duplicates appear, custom split metrics may overestimate true generalization and official split results should be preferred.",
+            "",
+        ]
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def _parse_args() -> argparse.Namespace:
@@ -179,7 +335,7 @@ def main() -> None:
     _assert_no_overlap(train_rows, eval_rows)
     _write_jsonl(train_path, train_rows)
     _write_jsonl(eval_path, eval_rows)
-    _write_summary(
+    summary = _write_summary(
         path=summary_path,
         train_path=train_path,
         eval_path=eval_path,
@@ -188,9 +344,15 @@ def main() -> None:
         random_seed=args.random_seed,
         train_ratio=args.train_ratio,
     )
+    _write_leakage_report(LEAKAGE_REPORT_PATH, summary)
+    if summary["train_eval_text_hash_overlap"] > 0:
+        print(
+            "Potential text leakage detected: identical normalized text appears in both train and eval split."
+        )
     print(f"External train split saved to: {train_path}")
     print(f"External eval split saved to: {eval_path}")
     print(f"External split summary saved to: {summary_path}")
+    print(f"External split leakage report saved to: {LEAKAGE_REPORT_PATH}")
 
 
 if __name__ == "__main__":

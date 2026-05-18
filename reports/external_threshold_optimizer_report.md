@@ -1,6 +1,6 @@
 # External Threshold Optimizer
 
-- Generated at: `2026-05-18T21:38:59`
+- Generated at: `2026-05-18T22:06:20`
 - Evaluation source: `datasets\external_splits\eval_external_prompt_injection.jsonl`
 - Threshold candidates: `0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70`
 - Model version: `external-tuned`

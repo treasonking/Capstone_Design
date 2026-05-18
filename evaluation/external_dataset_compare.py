@@ -714,9 +714,21 @@ def _render_markdown(
                 "- Eval samples were not used for training.",
                 f"- Random seed: `{split_summary.get('random_seed')}`",
                 f"- Train/eval id overlap: `{split_summary.get('train_eval_overlap')}`",
+                f"- Train/eval text-hash overlap: `{split_summary.get('train_eval_text_hash_overlap', 'N/A')}`",
                 f"- Train size: `{split_summary.get('train_size')}`, eval size: `{split_summary.get('eval_size')}`",
             ]
         )
+
+    lines.extend(
+        [
+            "",
+            "## Deepset Result Validation Note",
+            "",
+            "`deepset/prompt-injections`의 external-tuned 결과는 held-out eval split 기준으로 크게 개선되었다. 다만 이 평가는 all split을 프로젝트 내부에서 70/30으로 다시 나눈 custom split 기준이므로, 원본 official split 또는 text-hash leakage 검사를 함께 해석해야 한다. 특히 Precision 1.0000, FP 0이 관찰되므로 label mapping, text overlap, near-duplicate 여부를 추가 확인한다.",
+            "",
+            "관련 검증 보고서: `reports/external_split_leakage_report.md`, `reports/external_label_sanity_check.md`, `reports/deepset_official_split_report.md`, `reports/external_model_confidence_report.md`.",
+        ]
+    )
 
     lines.extend(
         [

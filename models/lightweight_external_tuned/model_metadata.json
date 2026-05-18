@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-18T21:36:25",
+  "generated_at": "2026-05-18T22:03:57",
   "model_version": "external-tuned",
   "training_data": "internal Korean public-sector scenario data + external English prompt injection train partition",
   "training_sources": [

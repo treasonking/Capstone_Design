@@ -155,20 +155,24 @@ flowchart TD
 | Dataset | Model Version | Mode | Precision | Recall | F1 | Accuracy | TP / FP / FN |
 |---|---|---|---:|---:|---:|---:|---:|
 | `deepset/prompt-injections` | external-tuned | Rule Only | 1.0000 | 0.0886 | 0.1628 | 0.6382 | 7 / 0 / 72 |
-| `deepset/prompt-injections` | external-tuned | Lightweight Model Only | 1.0000 | 0.1646 | 0.2826 | 0.6683 | 13 / 0 / 66 |
-| `deepset/prompt-injections` | external-tuned | Hybrid / Full Pipeline | 1.0000 | 0.2278 | 0.3711 | 0.6935 | 18 / 0 / 61 |
+| `deepset/prompt-injections` | external-tuned | Lightweight Model Only | 1.0000 | 0.6076 | 0.7559 | 0.8442 | 48 / 0 / 31 |
+| `deepset/prompt-injections` | external-tuned | Hybrid / Full Pipeline | 1.0000 | 0.6329 | 0.7752 | 0.8543 | 50 / 0 / 29 |
 | `protectai/prompt-injection-validation` | external-tuned | Rule Only | 0.8448 | 0.2344 | 0.3670 | 0.6512 | 98 / 18 / 320 |
-| `protectai/prompt-injection-validation` | external-tuned | Lightweight Model Only | 1.0000 | 0.7321 | 0.8453 | 0.8844 | 306 / 0 / 112 |
-| `protectai/prompt-injection-validation` | external-tuned | Hybrid / Full Pipeline | 0.9450 | 0.7392 | 0.8295 | 0.8689 | 309 / 18 / 109 |
+| `protectai/prompt-injection-validation` | external-tuned | Lightweight Model Only | 0.9946 | 0.8876 | 0.9381 | 0.9494 | 371 / 2 / 47 |
+| `protectai/prompt-injection-validation` | external-tuned | Hybrid / Full Pipeline | 0.9488 | 0.8876 | 0.9172 | 0.9309 | 371 / 20 / 47 |
 | `Lakera/gandalf_ignore_instructions` | external-tuned | Rule Only | N/A | 0.4300 | N/A | 0.4300 | 129 / N/A / 171 |
-| `Lakera/gandalf_ignore_instructions` | external-tuned | Lightweight Model Only | N/A | 0.9467 | N/A | 0.9467 | 284 / N/A / 16 |
-| `Lakera/gandalf_ignore_instructions` | external-tuned | Hybrid / Full Pipeline | N/A | 0.9500 | N/A | 0.9500 | 285 / N/A / 15 |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | Lightweight Model Only | N/A | 0.9867 | N/A | 0.9867 | 296 / N/A / 4 |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | Hybrid / Full Pipeline | N/A | 0.9867 | N/A | 0.9867 | 296 / N/A / 4 |
 
 internal-only baseline에서는 외부 영어 데이터셋에서 Hybrid / Full Pipeline 결과가 Rule Only와 유사했다. 이는 경량 모델이 로드되지 않았기 때문이 아니라, 기존 모델이 Rule 계층이 놓친 영어 공격 샘플을 거의 추가 탐지하지 못했기 때문이다.
 
-동일 held-out eval split의 overlap 분석 기준 `Model Only Unique TP`는 internal-only에서 `deepset=0`, `protectai=0`, `Lakera=6`이었고, external-tuned 모델에서는 `deepset=11`, `protectai=211`, `Lakera=156`으로 증가했다. 따라서 이번 개선은 Hybrid가 Rule miss를 실제로 추가 탐지하도록 모델 계층 기여도를 높인 결과다.
+동일 held-out eval split의 overlap 분석 기준 `Model Only Unique TP`는 internal-only에서 `deepset=0`, `protectai=0`, `Lakera=6`이었고, external-tuned 모델에서는 threshold 0.30 기준 `deepset=43`, `protectai=273`, `Lakera=167`로 증가했다. 따라서 이번 개선은 Hybrid가 Rule miss를 실제로 추가 탐지하도록 모델 계층 기여도를 높인 결과다.
 
 Threshold optimizer는 external-tuned 모델에서 `0.30`을 추천했다. 다만 이는 eval split 기준 F1/Recall 후보값이므로 운영 threshold로 즉시 고정하기보다 hard negative와 실제 운영 분포에서 FP를 다시 확인해야 한다.
+
+external-tuned 결과는 외부 공개 데이터셋 일부를 학습에 포함한 in-domain supervised tuning 성능이며, zero-shot 일반화 성능이 아닙니다. 따라서 `deepset/prompt-injections`처럼 Precision 1.0000, FP 0이 관찰되는 결과는 text-hash overlap, near-duplicate, label sanity, official split 보고서와 함께 해석합니다.
+
+추가 검증 결과, custom split의 id overlap은 0이지만 전체 normalized text-hash overlap은 42건입니다. deepset 자체는 exact text overlap 0건, near duplicate 4건이며, deepset official train/test split에서는 Hybrid Recall 0.7667로 custom split 0.6329보다 낮아지지 않았습니다. 따라서 deepset 결과는 label mapping 오류나 명백한 exact leakage로 무효화되지는 않지만, supervised tuning 결과로 제한해 표현합니다.
 
 ### 공개 데이터셋 기반 Prompt Injection 본 실험 결과
 
@@ -349,6 +353,8 @@ evaluation/
   external_threshold_sweep.py
   external_threshold_optimizer.py
   external_model_confidence.py
+  external_label_sanity_check.py
+  deepset_official_split_compare.py
   evaluate_external_prompt_injection.py
   evaluate.py
   baseline_compare.py
@@ -376,6 +382,10 @@ reports/
   external_threshold_optimizer_results.csv
   external_model_confidence_report.md
   external_model_confidence_results.json
+  external_split_leakage_report.md
+  external_label_sanity_check.md
+  deepset_official_split_report.md
+  deepset_official_split_results.json
   external_prompt_injection_report.md
   external_prompt_injection_false_negatives.md
   external_prompt_injection_errors.json
@@ -576,6 +586,8 @@ python -m evaluation.external_dataset_compare --eval-path datasets/external_spli
 python -m evaluation.external_overlap_analysis --eval-path datasets/external_splits/eval_external_prompt_injection.jsonl --model-dir models/lightweight_external_tuned --model-version external-tuned
 python -m evaluation.external_threshold_sweep --eval-path datasets/external_splits/eval_external_prompt_injection.jsonl --model-dir models/lightweight_external_tuned --model-version external-tuned --threshold-sweep 0.3,0.4,0.5,0.6,0.7
 python -m evaluation.external_model_confidence --eval-path datasets/external_splits/eval_external_prompt_injection.jsonl --model-dir models/lightweight_external_tuned --model-version external-tuned
+python -m evaluation.external_label_sanity_check
+python -m evaluation.deepset_official_split_compare
 ```
 
 9. Docker 이미지 재빌드 및 컨테이너 검증
@@ -696,6 +708,9 @@ False Negative cases are the most important review target because they represent
 - `reports/external_threshold_sweep_report.md`
 - `reports/external_threshold_optimizer_report.md`
 - `reports/external_model_confidence_report.md`
+- `reports/external_split_leakage_report.md`
+- `reports/external_label_sanity_check.md`
+- `reports/deepset_official_split_report.md`
 - `reports/external_prompt_injection_report.md`
 - `reports/external_prompt_injection_false_negatives.md`
 - `reports/external_prompt_injection_errors.json`
@@ -712,9 +727,9 @@ held-out eval split 기준 external-tuned 최신 결과(`Hybrid / Full Pipeline`
 
 | Dataset | Eval Size | Precision | Recall | F1 | Accuracy | Model Unique TP |
 |---|---:|---:|---:|---:|---:|---:|
-| `deepset/prompt-injections` | 199 | 1.0000 | 0.2278 | 0.3711 | 0.6935 | 11 |
-| `protectai/prompt-injection-validation` | 969 | 0.9450 | 0.7392 | 0.8295 | 0.8689 | 211 |
-| `Lakera/gandalf_ignore_instructions` | 300 | N/A | 0.9500 | N/A | 0.9500 | 156 |
+| `deepset/prompt-injections` | 199 | 1.0000 | 0.6329 | 0.7752 | 0.8543 | 43 |
+| `protectai/prompt-injection-validation` | 969 | 0.9488 | 0.8876 | 0.9172 | 0.9309 | 273 |
+| `Lakera/gandalf_ignore_instructions` | 300 | N/A | 0.9867 | N/A | 0.9867 | 167 |
 
 실행 명령:
 
@@ -734,7 +749,7 @@ python -m evaluation.external_dataset_compare
 
 본 외부 공개 데이터셋 평가는 현재 활성화된 Hybrid Detector 구성뿐 아니라 Rule Only와 Lightweight Model Only를 함께 분리 측정했습니다. internal-only baseline에서는 lightweight classifier artifact가 로드되어 있었음에도 외부 영어 데이터셋에서 모델 단독 Recall이 낮아 대부분의 탐지 기여가 rule/heuristic 계층에서 발생했습니다. 따라서 이 결과는 경량 분류 계층을 외부 영어 데이터셋으로 재학습해야 한다는 근거로 해석했습니다.
 
-추가 overlap 분석 결과, held-out eval split 기준 internal-only `Model Only Unique TP`는 `deepset=0`, `protectai=0`, `Lakera=6`이었습니다. external-tuned 모델에서는 이 값이 `deepset=11`, `protectai=211`, `Lakera=156`으로 증가해 Hybrid가 Rule miss를 실제로 추가 탐지했습니다.
+추가 overlap 분석 결과, held-out eval split 기준 internal-only `Model Only Unique TP`는 `deepset=0`, `protectai=0`, `Lakera=6`이었습니다. external-tuned 모델에서는 threshold 0.30 기준 이 값이 `deepset=43`, `protectai=273`, `Lakera=167`로 증가해 Hybrid가 Rule miss를 실제로 추가 탐지했습니다.
 
 Threshold optimizer는 external-tuned 모델의 held-out eval split에서 `0.30`을 추천했습니다. 이 값은 F1/Recall 관점의 후보이며, 실제 운영 threshold로 고정하기 전에는 hard negative와 운영 분포 기반 FP 검증이 필요합니다.
 
@@ -830,8 +845,15 @@ Invoke-RestMethod `
 - `reports/external_threshold_sweep_report.md`
 - `reports/external_threshold_sweep_results.json`
 - `reports/external_threshold_sweep_results.csv`
+- `reports/external_threshold_optimizer_report.md`
+- `reports/external_threshold_optimizer_results.json`
+- `reports/external_threshold_optimizer_results.csv`
 - `reports/external_model_confidence_report.md`
 - `reports/external_model_confidence_results.json`
+- `reports/external_split_leakage_report.md`
+- `reports/external_label_sanity_check.md`
+- `reports/deepset_official_split_report.md`
+- `reports/deepset_official_split_results.json`
 - `reports/external_prompt_injection_report.md`
 - `reports/external_prompt_injection_false_negatives.md`
 - `reports/external_prompt_injection_errors.json`

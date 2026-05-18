@@ -45,13 +45,17 @@ internal-only baseline에서는 `deepset/prompt-injections`의 Rule Only와 Hybr
 
 이를 보완하기 위해 외부 공개 데이터셋을 random seed 42로 train 70% / eval 30%로 분리하고, eval 샘플이 학습에 들어가지 않도록 id overlap을 검사했다. 현재 split 기준 train/eval overlap은 0이며, external-tuned 모델은 내부 한국어 시나리오와 외부 영어 train split만 사용해 학습했다.
 
-held-out eval split에서 external-tuned Hybrid Recall은 `deepset=0.2278`, `protectai=0.7392`, `Lakera=0.9500`으로 측정되었다. 같은 eval split의 internal-only Hybrid Recall은 각각 `0.0886`, `0.2344`, `0.4600`이었으므로, 외부 영어 train split을 포함한 재학습은 모델 계층의 영어 일반화 성능을 크게 개선했다.
+held-out eval split에서 threshold 0.30 기준 external-tuned Hybrid Recall은 `deepset=0.6329`, `protectai=0.8876`, `Lakera=0.9867`로 측정되었다. 같은 eval split의 internal-only Hybrid Recall은 각각 `0.0886`, `0.2344`, `0.4600`이었으므로, 외부 영어 train split을 포함한 재학습은 모델 계층의 영어 일반화 성능을 크게 개선했다.
+
+단, 외부 데이터셋을 학습에 일부 포함한 external-tuned 모델 결과는 internal-only baseline과 직접 비교할 때 데이터 split 정책을 반드시 함께 명시해야 한다. 동일 데이터셋의 train split을 사용한 경우, 평가 결과는 zero-shot 일반화 성능이 아니라 in-domain supervised tuning 성능이다. 따라서 custom 70/30 split 결과는 text-hash overlap, near-duplicate 검사, label sanity check, deepset official train/test split 결과와 함께 해석한다.
+
+누수 검증 결과 custom split의 id overlap은 0이지만 전체 normalized text-hash overlap은 42건이었다. deepset은 exact text overlap 0건, near duplicate 4건으로 확인되었고, deepset official train/test split에서는 Hybrid Recall이 0.7667로 custom split 0.6329보다 낮아지지 않았다. 따라서 deepset 수치는 label mapping 오류나 exact text leakage로 무효화되지는 않지만, supervised tuning 조건에서의 결과로 제한해 설명한다.
 
 ## 6. Hybrid Pipeline Limitation on English Datasets
 
 Hybrid 구조가 항상 Rule Only보다 높은 성능을 보장하는 것은 아니다. Hybrid가 성능을 개선하려면 모델 계층이 Rule 계층이 놓친 샘플을 추가 탐지해야 한다. internal-only baseline에서는 경량 모델의 추가 탐지 기여도가 낮아 Hybrid와 Rule Only 성능이 유사하게 나타났다.
 
-internal-only overlap 분석에서 `Model Only Unique TP`는 held-out eval split 기준 `deepset=0`, `protectai=0`, `Lakera=6`으로 측정되었다. external-tuned 모델에서는 이 값이 `deepset=11`, `protectai=211`, `Lakera=156`으로 증가했다. 즉, 새 Hybrid 개선은 Rule 계층이 아니라 모델 계층이 rule miss를 추가 탐지한 결과다.
+internal-only overlap 분석에서 `Model Only Unique TP`는 held-out eval split 기준 `deepset=0`, `protectai=0`, `Lakera=6`으로 측정되었다. external-tuned 모델에서는 threshold 0.30 기준 이 값이 `deepset=43`, `protectai=273`, `Lakera=167`로 증가했다. 즉, 새 Hybrid 개선은 Rule 계층이 아니라 모델 계층이 rule miss를 추가 탐지한 결과다.
 
 Threshold optimizer는 external-tuned 모델의 held-out eval split에서 `0.30`을 추천했다. 이 값은 F1과 Recall을 높였지만, 운영 데이터 분포에서는 FP가 달라질 수 있으므로 배포 고정값이 아니라 검증 후보로 해석해야 한다.
 

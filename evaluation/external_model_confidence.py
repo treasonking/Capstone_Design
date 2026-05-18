@@ -33,6 +33,19 @@ CONFIDENCE_JSON_PATH = Path("reports/external_model_confidence_results.json")
 THRESHOLDS = (0.3, 0.5, 0.7)
 
 
+def _percentile(values: list[float], percentile: float) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    if len(ordered) == 1:
+        return ordered[0]
+    position = (len(ordered) - 1) * percentile
+    lower = int(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    weight = position - lower
+    return ordered[lower] * (1.0 - weight) + ordered[upper] * weight
+
+
 def _probability_view(classifier: LightweightClassifier, text: str) -> dict[str, Any]:
     prediction = classifier.classify(text)
     predicted_label = prediction.label.strip().upper()
@@ -83,6 +96,11 @@ def _summarize_group(
         "confidence_gte_0_5": _rate(top_values, 0.5),
         "confidence_gte_0_7": _rate(top_values, 0.7),
         "avg_injection_confidence": mean(injection_values) if injection_values else None,
+        "injection_confidence_min": min(injection_values) if injection_values else None,
+        "injection_confidence_p25": _percentile(injection_values, 0.25),
+        "injection_confidence_median": _percentile(injection_values, 0.50),
+        "injection_confidence_p75": _percentile(injection_values, 0.75),
+        "injection_confidence_max": max(injection_values) if injection_values else None,
         "injection_confidence_gte_0_3": _rate(injection_values, 0.3),
         "injection_confidence_gte_0_5": _rate(injection_values, 0.5),
         "injection_confidence_gte_0_7": _rate(injection_values, 0.7),
@@ -124,6 +142,11 @@ def _analyze(
                     "confidence_gte_0_5": None,
                     "confidence_gte_0_7": None,
                     "avg_injection_confidence": None,
+                    "injection_confidence_min": None,
+                    "injection_confidence_p25": None,
+                    "injection_confidence_median": None,
+                    "injection_confidence_p75": None,
+                    "injection_confidence_max": None,
                     "injection_confidence_gte_0_3": None,
                     "injection_confidence_gte_0_5": None,
                     "injection_confidence_gte_0_7": None,
@@ -225,6 +248,31 @@ def _render_report(
     lines.extend(
         [
             "",
+            "## Injection Confidence Distribution",
+            "",
+            "| Dataset | Expected Label | Count | Avg Confidence | Min | P25 | Median | P75 | Max | >=0.30 | >=0.50 | >=0.70 |",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for row in summaries:
+        lines.append(
+            f"| `{row['dataset_name']}` "
+            f"| {row['label']} "
+            f"| {_fmt(row['count'])} "
+            f"| {_fmt(row['avg_injection_confidence'])} "
+            f"| {_fmt(row['injection_confidence_min'])} "
+            f"| {_fmt(row['injection_confidence_p25'])} "
+            f"| {_fmt(row['injection_confidence_median'])} "
+            f"| {_fmt(row['injection_confidence_p75'])} "
+            f"| {_fmt(row['injection_confidence_max'])} "
+            f"| {_fmt(row['injection_confidence_gte_0_3'])} "
+            f"| {_fmt(row['injection_confidence_gte_0_5'])} "
+            f"| {_fmt(row['injection_confidence_gte_0_7'])} |"
+        )
+
+    lines.extend(
+        [
+            "",
             "## Predicted Label Distribution",
             "",
             "| Dataset | Predicted Label | Count |",
@@ -242,6 +290,8 @@ def _render_report(
             "## Observed Conclusion",
             "",
             "- confidence 분포는 threshold 문제가 큰지, label 학습/일반화 문제가 큰지 구분하기 위한 보조 근거다.",
+            "- 현재 held-out eval split에서 deepset benign 샘플의 injection confidence는 낮게 분포하고, 대부분의 benign 샘플 top label이 SAFE로 남아 있어 threshold 0.30에서도 FP 0이 관찰된다.",
+            "- deepset injection 샘플은 일부만 injection confidence가 0.30 이상이므로 Recall 0.6076 수준이 함께 설명된다.",
             "- external-tuned 모델에서는 injection label confidence가 상승했지만, 운영 threshold를 낮출 때는 benign 샘플의 injection confidence와 FP를 함께 확인해야 한다.",
             "- label mapping이 정상이라면 predicted label 분포에서 INJECTION 계열 label이 실제 공격 샘플에 충분히 나타나야 한다.",
             "",

@@ -1,8 +1,8 @@
 # External Dataset Rule/Model/Hybrid Comparison
 
-- Generated at: `2026-05-18T21:39:26`
+- Generated at: `2026-05-18T22:09:56`
 - Hugging Face split: `datasets\external_splits\eval_external_prompt_injection.jsonl`
-- Lightweight threshold: `0.70`
+- Lightweight threshold: `0.30`
 
 본 프로젝트는 범용 Prompt Injection 탐지기가 아니라, 한국어 공공기관·사내망 환경에서 발생할 수 있는 개인정보 유출 및 정책 우회형 Prompt Injection을 우선 방어 대상으로 설계한 LLM 보안 프록시이다.
 
@@ -55,15 +55,15 @@
 
 | Dataset | Model Version | Mode | Size | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN | Avg Latency(ms) | Model Status |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| `deepset/prompt-injections` | external-tuned | Rule Only | 199 | 1.0000 | 0.0886 | 0.1628 | 0.6382 | 7 | 0 | 120 | 72 | 0.509 | disabled |
-| `deepset/prompt-injections` | external-tuned | Lightweight Model Only | 199 | 1.0000 | 0.1646 | 0.2826 | 0.6683 | 13 | 0 | 120 | 66 | 3.062 | enabled |
-| `deepset/prompt-injections` | external-tuned | Hybrid / Full Pipeline | 199 | 1.0000 | 0.2278 | 0.3711 | 0.6935 | 18 | 0 | 120 | 61 | 3.774 | enabled |
-| `protectai/prompt-injection-validation` | external-tuned | Rule Only | 969 | 0.8448 | 0.2344 | 0.3670 | 0.6512 | 98 | 18 | 533 | 320 | 1.163 | disabled |
-| `protectai/prompt-injection-validation` | external-tuned | Lightweight Model Only | 969 | 1.0000 | 0.7321 | 0.8453 | 0.8844 | 306 | 0 | 551 | 112 | 3.509 | enabled |
-| `protectai/prompt-injection-validation` | external-tuned | Hybrid / Full Pipeline | 969 | 0.9450 | 0.7392 | 0.8295 | 0.8689 | 309 | 18 | 533 | 109 | 5.102 | enabled |
-| `Lakera/gandalf_ignore_instructions` | external-tuned | Rule Only | 300 | N/A | 0.4300 | N/A | 0.4300 | 129 | N/A | N/A | 171 | 0.360 | disabled |
-| `Lakera/gandalf_ignore_instructions` | external-tuned | Lightweight Model Only | 300 | N/A | 0.9467 | N/A | 0.9467 | 284 | N/A | N/A | 16 | 2.943 | enabled |
-| `Lakera/gandalf_ignore_instructions` | external-tuned | Hybrid / Full Pipeline | 300 | N/A | 0.9500 | N/A | 0.9500 | 285 | N/A | N/A | 15 | 3.648 | enabled |
+| `deepset/prompt-injections` | external-tuned | Rule Only | 199 | 1.0000 | 0.0886 | 0.1628 | 0.6382 | 7 | 0 | 120 | 72 | 0.552 | disabled |
+| `deepset/prompt-injections` | external-tuned | Lightweight Model Only | 199 | 1.0000 | 0.6076 | 0.7559 | 0.8442 | 48 | 0 | 120 | 31 | 3.572 | enabled |
+| `deepset/prompt-injections` | external-tuned | Hybrid / Full Pipeline | 199 | 1.0000 | 0.6329 | 0.7752 | 0.8543 | 50 | 0 | 120 | 29 | 4.138 | enabled |
+| `protectai/prompt-injection-validation` | external-tuned | Rule Only | 969 | 0.8448 | 0.2344 | 0.3670 | 0.6512 | 98 | 18 | 533 | 320 | 1.070 | disabled |
+| `protectai/prompt-injection-validation` | external-tuned | Lightweight Model Only | 969 | 0.9946 | 0.8876 | 0.9381 | 0.9494 | 371 | 2 | 549 | 47 | 3.575 | enabled |
+| `protectai/prompt-injection-validation` | external-tuned | Hybrid / Full Pipeline | 969 | 0.9488 | 0.8876 | 0.9172 | 0.9309 | 371 | 20 | 531 | 47 | 5.268 | enabled |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | Rule Only | 300 | N/A | 0.4300 | N/A | 0.4300 | 129 | N/A | N/A | 171 | 0.416 | disabled |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | Lightweight Model Only | 300 | N/A | 0.9867 | N/A | 0.9867 | 296 | N/A | N/A | 4 | 3.093 | enabled |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | Hybrid / Full Pipeline | 300 | N/A | 0.9867 | N/A | 0.9867 | 296 | N/A | N/A | 4 | 3.548 | enabled |
 
 ## Improvement Summary
 
@@ -71,17 +71,17 @@
 
 | Dataset | Rule Only Recall | Old Hybrid Recall | New Hybrid Recall | Improvement over Rule | Improvement over Old Hybrid |
 |---|---:|---:|---:|---:|---:|
-| `deepset/prompt-injections` | 0.0886 | 0.0886 | 0.2278 | +0.1392 | +0.1392 |
-| `protectai/prompt-injection-validation` | 0.2344 | 0.2344 | 0.7392 | +0.5048 | +0.5048 |
-| `Lakera/gandalf_ignore_instructions` | 0.4300 | 0.4600 | 0.9500 | +0.5200 | +0.4900 |
+| `deepset/prompt-injections` | 0.0886 | 0.0886 | 0.6329 | +0.5443 | +0.5443 |
+| `protectai/prompt-injection-validation` | 0.2344 | 0.2344 | 0.8876 | +0.6531 | +0.6531 |
+| `Lakera/gandalf_ignore_instructions` | 0.4300 | 0.4600 | 0.9867 | +0.5567 | +0.5267 |
 
 ## Model Contribution
 
 | Dataset | Old Model Unique TP | New Model Unique TP | Change |
 |---|---:|---:|---:|
-| `deepset/prompt-injections` | 0 | 11 | +11.0000 |
-| `protectai/prompt-injection-validation` | 0 | 211 | +211.0000 |
-| `Lakera/gandalf_ignore_instructions` | 6 | 156 | +150.0000 |
+| `deepset/prompt-injections` | 0 | 43 | +43.0000 |
+| `protectai/prompt-injection-validation` | 0 | 273 | +273.0000 |
+| `Lakera/gandalf_ignore_instructions` | 6 | 167 | +161.0000 |
 
 ## Threshold
 
@@ -97,7 +97,14 @@
 - Eval samples were not used for training.
 - Random seed: `42`
 - Train/eval id overlap: `0`
+- Train/eval text-hash overlap: `42`
 - Train size: `3421`, eval size: `1468`
+
+## Deepset Result Validation Note
+
+`deepset/prompt-injections`의 external-tuned 결과는 held-out eval split 기준으로 크게 개선되었다. 다만 이 평가는 all split을 프로젝트 내부에서 70/30으로 다시 나눈 custom split 기준이므로, 원본 official split 또는 text-hash leakage 검사를 함께 해석해야 한다. 특히 Precision 1.0000, FP 0이 관찰되므로 label mapping, text overlap, near-duplicate 여부를 추가 확인한다.
+
+관련 검증 보고서: `reports/external_split_leakage_report.md`, `reports/external_label_sanity_check.md`, `reports/deepset_official_split_report.md`, `reports/external_model_confidence_report.md`.
 
 ## Hybrid Delta vs Previous
 
@@ -105,9 +112,9 @@
 
 | Dataset | Recall Delta | F1 Delta | Accuracy Delta | TP Delta | FP Delta | FN Delta |
 |---|---:|---:|---:|---:|---:|---:|
-| `deepset/prompt-injections` | +0.1518 | +0.2298 | +0.0606 | -2.0000 | +0.0000 | -182.0000 |
-| `protectai/prompt-injection-validation` | +0.5596 | +0.5345 | +0.2392 | +59.0000 | -35.0000 | -1033.0000 |
-| `Lakera/gandalf_ignore_instructions` | +0.5020 | N/A | +0.5020 | -163.0000 | N/A | -537.0000 |
+| `deepset/prompt-injections` | +0.5569 | +0.6339 | +0.2214 | +30.0000 | +0.0000 | -214.0000 |
+| `protectai/prompt-injection-validation` | +0.7080 | +0.6222 | +0.3012 | +121.0000 | -33.0000 | -1095.0000 |
+| `Lakera/gandalf_ignore_instructions` | +0.5387 | N/A | +0.5387 | -152.0000 | N/A | -548.0000 |
 
 ## Why Rule Only and Hybrid are Similar
 

@@ -29,17 +29,25 @@ from backend.app.services.audit_service import (
     get_admin_stats,
     get_reason_code_stats,
     get_recent_block_history,
+    save_audit_log,
 )
 from backend.app.services.llm_service import get_upstream_config_summary
 from backend.app.services.proxy_service import (
     POLICY_PATH,
     _detect_text,
     _audit_from_detections,
+    _combine_reason_codes,
+    _output_summary_from_validator,
     _resolve_reason_code,
+    _skipped_output_summary,
+    _skipped_validator_summary,
+    _validator_audit_summary,
+    _validator_public_reasons,
     process_proxy_analyze,
     process_proxy_chat,
     process_proxy_chat_stream,
 )
+from backend.app.validator import ValidatorAgent, resolve_final_action
 
 
 app = FastAPI()
@@ -161,40 +169,82 @@ async def chat_completions(req: ChatCompletionRequest) -> dict:
         else decision.masked_text or "mock response"
     )
 
+    validator_summary = _skipped_validator_summary(PolicyAction.BLOCK.value)
+    output_summary = _skipped_output_summary()
+    output_action = PolicyAction.BLOCK.value if action == PolicyAction.BLOCK.value else PolicyAction.ALLOW.value
+    final_action = action
+    final_reasons = decision.reasons
+
+    if action != PolicyAction.BLOCK.value and content is not None:
+        output_hybrid = _detect_text(content)
+        output_detections = output_hybrid.detections
+        output_decision = evaluate_policy(content, output_detections, POLICY_PATH)
+        validator_summary = ValidatorAgent(POLICY_PATH).validate_output(
+            content,
+            {**decision.audit_summary, **audit, "action": action},
+            decision,
+            request_context={
+                "policy_path": POLICY_PATH,
+                "input_action": action,
+                "input_detections": detections,
+                "output_hybrid": output_hybrid,
+                "output_policy_decision": output_decision,
+            },
+        )
+        output_action = validator_summary["output_action"]
+        output_reasons = _validator_public_reasons(validator_summary)
+        output_audit = _audit_from_detections(
+            output_action,
+            output_reasons,
+            output_detections,
+            hybrid_result=output_hybrid,
+        )
+        output_summary = _output_summary_from_validator(
+            output_action,
+            validator_summary,
+            output_decision.audit_summary,
+            output_audit,
+        )
+        final_action = resolve_final_action(action, output_action)
+        final_reasons = _combine_reason_codes(decision.reasons, output_reasons)
+        if output_action == PolicyAction.BLOCK.value:
+            content = None
+            final_action = PolicyAction.BLOCK.value
+        else:
+            content = validator_summary.get("masked_text") or content
+
     audit_summary = {
         "timestamp_utc": timestamp_utc,
         "latency_ms": round((time.perf_counter() - started) * 1000, 2),
-        "action": action,
-        "reason_codes": decision.reasons,
+        "action": final_action,
+        "final_action": final_action,
+        "reason_codes": final_reasons,
         "input_action": action,
-        "output_action": PolicyAction.BLOCK.value if action == PolicyAction.BLOCK.value else PolicyAction.ALLOW.value,
+        "output_action": output_action,
         "upstream_call": False,
         "input": {
             **decision.audit_summary,
             **audit,
         },
-        "output": {
-            "total_detections": 0,
-            "detector_counts": {},
-            "applied_rule_count": 0,
-            "action": "SKIPPED",
-            "reasons": ["UPSTREAM_NOT_CALLED"],
-            "pii_detected": False,
-            "injection_detected": False,
-        },
+        "output": output_summary,
+        "validator": _validator_audit_summary(validator_summary),
     }
     if "hybrid_detection" in audit:
         audit_summary["hybrid_detection"] = {
             "input": audit["hybrid_detection"],
         }
+    if isinstance(output_summary, dict) and "hybrid_detection" in output_summary:
+        audit_summary.setdefault("hybrid_detection", {})["output"] = output_summary["hybrid_detection"]
+
+    save_audit_log(request_id, "openai-compatible", audit_summary)
 
     return {
         "id": request_id,
         "object": "chat.completion",
         "model": req.model,
-        "action": action,
-        "reason_code": _resolve_reason_code(decision.reasons),
-        "reasons": decision.reasons,
+        "action": final_action,
+        "reason_code": _resolve_reason_code(final_reasons),
+        "reasons": final_reasons,
         "choices": [
             {
                 "index": 0,
@@ -204,7 +254,7 @@ async def chat_completions(req: ChatCompletionRequest) -> dict:
                 },
                 "finish_reason": (
                     "content_filter"
-                    if action == PolicyAction.BLOCK.value
+                    if final_action == PolicyAction.BLOCK.value
                     else "stop"
                 ),
             }

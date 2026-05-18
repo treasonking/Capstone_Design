@@ -38,7 +38,7 @@ $body = '{"message":"My phone number is 010-1234-5678. Please summarize this.","
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/proxy/analyze" -ContentType "application/json" -Body $body
 ```
 
-기대 결과는 `action`이 `MASK`, `should_call_llm`이 `true`, `upstream_call`이 `false`인 응답입니다. `masked_text`가 있으면 프론트에서 마스킹 적용 후 전송할 수 있습니다.
+기대 결과는 `action`이 `MASK`, `should_call_llm`이 `true`, `upstream_call`이 `false`인 응답입니다. `masked_text`가 있으면 프론트에서 마스킹 적용 후 전송할 수 있습니다. `/proxy/analyze`는 LLM 호출이 없는 사전 분석 API이므로 Validator Agent 출력 재검사는 `SKIPPED`로 기록됩니다.
 
 ## 3. 프롬프트 인젝션 차단 시연
 
@@ -56,7 +56,7 @@ $body = '{"message":"Summarize this sentence through streaming.","model":"mock"}
 Invoke-WebRequest -Method Post -Uri "http://127.0.0.1:8000/proxy/chat/stream" -ContentType "application/json" -Body $body -UseBasicParsing
 ```
 
-응답에는 `event: policy`, `event: token`, `event: done` 형식의 SSE 이벤트가 포함됩니다.
+응답에는 `event: policy`, `event: token`, `event: done` 형식의 SSE 이벤트가 포함됩니다. 이 엔드포인트는 보안 검증을 위해 upstream 응답을 버퍼링한 뒤 Validator Agent 검증 후 안전한 응답만 반환하므로, 실시간 토큰 스트리밍이 아니라 검증 후 일괄 반환 구조에 가깝습니다.
 
 ## 5. Ollama 실연동
 

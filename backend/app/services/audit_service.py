@@ -5,10 +5,39 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from backend.app.integrity.audit_signer import attach_integrity_failure, sign_audit_record
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 LOG_DIR = PROJECT_ROOT / "logs"
 LOG_FILE = LOG_DIR / "audit_log.jsonl"
+_DENIED_LOG_KEYS = {
+    "api_key",
+    "authorization",
+    "content",
+    "message",
+    "masked_text",
+    "prompt",
+    "raw_prompt",
+    "raw_response",
+    "response",
+    "secret",
+    "system_prompt",
+    "token",
+}
+
+
+def _sanitize_for_log(value: Any) -> Any:
+    if isinstance(value, dict):
+        sanitized: dict[str, Any] = {}
+        for key, item in value.items():
+            if key.lower() in _DENIED_LOG_KEYS:
+                continue
+            sanitized[key] = _sanitize_for_log(item)
+        return sanitized
+    if isinstance(value, list):
+        return [_sanitize_for_log(item) for item in value]
+    return value
 
 
 def _build_log_entry(
@@ -16,15 +45,19 @@ def _build_log_entry(
     user_id: str,
     audit_summary: dict[str, Any],
 ) -> dict[str, Any]:
-    input_summary = audit_summary.get("input") or {}
-    output_summary = audit_summary.get("output") or {}
+    input_summary = _sanitize_for_log(audit_summary.get("input") or {})
+    output_summary = _sanitize_for_log(audit_summary.get("output") or {})
+    validator_summary = _sanitize_for_log(audit_summary.get("validator") or {})
+    final_action = audit_summary.get("final_action") or audit_summary.get("action")
 
     # 감사와 관리자 통계에 필요한 메타데이터만 저장합니다.
     entry = {
         "request_id": request_id,
         "user_id": user_id,
         "timestamp": audit_summary.get("timestamp_utc"),
-        "action": audit_summary.get("action"),
+        "timestamp_utc": audit_summary.get("timestamp_utc"),
+        "action": final_action,
+        "final_action": final_action,
         "reason_codes": audit_summary.get("reason_codes", []),
         "pii_detected": bool(input_summary.get("pii_detected")) or bool(output_summary.get("pii_detected")),
         "injection_detected": bool(input_summary.get("injection_detected")) or bool(output_summary.get("injection_detected")),
@@ -32,6 +65,9 @@ def _build_log_entry(
         "upstream_call": bool(audit_summary.get("upstream_call")),
         "input_action": audit_summary.get("input_action"),
         "output_action": audit_summary.get("output_action"),
+        "input": input_summary,
+        "output": output_summary,
+        "validator": validator_summary,
         "detector_counts": {
             "input": input_summary.get("detector_counts", {}),
             "output": output_summary.get("detector_counts", {}),
@@ -50,6 +86,10 @@ def save_audit_log(
 ) -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     log_entry = _build_log_entry(request_id, user_id, audit_summary)
+    try:
+        log_entry = sign_audit_record(log_entry)
+    except Exception as exc:  # pragma: no cover - signer failures should not break serving.
+        log_entry = attach_integrity_failure(log_entry, exc)
     with LOG_FILE.open("a", encoding="utf-8") as file:
         file.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
 

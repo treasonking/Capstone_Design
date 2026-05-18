@@ -22,6 +22,8 @@ from backend.app.engine.policy_engine import evaluate_policy
 from backend.app.schemas.proxy import DetectionPreviewItem, ProxyAnalyzeResponse, ProxyRequest, ProxyResponse
 from backend.app.services.audit_service import save_audit_log
 from backend.app.services.llm_service import UpstreamRequestError, UpstreamTimeoutError, call_upstream_llm, stream_upstream_llm
+from backend.app.validator import ValidatorAgent, resolve_final_action
+from backend.app.validator.output_validator import SAFE_OUTPUT
 
 
 POLICY_DIR = Path(__file__).resolve().parents[3] / "policies"
@@ -33,6 +35,7 @@ ALLOWED_POLICY_IDS = {
 }
 POLICY_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 logger = logging.getLogger(__name__)
+VALIDATOR_AGENT = ValidatorAgent()
 
 
 def _detect_text(text: str) -> HybridDetectionResult:
@@ -73,18 +76,8 @@ def _combine_reason_codes(*reason_groups: list[str]) -> list[str]:
     return [ReasonCode.SAFE_INPUT.value]
 
 
-def _severity(action: str) -> int:
-    order = {
-        PolicyAction.ALLOW.value: 1,
-        PolicyAction.WARN.value: 2,
-        PolicyAction.MASK.value: 3,
-        PolicyAction.BLOCK.value: 4,
-    }
-    return order.get(action, 0)
-
-
 def _final_action(input_action: str, output_action: str) -> str:
-    return input_action if _severity(input_action) >= _severity(output_action) else output_action
+    return resolve_final_action(input_action, output_action)
 
 
 def _audit_from_detections(
@@ -172,6 +165,53 @@ def _skipped_output_summary() -> dict[str, Any]:
     }
 
 
+def _skipped_validator_summary(output_action: str = "SKIPPED") -> dict[str, Any]:
+    return {
+        "validator_result": "SKIPPED",
+        "output_action": output_action,
+        "reason_codes": ["UPSTREAM_NOT_CALLED"],
+        "pii_detected": False,
+        "injection_detected": False,
+        "residual_pii_detected": False,
+        "masking_leak_detected": False,
+    }
+
+
+def _validator_public_reasons(validator_result: dict[str, Any]) -> list[str]:
+    reasons: list[str] = []
+    reasons.extend(validator_result.get("legacy_reason_codes", []))
+    reasons.extend(
+        reason
+        for reason in validator_result.get("reason_codes", [])
+        if reason != SAFE_OUTPUT
+    )
+    return reasons
+
+
+def _validator_audit_summary(validator_result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: value
+        for key, value in validator_result.items()
+        if key not in {"legacy_reason_codes", "masked_text"}
+    }
+
+
+def _output_summary_from_validator(
+    action: str,
+    validator_result: dict[str, Any],
+    output_decision_audit: dict[str, Any],
+    output_audit: dict[str, Any],
+) -> dict[str, Any]:
+    output_summary = {**output_decision_audit, **output_audit}
+    output_summary["action"] = action
+    output_summary["reason_codes"] = validator_result.get("reason_codes", [])
+    output_summary["pii_detected"] = bool(validator_result.get("pii_detected", False))
+    output_summary["injection_detected"] = bool(validator_result.get("injection_detected", False))
+    output_summary["residual_pii_detected"] = bool(validator_result.get("residual_pii_detected", False))
+    output_summary["masking_leak_detected"] = bool(validator_result.get("masking_leak_detected", False))
+    return output_summary
+
+
 def _top_level_hybrid_detection(
     input_summary: dict[str, Any],
     output_summary: dict[str, Any] | None,
@@ -197,6 +237,7 @@ def _build_audit_summary(
     input_summary: dict[str, Any],
     output_summary: dict[str, Any] | None,
     upstream_call: bool,
+    validator_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     # 감사 요약에는 보안 판단에 필요한 메타데이터만 남깁니다.
     # 원문 프롬프트와 원문 응답은 로그 저장 전에 의도적으로 제외합니다.
@@ -204,12 +245,16 @@ def _build_audit_summary(
         "timestamp_utc": timestamp_utc,
         "latency_ms": round((time.perf_counter() - started) * 1000, 2),
         "action": final_action,
+        "final_action": final_action,
         "reason_codes": reason_codes,
         "input_action": input_action,
         "output_action": output_action,
         "upstream_call": upstream_call,
         "input": input_summary,
         "output": output_summary,
+        "validator": _validator_audit_summary(
+            validator_summary or _skipped_validator_summary(output_action or "SKIPPED")
+        ),
     }
     hybrid_detection = _top_level_hybrid_detection(input_summary, output_summary)
     if hybrid_detection is not None:
@@ -417,36 +462,56 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
         )
         return _response(req, request_id, "ERROR", reasons, input_action, None, None, audit_summary)
 
-    # 2단계: 모델 응답도 신뢰하지 않고 다시 검사합니다.
+    # 2단계: 모델 응답 생성 이후 Validator Agent가 최종 반환 전 출력을 재검사합니다.
     output_hybrid = _detect_text(llm_content)
     output_detections = output_hybrid.detections
     output_decision = evaluate_policy(llm_content, output_detections, policy_path)
-    output_action = output_decision.final_action.value
+    validator_result = VALIDATOR_AGENT.validate_output(
+        llm_content,
+        input_summary,
+        input_decision,
+        request_context={
+            "policy_path": policy_path,
+            "input_action": input_action,
+            "input_detections": input_detections,
+            "output_hybrid": output_hybrid,
+            "output_policy_decision": output_decision,
+        },
+    )
+    output_action = validator_result["output_action"]
+    output_reasons = _validator_public_reasons(validator_result)
     output_audit = _audit_from_detections(
         output_action,
-        output_decision.reasons,
+        output_reasons,
         output_detections,
         hybrid_result=output_hybrid,
     )
-    output_summary = {**output_decision.audit_summary, **output_audit}
+    output_summary = _output_summary_from_validator(
+        output_action,
+        validator_result,
+        output_decision.audit_summary,
+        output_audit,
+    )
 
     if output_action == PolicyAction.BLOCK.value:
+        block_reasons = _combine_reason_codes(input_decision.reasons, output_reasons)
         audit_summary = _build_audit_summary(
             timestamp_utc,
             started,
             final_action=PolicyAction.BLOCK.value,
-            reason_codes=output_decision.reasons,
+            reason_codes=block_reasons,
             input_action=input_action,
             output_action=output_action,
             input_summary=input_summary,
             output_summary=output_summary,
             upstream_call=True,
+            validator_summary=validator_result,
         )
         return _response(
             req,
             request_id,
             PolicyAction.BLOCK.value,
-            output_decision.reasons,
+            block_reasons,
             input_action,
             output_action,
             None,
@@ -454,9 +519,9 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
         )
 
     # 입력과 출력에 각각 정책 결과가 있으면 더 강한 조치를 최종 action으로 반환합니다.
-    safe_content = output_decision.masked_text or llm_content
+    safe_content = validator_result.get("masked_text") or llm_content
     final_action = _final_action(input_action, output_action)
-    all_reasons = _combine_reason_codes(input_decision.reasons, output_decision.reasons)
+    all_reasons = _combine_reason_codes(input_decision.reasons, output_reasons)
     audit_summary = _build_audit_summary(
         timestamp_utc,
         started,
@@ -467,6 +532,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
         input_summary=input_summary,
         output_summary=output_summary,
         upstream_call=True,
+        validator_summary=validator_result,
     )
 
     return _response(
@@ -539,7 +605,6 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
     try:
         async for chunk in stream_upstream_llm(processed_message, model=req.model):
             output_chunks.append(chunk)
-            yield _sse_event("token", {"request_id": request_id, "content": chunk})
     except UpstreamTimeoutError:
         reasons = ["TIMEOUT"]
         audit_summary = _build_audit_summary(
@@ -577,32 +642,52 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
     output_hybrid = _detect_text(llm_content)
     output_detections = output_hybrid.detections
     output_decision = evaluate_policy(llm_content, output_detections, policy_path)
-    output_action = output_decision.final_action.value
+    validator_result = VALIDATOR_AGENT.validate_output(
+        llm_content,
+        input_summary,
+        input_decision,
+        request_context={
+            "policy_path": policy_path,
+            "input_action": input_action,
+            "input_detections": input_detections,
+            "output_hybrid": output_hybrid,
+            "output_policy_decision": output_decision,
+        },
+    )
+    output_action = validator_result["output_action"]
+    output_reasons = _validator_public_reasons(validator_result)
     output_audit = _audit_from_detections(
         output_action,
-        output_decision.reasons,
+        output_reasons,
         output_detections,
         hybrid_result=output_hybrid,
     )
-    output_summary = {**output_decision.audit_summary, **output_audit}
+    output_summary = _output_summary_from_validator(
+        output_action,
+        validator_result,
+        output_decision.audit_summary,
+        output_audit,
+    )
 
     if output_action == PolicyAction.BLOCK.value:
+        block_reasons = _combine_reason_codes(input_decision.reasons, output_reasons)
         audit_summary = _build_audit_summary(
             timestamp_utc,
             started,
             final_action=PolicyAction.BLOCK.value,
-            reason_codes=output_decision.reasons,
+            reason_codes=block_reasons,
             input_action=input_action,
             output_action=output_action,
             input_summary=input_summary,
             output_summary=output_summary,
             upstream_call=True,
+            validator_summary=validator_result,
         )
         response = _response(
             req,
             request_id,
             PolicyAction.BLOCK.value,
-            output_decision.reasons,
+            block_reasons,
             input_action,
             output_action,
             None,
@@ -612,7 +697,7 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
         return
 
     final_action = _final_action(input_action, output_action)
-    all_reasons = _combine_reason_codes(input_decision.reasons, output_decision.reasons)
+    all_reasons = _combine_reason_codes(input_decision.reasons, output_reasons)
     audit_summary = _build_audit_summary(
         timestamp_utc,
         started,
@@ -623,7 +708,10 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
         input_summary=input_summary,
         output_summary=output_summary,
         upstream_call=True,
+        validator_summary=validator_result,
     )
+    safe_content = validator_result.get("masked_text") or llm_content
+    yield _sse_event("token", {"request_id": request_id, "content": safe_content})
     response = _response(
         req,
         request_id,
@@ -631,7 +719,7 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
         all_reasons,
         input_action,
         output_action,
-        output_decision.masked_text or llm_content,
+        safe_content,
         audit_summary,
     )
     yield _sse_event("done", response.model_dump())

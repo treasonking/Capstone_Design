@@ -164,6 +164,12 @@ flowchart TD
 | `Lakera/gandalf_ignore_instructions` | Lightweight Model Only | N/A | 0.1110 | N/A | 0.1110 | 111 / N/A / 889 |
 | `Lakera/gandalf_ignore_instructions` | Hybrid / Full Pipeline | N/A | 0.4680 | N/A | 0.4680 | 468 / N/A / 532 |
 
+외부 영어 데이터셋에서는 Hybrid / Full Pipeline 결과가 Rule Only와 유사하게 나타났다. 이는 경량 모델이 로드되지 않았기 때문이 아니라, 현재 모델이 Rule 계층이 놓친 영어 공격 샘플을 추가로 탐지하지 못했기 때문이다.
+
+Overlap 분석 기준 `Model Only Unique TP`는 `deepset=0`, `protectai=0`, `Lakera=19`였다. 따라서 현재 외부 영어 데이터셋 성능은 Rule 계층에 크게 의존하며, 영어 일반화 성능 개선을 위해 외부 데이터 기반 재학습과 threshold sweep이 필요하다.
+
+Threshold sweep 결과, `0.70` threshold는 외부 영어 데이터셋에서 매우 보수적으로 동작했다. `0.30~0.40`까지 낮추면 Recall은 크게 상승하지만 FP도 함께 급증하므로, 운영 threshold를 단순히 낮추기보다 외부 영어 validation split 기반 threshold 조정과 hard negative 보강이 필요하다.
+
 ### 공개 데이터셋 기반 Prompt Injection 본 실험 결과
 
 기준 데이터셋: Hugging Face 공개 Prompt Injection 데이터셋, `Hybrid / Full Pipeline` 모드
@@ -331,6 +337,9 @@ evaluation/
   external_validation_sample.json
   external_datasets.py
   external_dataset_compare.py
+  external_overlap_analysis.py
+  external_threshold_sweep.py
+  external_model_confidence.py
   evaluate_external_prompt_injection.py
   evaluate.py
   baseline_compare.py
@@ -347,6 +356,14 @@ reports/
   external_dataset_compare_report.md
   external_dataset_compare_results.json
   external_dataset_compare_results.csv
+  external_overlap_analysis_report.md
+  external_overlap_analysis_results.json
+  external_overlap_analysis_results.csv
+  external_threshold_sweep_report.md
+  external_threshold_sweep_results.json
+  external_threshold_sweep_results.csv
+  external_model_confidence_report.md
+  external_model_confidence_results.json
   external_prompt_injection_report.md
   external_prompt_injection_false_negatives.md
   external_prompt_injection_errors.json
@@ -524,8 +541,24 @@ python -m evaluation.external_dataset_compare
 - `reports/external_dataset_compare_report.md`
 - `reports/external_dataset_compare_results.json`
 - `reports/external_dataset_compare_results.csv`
+- `reports/external_overlap_analysis_report.md`
+- `reports/external_overlap_analysis_results.json`
+- `reports/external_overlap_analysis_results.csv`
+- `reports/external_threshold_sweep_report.md`
+- `reports/external_threshold_sweep_results.json`
+- `reports/external_threshold_sweep_results.csv`
+- `reports/external_model_confidence_report.md`
+- `reports/external_model_confidence_results.json`
 
 이 평가는 Hugging Face 공개 데이터셋 `deepset/prompt-injections`, `protectai/prompt-injection-validation`, `Lakera/gandalf_ignore_instructions`를 사용하며, `Rule Only`, `Lightweight Model Only`, `Hybrid / Full Pipeline`을 분리 측정합니다.
+
+추가 분석 명령:
+
+```bash
+python -m evaluation.external_overlap_analysis
+python -m evaluation.external_threshold_sweep --threshold-sweep 0.3,0.4,0.5,0.6,0.7
+python -m evaluation.external_model_confidence
+```
 
 9. Docker 이미지 재빌드 및 컨테이너 검증
 
@@ -641,6 +674,9 @@ False Negative cases are the most important review target because they represent
 - `reports/external_dataset_compare_report.md`
 - `reports/external_dataset_compare_results.json`
 - `reports/external_dataset_compare_results.csv`
+- `reports/external_overlap_analysis_report.md`
+- `reports/external_threshold_sweep_report.md`
+- `reports/external_model_confidence_report.md`
 - `reports/external_prompt_injection_report.md`
 - `reports/external_prompt_injection_false_negatives.md`
 - `reports/external_prompt_injection_errors.json`
@@ -671,6 +707,10 @@ python -m evaluation.external_dataset_compare
 
 본 외부 공개 데이터셋 평가는 현재 활성화된 Hybrid Detector 구성뿐 아니라 Rule Only와 Lightweight Model Only를 함께 분리 측정했습니다. 현재 환경에서는 lightweight classifier artifact가 로드되어 있으나, 외부 데이터셋에서는 모델 단독 Recall이 낮아 대부분의 탐지 기여가 rule/heuristic 계층에서 발생했습니다. 따라서 이 결과는 경량 분류 계층을 외부 영어 데이터셋으로 재학습해야 한다는 근거로 해석합니다.
 
+추가 overlap 분석 결과, `deepset/prompt-injections`와 `protectai/prompt-injection-validation`에서는 `Model Only Unique TP`가 0으로 측정되어 Hybrid TP가 Rule TP와 동일하게 나타났습니다. `Lakera/gandalf_ignore_instructions`에서는 `Model Only Unique TP=19`, 실제 Hybrid 추가 TP는 28로 측정되어 일부 보완 효과가 있었지만, 전체적으로는 Rule 계층 의존도가 높았습니다.
+
+Confidence 분석에서는 외부 공격 샘플의 평균 confidence가 `deepset=0.4685`, `protectai=0.5590`, `Lakera=0.6185`로 측정되었고, `confidence >= 0.7` 비율은 각각 `0.0038`, `0.0136`, `0.1110`에 그쳤습니다. 즉, 현재 threshold 0.70은 외부 영어 데이터셋에서 매우 보수적으로 동작합니다. 다만 threshold를 0.30~0.40으로 낮추면 FP가 크게 증가하므로 운영용으로는 외부 영어 데이터 기반 재학습과 validation split 기반 threshold calibration이 필요합니다.
+
 ### Relation to Reference Study
 
 본 프로젝트는 Prompt Injection 공격과 방어를 체계적으로 평가한 기준 연구인 *Formalizing and Benchmarking Prompt Injection Attacks and Defenses*의 평가 관점을 참고했습니다. 해당 연구는 Prompt Injection 방어 성능을 다양한 task, attack, defense 조합에서 분석하였으며, 탐지 기반 방어의 False Negative Rate와 False Positive Rate를 주요 지표로 사용했습니다.
@@ -691,6 +731,7 @@ python -m evaluation.external_dataset_compare
 | 4 | Lightweight classifier artifact 개선 | rule 기반 탐지 한계 보완 |
 | 5 | 외부 데이터셋 회귀 테스트 자동화 | 향후 수정 시 성능 변화 추적 |
 | 6 | False Negative 샘플 분석 리포트 추가 | 놓친 공격 유형을 체계적으로 개선 |
+| 7 | threshold sweep 및 confidence calibration | 모델 Recall과 FP trade-off 조정 |
 
 ## 수동 검증 예시
 
@@ -756,6 +797,14 @@ Invoke-RestMethod `
 - `reports/external_dataset_compare_report.md`
 - `reports/external_dataset_compare_results.json`
 - `reports/external_dataset_compare_results.csv`
+- `reports/external_overlap_analysis_report.md`
+- `reports/external_overlap_analysis_results.json`
+- `reports/external_overlap_analysis_results.csv`
+- `reports/external_threshold_sweep_report.md`
+- `reports/external_threshold_sweep_results.json`
+- `reports/external_threshold_sweep_results.csv`
+- `reports/external_model_confidence_report.md`
+- `reports/external_model_confidence_results.json`
 - `reports/external_prompt_injection_report.md`
 - `reports/external_prompt_injection_false_negatives.md`
 - `reports/external_prompt_injection_errors.json`

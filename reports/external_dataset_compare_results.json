@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-18T17:55:49",
+  "generated_at": "2026-05-18T18:30:50",
   "split": "all",
   "threshold": 0.7,
   "scope": "본 프로젝트는 범용 Prompt Injection 탐지기가 아니라, 한국어 공공기관·사내망 환경에서 발생할 수 있는 개인정보 유출 및 정책 우회형 Prompt Injection을 우선 방어 대상으로 설계한 LLM 보안 프록시이다.",
@@ -15,6 +15,11 @@
     "datasets": "4.8.5",
     "joblib": "1.5.3",
     "sklearn": "1.8.0"
+  },
+  "model_metadata": {
+    "model_version": "internal-only",
+    "training_data": "internal Korean public-sector scenario data",
+    "note": "No model metadata file found; interpreted as the current internal-oriented artifact."
   },
   "datasets": [
     {
@@ -92,7 +97,7 @@
       "tn": 399,
       "fn": 243,
       "positive_only": false,
-      "latency_ms_avg": 0.511,
+      "latency_ms_avg": 0.605,
       "model_status": "disabled",
       "dataset_status": "loaded",
       "note": ""
@@ -110,7 +115,7 @@
       "tn": 399,
       "fn": 262,
       "positive_only": false,
-      "latency_ms_avg": 0.925,
+      "latency_ms_avg": 0.958,
       "model_status": "enabled",
       "dataset_status": "loaded",
       "note": ""
@@ -128,7 +133,7 @@
       "tn": 399,
       "fn": 243,
       "positive_only": false,
-      "latency_ms_avg": 1.626,
+      "latency_ms_avg": 1.675,
       "model_status": "enabled",
       "dataset_status": "loaded",
       "note": ""
@@ -146,7 +151,7 @@
       "tn": 1782,
       "fn": 1114,
       "positive_only": false,
-      "latency_ms_avg": 1.074,
+      "latency_ms_avg": 1.049,
       "model_status": "disabled",
       "dataset_status": "loaded",
       "note": ""
@@ -164,7 +169,7 @@
       "tn": 1835,
       "fn": 1373,
       "positive_only": false,
-      "latency_ms_avg": 1.248,
+      "latency_ms_avg": 1.287,
       "model_status": "enabled",
       "dataset_status": "loaded",
       "note": ""
@@ -182,7 +187,7 @@
       "tn": 1782,
       "fn": 1114,
       "positive_only": false,
-      "latency_ms_avg": 2.976,
+      "latency_ms_avg": 3.115,
       "model_status": "enabled",
       "dataset_status": "loaded",
       "note": ""
@@ -200,7 +205,7 @@
       "tn": null,
       "fn": 560,
       "positive_only": true,
-      "latency_ms_avg": 0.353,
+      "latency_ms_avg": 0.421,
       "model_status": "disabled",
       "dataset_status": "loaded",
       "note": ""
@@ -218,7 +223,7 @@
       "tn": null,
       "fn": 889,
       "positive_only": true,
-      "latency_ms_avg": 0.803,
+      "latency_ms_avg": 0.867,
       "model_status": "enabled",
       "dataset_status": "loaded",
       "note": ""
@@ -236,7 +241,7 @@
       "tn": null,
       "fn": 532,
       "positive_only": true,
-      "latency_ms_avg": 1.435,
+      "latency_ms_avg": 1.525,
       "model_status": "enabled",
       "dataset_status": "loaded",
       "note": ""

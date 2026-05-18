@@ -3,11 +3,16 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import sys
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from backend.app.config import DetectionSettings
 from backend.app.detection.hybrid_detector import detect_hybrid
@@ -29,6 +34,7 @@ from evaluation.external_datasets import (
 REPORT_PATH = Path("reports/external_dataset_compare_report.md")
 RESULTS_JSON_PATH = Path("reports/external_dataset_compare_results.json")
 RESULTS_CSV_PATH = Path("reports/external_dataset_compare_results.csv")
+MODEL_METADATA_FILENAME = "model_metadata.json"
 PROJECT_SCOPE = (
     "본 프로젝트는 범용 Prompt Injection 탐지기가 아니라, 한국어 공공기관·사내망 환경에서 "
     "발생할 수 있는 개인정보 유출 및 정책 우회형 Prompt Injection을 우선 방어 대상으로 "
@@ -347,6 +353,31 @@ def _runtime_versions() -> dict[str, str]:
     return versions
 
 
+def _model_metadata(classifier_status: LightweightModelStatus) -> dict[str, str]:
+    metadata_path = classifier_status.classifier_path.parent / MODEL_METADATA_FILENAME
+    if not metadata_path.exists():
+        return {
+            "model_version": "internal-only",
+            "training_data": "internal Korean public-sector scenario data",
+            "note": "No model metadata file found; interpreted as the current internal-oriented artifact.",
+        }
+
+    try:
+        raw = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {
+            "model_version": "unknown",
+            "training_data": "unknown",
+            "note": f"Failed to read model metadata: {exc.__class__.__name__}",
+        }
+
+    return {
+        "model_version": str(raw.get("model_version", "unknown")),
+        "training_data": str(raw.get("training_data", "unknown")),
+        "note": str(raw.get("note", "")),
+    }
+
+
 def _render_markdown(
     *,
     generated_at: str,
@@ -356,6 +387,7 @@ def _render_markdown(
     rows: list[dict[str, Any]],
     classifier_status: LightweightModelStatus,
     runtime_versions: dict[str, str],
+    model_metadata: dict[str, str],
 ) -> str:
     hybrid_by_dataset = {
         row["dataset_name"]: row
@@ -383,6 +415,12 @@ def _render_markdown(
         f"| note | {classifier_status.note} |",
         f"| vectorizer_path | `{classifier_status.vectorizer_path}` |",
         f"| classifier_path | `{classifier_status.classifier_path}` |",
+        "",
+        "## Model Version",
+        "",
+        "| Model Version | Training Data | Note |",
+        "|---|---|---|",
+        f"| {model_metadata['model_version']} | {model_metadata['training_data']} | {model_metadata['note']} |",
         "",
         "## Runtime Versions",
         "",
@@ -485,6 +523,14 @@ def _render_markdown(
     lines.extend(
         [
             "",
+            "## Why Rule Only and Hybrid are Similar",
+            "",
+            "현재 외부 영어 데이터셋에서는 Hybrid / Full Pipeline 결과가 Rule Only와 거의 동일하게 나타났다. 이는 경량 모델 artifact가 로드되지 않았기 때문이 아니라, 로드된 모델이 Rule 계층이 놓친 영어 공격 샘플을 추가로 거의 탐지하지 못했기 때문이다.",
+            "",
+            "즉, 현재 Hybrid 성능은 대부분 Rule 계층에 의해 결정된다. `Lakera/gandalf_ignore_instructions`에서는 Hybrid가 Rule Only보다 Recall을 0.028 높였으나, `deepset/prompt-injections`와 `protectai/prompt-injection-validation`에서는 모델 계층의 unique TP가 거의 없어 성능 차이가 나타나지 않았다.",
+            "",
+            "이 결과는 경량 분류 계층의 구조적 실패라기보다, 현재 학습 데이터가 한국어 공공기관 시나리오에 집중되어 있어 영어 공개 데이터셋에 대한 일반화가 부족하다는 근거로 해석한다. 정량적인 unique TP 근거는 `reports/external_overlap_analysis_report.md`에서 확인한다.",
+            "",
             "## Reading Guide",
             "",
             "- `Rule Only`는 `backend/app/detection/injection_detector.py`의 규칙·휴리스틱 Prompt Injection 탐지만 사용한다.",
@@ -508,6 +554,7 @@ def _write_json(
     rows: list[dict[str, Any]],
     classifier_status: LightweightModelStatus,
     runtime_versions: dict[str, str],
+    model_metadata: dict[str, str],
     path: Path,
 ) -> None:
     payload = {
@@ -524,6 +571,7 @@ def _write_json(
             "classifier_path": str(classifier_status.classifier_path),
         },
         "runtime_versions": runtime_versions,
+        "model_metadata": model_metadata,
         "datasets": [
             {
                 "name": dataset.spec.name,
@@ -579,6 +627,7 @@ def _write_outputs(
     rows: list[dict[str, Any]],
     classifier_status: LightweightModelStatus,
     runtime_versions: dict[str, str],
+    model_metadata: dict[str, str],
     report_path: Path,
     json_path: Path,
     csv_path: Path,
@@ -593,6 +642,7 @@ def _write_outputs(
             rows=rows,
             classifier_status=classifier_status,
             runtime_versions=runtime_versions,
+            model_metadata=model_metadata,
         ),
         encoding="utf-8",
     )
@@ -604,6 +654,7 @@ def _write_outputs(
         rows=rows,
         classifier_status=classifier_status,
         runtime_versions=runtime_versions,
+        model_metadata=model_metadata,
         path=json_path,
     )
     _write_csv(rows, csv_path)
@@ -649,6 +700,7 @@ def main() -> None:
 
     generated_at = datetime.now().isoformat(timespec="seconds")
     runtime_versions = _runtime_versions()
+    model_metadata = _model_metadata(classifier_status)
     _write_outputs(
         generated_at=generated_at,
         split=args.split,
@@ -657,6 +709,7 @@ def main() -> None:
         rows=rows,
         classifier_status=classifier_status,
         runtime_versions=runtime_versions,
+        model_metadata=model_metadata,
         report_path=Path(args.report),
         json_path=Path(args.json),
         csv_path=Path(args.csv),

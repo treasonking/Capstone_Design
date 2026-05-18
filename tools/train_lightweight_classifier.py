@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from collections import Counter
+from datetime import datetime
 from pathlib import Path
+from typing import Callable
 
 try:
     import joblib
@@ -21,12 +24,16 @@ except ModuleNotFoundError as exc:  # pragma: no cover - exercised in runtime en
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 DEFAULT_DATASETS = [
     PROJECT_ROOT / "datasets" / "sample_dataset_v2.json",
 ]
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "models" / "lightweight"
 VECTORIZER_PATH = "vectorizer.joblib"
 CLASSIFIER_PATH = "classifier.joblib"
+METADATA_PATH = "model_metadata.json"
+EXTERNAL_DATASET_CHOICES = {"deepset", "protectai", "lakera"}
 
 SAFE_LABEL = "SAFE"
 PII_LABEL = "PII"
@@ -115,6 +122,28 @@ def _parse_args() -> argparse.Namespace:
         default=0.2,
         help="Holdout ratio used for a quick validation report.",
     )
+    parser.add_argument(
+        "--include-external-prompt-injection",
+        action="store_true",
+        help="Include the train partition of selected external English prompt injection datasets.",
+    )
+    parser.add_argument(
+        "--external-datasets",
+        default="deepset,protectai,lakera",
+        help="Comma-separated external datasets to include: deepset, protectai, lakera.",
+    )
+    parser.add_argument(
+        "--external-train-ratio",
+        type=float,
+        default=0.7,
+        help="Deterministic external train partition ratio. Keep eval partition out of training.",
+    )
+    parser.add_argument(
+        "--external-max-samples-per-dataset",
+        type=int,
+        default=-1,
+        help="Optional cap before partitioning each external dataset. -1 means all rows.",
+    )
     return parser.parse_args()
 
 
@@ -163,6 +192,67 @@ def _collect_samples(dataset_paths: list[Path]) -> list[tuple[str, str]]:
     return samples
 
 
+def _external_dataset_names(raw: str) -> list[str]:
+    names = [item.strip().lower() for item in raw.split(",") if item.strip()]
+    unknown = sorted(set(names) - EXTERNAL_DATASET_CHOICES)
+    if unknown:
+        raise ValueError(f"Unknown external dataset names: {unknown}")
+    return names or sorted(EXTERNAL_DATASET_CHOICES)
+
+
+def _external_loaders() -> dict[str, Callable[[str], list[object]]]:
+    from evaluation.external_datasets import (
+        load_deepset_prompt_injections,
+        load_lakera_gandalf_ignore_instructions,
+        load_protectai_prompt_injection_validation,
+    )
+
+    return {
+        "deepset": load_deepset_prompt_injections,
+        "protectai": load_protectai_prompt_injection_validation,
+        "lakera": load_lakera_gandalf_ignore_instructions,
+    }
+
+
+def _external_train_partition(sample_id: str, train_ratio: float) -> bool:
+    clamped_ratio = max(0.0, min(train_ratio, 1.0))
+    digest = hashlib.sha256(sample_id.encode("utf-8")).hexdigest()
+    bucket = int(digest[:8], 16) / 0xFFFFFFFF
+    return bucket < clamped_ratio
+
+
+def _collect_external_prompt_injection_samples(
+    *,
+    names: list[str],
+    train_ratio: float,
+    max_samples_per_dataset: int,
+) -> tuple[list[tuple[str, str]], dict[str, int]]:
+    loaders = _external_loaders()
+    samples: list[tuple[str, str]] = []
+    counts: dict[str, int] = {}
+
+    for name in names:
+        loader = loaders[name]
+        external_rows = loader("all")
+        if max_samples_per_dataset >= 0:
+            external_rows = external_rows[:max_samples_per_dataset]
+
+        selected_count = 0
+        for row in external_rows:
+            partition_key = f"{row.source}:{row.id}"
+            if not _external_train_partition(partition_key, train_ratio):
+                continue
+            label = INJECTION_LABEL if row.expected_injection else SAFE_LABEL
+            text = row.text.strip()
+            if not text:
+                continue
+            samples.append((text, label))
+            selected_count += 1
+        counts[name] = selected_count
+
+    return samples, counts
+
+
 def _vectorizer() -> TfidfVectorizer:
     return TfidfVectorizer(
         analyzer="char_wb",
@@ -207,6 +297,28 @@ def main() -> int:
         )
 
     samples = _collect_samples(dataset_paths)
+    external_counts: dict[str, int] = {}
+    training_data_note = "internal Korean public-sector scenario data"
+    model_version = "internal-only"
+
+    if args.include_external_prompt_injection:
+        external_names = _external_dataset_names(args.external_datasets)
+        external_samples, external_counts = _collect_external_prompt_injection_samples(
+            names=external_names,
+            train_ratio=args.external_train_ratio,
+            max_samples_per_dataset=args.external_max_samples_per_dataset,
+        )
+        seen = set(samples)
+        for sample in external_samples:
+            if sample in seen:
+                continue
+            seen.add(sample)
+            samples.append(sample)
+        model_version = "external-tuned"
+        training_data_note = (
+            "internal Korean public-sector scenario data + external English prompt injection train partition"
+        )
+
     if len(samples) < 12:
         raise SystemExit("Not enough training samples were collected.")
 
@@ -251,15 +363,38 @@ def main() -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
     vectorizer_path = output_dir / VECTORIZER_PATH
     classifier_path = output_dir / CLASSIFIER_PATH
+    metadata_path = output_dir / METADATA_PATH
 
     joblib.dump(vectorizer, vectorizer_path)
     joblib.dump(classifier, classifier_path)
+    metadata = {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "model_version": model_version,
+        "training_data": training_data_note,
+        "note": (
+            "External rows use a deterministic train partition. Evaluate external-tuned models on held-out external rows to avoid data leakage."
+            if args.include_external_prompt_injection
+            else "Internal-oriented lightweight classifier artifact."
+        ),
+        "dataset_paths": [str(path) for path in dataset_paths],
+        "sample_counts": dict(sorted(label_counts.items())),
+        "include_external_prompt_injection": bool(args.include_external_prompt_injection),
+        "external_datasets": _external_dataset_names(args.external_datasets)
+        if args.include_external_prompt_injection
+        else [],
+        "external_train_ratio": float(args.external_train_ratio),
+        "external_selected_counts": external_counts,
+    }
+    metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print("Lightweight classifier trained successfully.")
     print(f"Datasets: {', '.join(str(path) for path in dataset_paths)}")
     print(f"Sample counts: {dict(sorted(label_counts.items()))}")
     print(f"Saved vectorizer: {vectorizer_path}")
     print(f"Saved classifier: {classifier_path}")
+    print(f"Saved metadata: {metadata_path}")
+    if external_counts:
+        print(f"External train partition counts: {external_counts}")
     print()
     print("Holdout report:")
     print(report)

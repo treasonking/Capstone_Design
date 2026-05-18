@@ -36,20 +36,34 @@
 - `reports/external_dataset_compare_report.md`
 - `reports/external_dataset_compare_results.json`
 - `reports/external_dataset_compare_results.csv`
+- `reports/external_overlap_analysis_report.md`
+- `reports/external_threshold_sweep_report.md`
+- `reports/external_model_confidence_report.md`
 
 요약하면 `deepset/prompt-injections`에서는 Rule Only와 Hybrid의 Recall이 모두 0.0760으로 같았고, `protectai/prompt-injection-validation`에서는 둘 다 Recall 0.1997, F1 0.3227이었다. `Lakera/gandalf_ignore_instructions`에서는 Hybrid Recall이 0.4680으로 Rule Only 0.4400보다 소폭 높았다.
 
 반면 Lightweight Model Only는 `deepset` Recall 0.0038, `protectai` Recall 0.0136, `Lakera` Recall 0.1110으로 낮게 측정되었다. 따라서 현재 artifact는 내부/데모 시나리오 보완에는 사용할 수 있지만, 외부 영어 Prompt Injection 데이터셋을 일반화해서 탐지한다고 주장하면 안 된다. 외부 데이터셋 기반 재학습, threshold 조정, hard negative 보강이 필요하다.
 
-## 6. 발표 시 설명 문장
+## 6. Hybrid Pipeline Limitation on English Datasets
+
+Hybrid 구조가 항상 Rule Only보다 높은 성능을 보장하는 것은 아니다. Hybrid가 성능을 개선하려면 모델 계층이 Rule 계층이 놓친 샘플을 추가 탐지해야 한다. 이번 외부 영어 데이터셋 평가에서는 경량 모델의 추가 탐지 기여도가 낮아 Hybrid와 Rule Only 성능이 유사하게 나타났다.
+
+Overlap 분석에서 `Model Only Unique TP`는 `deepset=0`, `protectai=0`, `Lakera=19`로 측정되었다. 즉, deepset과 protectai에서는 모델이 Rule 계층이 놓친 공격을 추가로 맞추지 못했기 때문에 Hybrid TP가 Rule TP와 같았다. Lakera에서는 일부 보완 효과가 있었지만 전체 성능은 여전히 Rule 계층에 크게 의존했다.
+
+Threshold sweep과 confidence 분석은 현재 threshold 0.70이 외부 영어 데이터셋에서 매우 보수적으로 동작한다는 점을 보여준다. 다만 threshold를 낮추면 Recall과 함께 FP도 크게 증가하므로, 운영 threshold를 단순히 낮추기보다 외부 영어 데이터 기반 재학습, validation split 기반 threshold calibration, hard negative 보강이 필요하다.
+
+따라서 본 프로젝트의 현재 Hybrid 구조는 한국어 공공기관 시나리오에서는 설명 가능성과 안정성을 제공하지만, 영어 범용 Prompt Injection 환경에서는 외부 데이터 기반 재학습 및 threshold 조정이 필요하다.
+
+## 7. 발표 시 설명 문장
 
 - "현재 1.0 점수는 내부 검증셋 기준이며, 운영 성능을 보장하는 수치로 주장하지 않습니다."
 - "이번 MVP에서는 정책 회귀와 시연 재현성을 우선했고, 외부 영어 데이터셋에서 낮은 Recall이 나온 부분은 대표 패턴 보강과 개선 과제로 분리했습니다."
 - "외부 공개 데이터셋 3종에 대해서는 `reports/external_dataset_compare_report.md`에서 Rule Only, Lightweight Model Only, Hybrid / Full Pipeline을 분리해 확인합니다."
 - "현재 외부 영어 데이터셋에서는 Lightweight Model Only의 Recall이 낮으므로, Hybrid 개선의 대부분을 모델이 만들었다고 주장하지 않습니다."
+- "Rule Only와 Hybrid가 비슷한 이유는 overlap 분석에서 Model Only Unique TP가 거의 없다는 점으로 확인했습니다."
 - "artifact가 없는 fallback 상태는 완전한 Hybrid 성능으로 해석하지 않습니다."
 
-## 7. 향후 개선 계획
+## 8. 향후 개선 계획
 
 - `evaluation/external_validation_sample.json` 같은 외부 스타일 샘플을 먼저 확대해 소규모 추가 검증을 수행한다.
 - 공개 벤치에서 가져온 샘플은 라이선스와 사용 조건을 확인한 뒤 별도 데이터셋으로 분리한다.

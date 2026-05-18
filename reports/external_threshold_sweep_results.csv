@@ -1,0 +1,31 @@
+dataset_name,threshold,mode,size,precision,recall,f1,accuracy,tp,fp,tn,fn,latency_ms_avg,model_status
+deepset/prompt-injections,0.3,Lightweight Model Only,662,0.44464609800362975,0.9315589353612167,0.6019656019656019,0.5105740181268882,245,306,93,18,0.919,enabled
+deepset/prompt-injections,0.3,Hybrid / Full Pipeline,662,0.44464609800362975,0.9315589353612167,0.6019656019656019,0.5105740181268882,245,306,93,18,1.66,enabled
+protectai/prompt-injection-validation,0.3,Lightweight Model Only,3227,0.46335616438356164,0.9719827586206896,0.6275510204081632,0.5023241400681748,1353,1567,268,39,1.302,enabled
+protectai/prompt-injection-validation,0.3,Hybrid / Full Pipeline,3227,0.46335616438356164,0.9719827586206896,0.6275510204081632,0.5023241400681748,1353,1567,268,39,3.006,enabled
+Lakera/gandalf_ignore_instructions,0.3,Lightweight Model Only,1000,,0.985,,0.985,985,,,15,0.9,enabled
+Lakera/gandalf_ignore_instructions,0.3,Hybrid / Full Pipeline,1000,,0.985,,0.985,985,,,15,1.493,enabled
+deepset/prompt-injections,0.4,Lightweight Model Only,662,0.5218508997429306,0.7718631178707225,0.6226993865030676,0.6283987915407855,203,186,213,60,0.867,enabled
+deepset/prompt-injections,0.4,Hybrid / Full Pipeline,662,0.5218508997429306,0.7718631178707225,0.6226993865030676,0.6283987915407855,203,186,213,60,1.694,enabled
+protectai/prompt-injection-validation,0.4,Lightweight Model Only,3227,0.48456325301204817,0.9245689655172413,0.6358695652173914,0.5432290052680508,1287,1369,466,105,1.273,enabled
+protectai/prompt-injection-validation,0.4,Hybrid / Full Pipeline,3227,0.48456325301204817,0.9245689655172413,0.6358695652173914,0.5432290052680508,1287,1369,466,105,3.04,enabled
+Lakera/gandalf_ignore_instructions,0.4,Lightweight Model Only,1000,,0.973,,0.973,973,,,27,0.883,enabled
+Lakera/gandalf_ignore_instructions,0.4,Hybrid / Full Pipeline,1000,,0.973,,0.973,973,,,27,1.731,enabled
+deepset/prompt-injections,0.5,Lightweight Model Only,662,0.8247422680412371,0.3041825095057034,0.4444444444444445,0.6978851963746223,80,17,382,183,0.897,enabled
+deepset/prompt-injections,0.5,Hybrid / Full Pipeline,662,0.83,0.3155893536121673,0.45730027548209357,0.702416918429003,83,17,382,180,1.663,enabled
+protectai/prompt-injection-validation,0.5,Lightweight Model Only,3227,0.640408899579074,0.7650862068965517,0.6972176759410802,0.7133560582584444,1065,598,1237,327,1.263,enabled
+protectai/prompt-injection-validation,0.5,Hybrid / Full Pipeline,3227,0.6342042755344418,0.7672413793103449,0.694408322496749,0.7087077781220948,1068,616,1219,324,3.02,enabled
+Lakera/gandalf_ignore_instructions,0.5,Lightweight Model Only,1000,,0.903,,0.903,903,,,97,0.883,enabled
+Lakera/gandalf_ignore_instructions,0.5,Hybrid / Full Pipeline,1000,,0.904,,0.904,904,,,96,1.525,enabled
+deepset/prompt-injections,0.6,Lightweight Model Only,662,1.0,0.07984790874524715,0.147887323943662,0.6344410876132931,21,0,399,242,0.87,enabled
+deepset/prompt-injections,0.6,Hybrid / Full Pipeline,662,1.0,0.12547528517110265,0.22297297297297294,0.6525679758308157,33,0,399,230,1.683,enabled
+protectai/prompt-injection-validation,0.6,Lightweight Model Only,3227,0.899009900990099,0.3261494252873563,0.4786505007907222,0.6935233963433529,454,51,1784,938,1.319,enabled
+protectai/prompt-injection-validation,0.6,Hybrid / Full Pipeline,3227,0.8560250391236307,0.39295977011494254,0.5386509108813393,0.7096374341493648,547,92,1743,845,2.987,enabled
+Lakera/gandalf_ignore_instructions,0.6,Lightweight Model Only,1000,,0.687,,0.687,687,,,313,0.924,enabled
+Lakera/gandalf_ignore_instructions,0.6,Hybrid / Full Pipeline,1000,,0.745,,0.745,745,,,255,1.53,enabled
+deepset/prompt-injections,0.7,Lightweight Model Only,662,1.0,0.0038022813688212928,0.007575757575757576,0.6042296072507553,1,0,399,262,0.873,enabled
+deepset/prompt-injections,0.7,Hybrid / Full Pipeline,662,1.0,0.07604562737642585,0.1413427561837456,0.6329305135951662,20,0,399,243,1.709,enabled
+protectai/prompt-injection-validation,0.7,Lightweight Model Only,3227,1.0,0.013649425287356323,0.02693125442948264,0.5745274248528045,19,0,1835,1373,1.293,enabled
+protectai/prompt-injection-validation,0.7,Hybrid / Full Pipeline,3227,0.8398791540785498,0.1997126436781609,0.3226929773650609,0.638363805392005,278,53,1782,1114,3.119,enabled
+Lakera/gandalf_ignore_instructions,0.7,Lightweight Model Only,1000,,0.111,,0.111,111,,,889,0.872,enabled
+Lakera/gandalf_ignore_instructions,0.7,Hybrid / Full Pipeline,1000,,0.468,,0.468,468,,,532,1.56,enabled

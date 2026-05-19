@@ -36,11 +36,11 @@ OVERLAP_JSON_PATH = Path("reports/external_overlap_analysis_results.json")
 OVERLAP_CSV_PATH = Path("reports/external_overlap_analysis_results.csv")
 
 
-def _hybrid_predicted(
+def _hybrid_pipeline_prediction(
     text: str,
     classifier: LightweightClassifier,
     threshold: float,
-) -> bool:
+) -> tuple[bool, bool]:
     settings = DetectionSettings(
         enable_model_detector=True,
         detection_mode="hybrid",
@@ -48,10 +48,22 @@ def _hybrid_predicted(
         model_detector_fail_mode="warn",
     )
     result = detect_hybrid(text, classifier=classifier, settings=settings)
-    return any(
+    pipeline_predicted = any(
         detection.detector_type == DetectorType.INJECTION
         for detection in result.detections
     )
+    model_injection_detection = any(
+        detection.detector_type == DetectorType.INJECTION
+        and detection.detector_name == "llm"
+        for detection in result.detections
+    )
+    model_hit_cancelled_by_safe_guard = (
+        result.model_prediction is not None
+        and _is_model_injection_prediction(result.model_prediction)
+        and not model_injection_detection
+        and "SAFE_SECURITY_EXPLANATION" in result.reason_codes
+    )
+    return pipeline_predicted, model_hit_cancelled_by_safe_guard
 
 
 def _analyze_dataset(
@@ -68,7 +80,12 @@ def _analyze_dataset(
         rule_predicted = bool(detect_injection(sample.text))
         model_prediction = classifier.classify(sample.text)
         model_predicted = _is_model_injection_prediction(model_prediction)
-        hybrid_predicted = _hybrid_predicted(sample.text, classifier, threshold)
+        hybrid_pipeline_predicted, model_hit_cancelled_by_safe_guard = _hybrid_pipeline_prediction(
+            sample.text,
+            classifier,
+            threshold,
+        )
+        hybrid_predicted = rule_predicted or model_predicted
         expected = bool(sample.expected_injection)
         sample_rows.append(
             {
@@ -79,6 +96,8 @@ def _analyze_dataset(
                 "rule_predicted": rule_predicted,
                 "model_predicted": model_predicted,
                 "hybrid_predicted": hybrid_predicted,
+                "hybrid_pipeline_predicted": hybrid_pipeline_predicted,
+                "model_hit_cancelled_by_safe_guard": model_hit_cancelled_by_safe_guard,
                 "model_label": model_prediction.label,
                 "model_confidence": model_prediction.confidence,
             }
@@ -111,6 +130,19 @@ def _analyze_dataset(
         for row in sample_rows
         if row["expected_injection"] and row["hybrid_predicted"] and not row["rule_predicted"]
     )
+    hybrid_pipeline_tp = sum(
+        1
+        for row in sample_rows
+        if row["expected_injection"] and row["hybrid_pipeline_predicted"]
+    )
+    model_hit_cancelled_by_safe_guard_count = sum(
+        1 for row in sample_rows if row["model_hit_cancelled_by_safe_guard"]
+    )
+    model_hit_cancelled_by_safe_guard_tp = sum(
+        1
+        for row in sample_rows
+        if row["expected_injection"] and row["model_hit_cancelled_by_safe_guard"]
+    )
 
     summary = {
         "dataset_name": dataset_name,
@@ -124,6 +156,9 @@ def _analyze_dataset(
         "model_only_unique_tp": model_only_unique_tp,
         "hybrid_tp": hybrid_tp,
         "hybrid_extra_tp": hybrid_extra_tp,
+        "hybrid_pipeline_tp": hybrid_pipeline_tp,
+        "model_hit_cancelled_by_safe_guard_count": model_hit_cancelled_by_safe_guard_count,
+        "model_hit_cancelled_by_safe_guard_tp": model_hit_cancelled_by_safe_guard_tp,
         "hybrid_tp_equals_rule_plus_model_unique": hybrid_tp == rule_tp + model_only_unique_tp,
         "hybrid_tp_equals_rule_plus_hybrid_extra": hybrid_tp == rule_tp + hybrid_extra_tp,
     }
@@ -169,6 +204,9 @@ def _run_analysis(
                     "model_only_unique_tp": None,
                     "hybrid_tp": None,
                     "hybrid_extra_tp": None,
+                    "hybrid_pipeline_tp": None,
+                    "model_hit_cancelled_by_safe_guard_count": None,
+                    "model_hit_cancelled_by_safe_guard_tp": None,
                     "hybrid_tp_equals_rule_plus_model_unique": None,
                     "hybrid_tp_equals_rule_plus_hybrid_extra": None,
                     "dataset_status": dataset.status,
@@ -223,8 +261,8 @@ def _render_report(
         "",
         "## Summary",
         "",
-        "| Dataset | Model Version | Rule TP | Model TP | Both TP | Rule Only TP | Model Only Unique TP | Hybrid TP | Hybrid Extra TP |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|",
+        "| Dataset | Model Version | Rule TP | Model TP | Both TP | Rule Only TP | Model Only Unique TP | Hybrid TP | Hybrid Extra TP | Pipeline TP | Safe Guard Cancelled Model Hits | Cancelled TP |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in summaries:
         lines.append(
@@ -236,7 +274,10 @@ def _render_report(
             f"| {_fmt(row['rule_only_tp'])} "
             f"| {_fmt(row['model_only_unique_tp'])} "
             f"| {_fmt(row['hybrid_tp'])} "
-            f"| {_fmt(row['hybrid_extra_tp'])} |"
+            f"| {_fmt(row['hybrid_extra_tp'])} "
+            f"| {_fmt(row['hybrid_pipeline_tp'])} "
+            f"| {_fmt(row['model_hit_cancelled_by_safe_guard_count'])} "
+            f"| {_fmt(row['model_hit_cancelled_by_safe_guard_tp'])} |"
         )
 
     lines.extend(
@@ -248,7 +289,7 @@ def _render_report(
             "",
             "반대로 external-tuned 모델처럼 `Model Only Unique TP`가 증가하면 Hybrid TP도 Rule TP보다 커진다. 따라서 이 표는 Hybrid 개선 여부를 모델 계층의 독립 기여도로 설명하는 핵심 근거다.",
             "",
-            "`Hybrid Extra TP`는 실제 Hybrid 실행 결과가 Rule Only보다 추가로 맞춘 공격 샘플 수다. 이 값이 `Model Only Unique TP`와 다르면, 현재 Hybrid 내부의 model detector heuristic 또는 fallback reason이 순수 lightweight classifier와 다르게 작동했다는 뜻이다.",
+            "`Hybrid TP`와 `Hybrid Extra TP`는 `rule_predicted OR model_predicted` 기준이다. `Pipeline TP`는 safe explanation guard가 적용된 기존 `detect_hybrid()` 실행 결과이며, guard로 취소된 model hit는 별도 열에 기록한다.",
             "",
             "샘플 단위의 `expected_injection`, `rule_predicted`, `model_predicted`, `hybrid_predicted` 값은 JSON 결과 파일의 `sample_predictions`에 저장한다.",
             "",
@@ -292,6 +333,9 @@ def _write_csv(rows: list[dict[str, Any]], path: Path) -> None:
         "model_only_unique_tp",
         "hybrid_tp",
         "hybrid_extra_tp",
+        "hybrid_pipeline_tp",
+        "model_hit_cancelled_by_safe_guard_count",
+        "model_hit_cancelled_by_safe_guard_tp",
         "hybrid_tp_equals_rule_plus_model_unique",
         "hybrid_tp_equals_rule_plus_hybrid_extra",
         "dataset_status",

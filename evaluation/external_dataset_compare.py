@@ -770,17 +770,25 @@ def _render_markdown(
 
     split_summary = _read_json(DEFAULT_EVAL_PATH.parent / "split_summary.json")
     if split_summary:
+        text_hash_by_dataset = split_summary.get("text_hash_overlap_by_dataset", {})
+        deepset_near_duplicates = split_summary.get("deepset_near_duplicate_count_gte_threshold", "N/A")
         lines.extend(
             [
                 "",
                 "## Data Leakage Control",
                 "",
-                "- External datasets were split into train/eval subsets.",
-                "- Eval samples were not used for training.",
+                "- External datasets were split into train/eval subsets with no train/eval id overlap.",
+                "- Normalized text-hash overlap is not zero; treat the custom split metrics as potentially optimistic where exact duplicate text appears across train/eval.",
                 f"- Random seed: `{split_summary.get('random_seed')}`",
                 f"- Train/eval id overlap: `{split_summary.get('train_eval_overlap')}`",
                 f"- Train/eval text-hash overlap: `{split_summary.get('train_eval_text_hash_overlap', 'N/A')}`",
                 f"- Train size: `{split_summary.get('train_size')}`, eval size: `{split_summary.get('eval_size')}`",
+                "",
+                "| Dataset | Exact Text Overlap | Near Duplicate Count >= 0.95 | Interpretation |",
+                "|---|---:|---:|---|",
+                f"| `deepset/prompt-injections` | {text_hash_by_dataset.get('deepset/prompt-injections', 'N/A')} | {deepset_near_duplicates} | No exact normalized text overlap, but near duplicates remain; interpret custom split together with official split results. |",
+                f"| `protectai/prompt-injection-validation` | {text_hash_by_dataset.get('protectai/prompt-injection-validation', 'N/A')} | N/A | Exact train/eval text overlap is a limitation and may inflate held-out metrics. |",
+                f"| `Lakera/gandalf_ignore_instructions` | {text_hash_by_dataset.get('Lakera/gandalf_ignore_instructions', 'N/A')} | N/A | Exact train/eval text overlap is a limitation; this dataset is also positive-only, so precision/F1 are not measured. |",
             ]
         )
 

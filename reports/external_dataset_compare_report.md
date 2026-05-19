@@ -93,12 +93,18 @@
 
 ## Data Leakage Control
 
-- External datasets were split into train/eval subsets.
-- Eval samples were not used for training.
+- External datasets were split into train/eval subsets with no train/eval id overlap.
+- Normalized text-hash overlap is not zero; treat the custom split metrics as potentially optimistic where exact duplicate text appears across train/eval.
 - Random seed: `42`
 - Train/eval id overlap: `0`
 - Train/eval text-hash overlap: `42`
 - Train size: `3421`, eval size: `1468`
+
+| Dataset | Exact Text Overlap | Near Duplicate Count >= 0.95 | Interpretation |
+|---|---:|---:|---|
+| `deepset/prompt-injections` | 0 | 4 | No exact normalized text overlap, but near duplicates remain; interpret custom split together with official split results. |
+| `protectai/prompt-injection-validation` | 41 | N/A | Exact train/eval text overlap is a limitation and may inflate held-out metrics. |
+| `Lakera/gandalf_ignore_instructions` | 1 | N/A | Exact train/eval text overlap is a limitation; this dataset is also positive-only, so precision/F1 are not measured. |
 
 ## Deepset Result Validation Note
 
@@ -128,7 +134,7 @@ external-tuned 모델에서는 held-out eval split 기준으로 Model Only Uniqu
 
 - `Rule Only`는 `backend/app/detection/injection_detector.py`의 규칙·휴리스틱 Prompt Injection 탐지만 사용한다.
 - `Lightweight Model Only`는 `models/lightweight/vectorizer.joblib`와 `models/lightweight/classifier.joblib`가 실제로 로드된 경우에만 측정한다.
-- `Hybrid / Full Pipeline`은 현재 프로젝트의 다층형 탐지 파이프라인 실행 경로이며, 규칙 탐지와 경량 모델 계층을 함께 사용한다.
+- `Hybrid / Full Pipeline`은 `rule_predicted OR model_predicted` 기준으로 집계한다. safe explanation guard가 model hit를 취소한 경우에는 JSON 결과의 `model_hit_cancelled_by_safe_guard_count`와 `model_hit_cancelled_by_safe_guard_tp`에 별도로 기록한다.
 - `Lakera/gandalf_ignore_instructions`는 공격 샘플 중심 데이터셋이므로 Precision, F1, FP, TN은 `N/A`로 표시하고 Recall과 Accuracy 중심으로 해석한다.
 - `model_status`가 `enabled`가 아니면 Hybrid 결과는 경량 분류 계층이 빠진 fallback 성격이므로 완전한 Hybrid 성능으로 과장하지 않는다.
 - sklearn artifact 버전 경고가 발생하면 같은 scikit-learn 버전으로 artifact를 재생성한 뒤 결과를 다시 확인한다.

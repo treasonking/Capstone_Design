@@ -165,8 +165,8 @@ def _render_report(generated_at: str, threshold: float, rows: list[dict[str, Any
         f"- Generated at: `{generated_at}`",
         f"- Lightweight threshold: `{threshold:.2f}`",
         "",
-        "| Split Policy | Dataset | Model Version | Mode | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN |",
-        "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| Split Policy | Dataset | Model Version | Mode | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN | Safe Guard Cancelled Model Hits | Cancelled TP |",
+        "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in rows:
         lines.append(
@@ -181,7 +181,9 @@ def _render_report(generated_at: str, threshold: float, rows: list[dict[str, Any
             f"| {_fmt(row['tp'])} "
             f"| {_fmt(row['fp'])} "
             f"| {_fmt(row['tn'])} "
-            f"| {_fmt(row['fn'])} |"
+            f"| {_fmt(row['fn'])} "
+            f"| {_fmt(row.get('model_hit_cancelled_by_safe_guard_count'))} "
+            f"| {_fmt(row.get('model_hit_cancelled_by_safe_guard_tp'))} |"
         )
 
     lines.extend(
@@ -193,6 +195,7 @@ def _render_report(generated_at: str, threshold: float, rows: list[dict[str, Any
             "",
             "- `custom 70/30 eval` uses the project-generated held-out eval split and the saved `external-tuned` artifact.",
             "- `official train/test` trains a temporary lightweight model with internal samples plus deepset official train split, then evaluates deepset official test split.",
+            "- `Hybrid / Full Pipeline` predictions are counted as `rule_predicted OR model_predicted`; safe explanation guard cancellations are reported separately instead of lowering Hybrid TP.",
             "- If custom split performance is much higher than official test performance, custom split metrics may be easier or inflated by similar examples.",
             "",
         ]

@@ -85,7 +85,16 @@ class DatasetBundle:
     note: str = ""
 
 
-Predictor = Callable[[str], bool]
+@dataclass(frozen=True, slots=True)
+class PredictionDecision:
+    predicted: bool
+    rule_predicted: bool | None = None
+    model_predicted: bool | None = None
+    pipeline_predicted: bool | None = None
+    model_hit_cancelled_by_safe_guard: bool = False
+
+
+Predictor = Callable[[str], bool | PredictionDecision]
 
 
 DATASET_SPECS = (
@@ -182,11 +191,34 @@ def _hybrid_pipeline(classifier: LightweightClassifier, threshold: float) -> Pre
         model_detector_fail_mode="warn",
     )
 
-    def predict(text: str) -> bool:
+    def predict(text: str) -> PredictionDecision:
+        rule_predicted = _rule_only(text)
         result = detect_hybrid(text, classifier=classifier, settings=settings)
-        return any(
+        model_predicted = (
+            _is_model_injection_prediction(result.model_prediction)
+            if result.model_prediction is not None
+            else False
+        )
+        pipeline_predicted = any(
             detection.detector_type == DetectorType.INJECTION
             for detection in result.detections
+        )
+        model_injection_detection = any(
+            detection.detector_type == DetectorType.INJECTION
+            and detection.detector_name == "llm"
+            for detection in result.detections
+        )
+        model_hit_cancelled_by_safe_guard = (
+            model_predicted
+            and not model_injection_detection
+            and "SAFE_SECURITY_EXPLANATION" in result.reason_codes
+        )
+        return PredictionDecision(
+            predicted=rule_predicted or model_predicted,
+            rule_predicted=rule_predicted,
+            model_predicted=model_predicted,
+            pipeline_predicted=pipeline_predicted,
+            model_hit_cancelled_by_safe_guard=model_hit_cancelled_by_safe_guard,
         )
 
     return predict
@@ -270,11 +302,40 @@ def _metric_result(
 ) -> dict[str, Any]:
     tp = fp = fn = tn = 0
     latencies: list[float] = []
+    decision_diagnostics = {
+        "rule_predicted_count": 0,
+        "model_predicted_count": 0,
+        "hybrid_pipeline_predicted_count": 0,
+        "model_hit_cancelled_by_safe_guard_count": 0,
+        "model_hit_cancelled_by_safe_guard_tp": 0,
+        "hybrid_or_changed_prediction_count": 0,
+    }
+    saw_decision_diagnostics = False
 
     for sample in dataset.samples:
         started = time.perf_counter()
-        predicted = predictor(sample.text)
+        prediction_result = predictor(sample.text)
         latencies.append((time.perf_counter() - started) * 1000)
+
+        if isinstance(prediction_result, PredictionDecision):
+            saw_decision_diagnostics = True
+            predicted = prediction_result.predicted
+            if prediction_result.rule_predicted:
+                decision_diagnostics["rule_predicted_count"] += 1
+            if prediction_result.model_predicted:
+                decision_diagnostics["model_predicted_count"] += 1
+            if prediction_result.pipeline_predicted:
+                decision_diagnostics["hybrid_pipeline_predicted_count"] += 1
+            if prediction_result.model_hit_cancelled_by_safe_guard:
+                decision_diagnostics["model_hit_cancelled_by_safe_guard_count"] += 1
+                if sample.expected_injection:
+                    decision_diagnostics["model_hit_cancelled_by_safe_guard_tp"] += 1
+            if prediction_result.pipeline_predicted is not None and (
+                prediction_result.predicted != prediction_result.pipeline_predicted
+            ):
+                decision_diagnostics["hybrid_or_changed_prediction_count"] += 1
+        else:
+            predicted = prediction_result
 
         if predicted and sample.expected_injection:
             tp += 1
@@ -292,7 +353,7 @@ def _metric_result(
     f1 = None if precision is None else _safe_div(2 * precision * recall, precision + recall)
     accuracy = _safe_div(tp + tn, size)
 
-    return {
+    row = {
         "dataset_name": dataset.spec.name,
         "model_version": model_version,
         "mode": mode,
@@ -311,6 +372,10 @@ def _metric_result(
         "dataset_status": dataset.status,
         "note": dataset.note,
     }
+    if saw_decision_diagnostics:
+        row.update(decision_diagnostics)
+        row["hybrid_prediction_formula"] = "rule_predicted OR model_predicted"
+    return row
 
 
 def _na_result(
@@ -770,7 +835,7 @@ def _render_markdown(
             "",
             "- `Rule Only`는 `backend/app/detection/injection_detector.py`의 규칙·휴리스틱 Prompt Injection 탐지만 사용한다.",
             "- `Lightweight Model Only`는 `models/lightweight/vectorizer.joblib`와 `models/lightweight/classifier.joblib`가 실제로 로드된 경우에만 측정한다.",
-            "- `Hybrid / Full Pipeline`은 현재 프로젝트의 다층형 탐지 파이프라인 실행 경로이며, 규칙 탐지와 경량 모델 계층을 함께 사용한다.",
+            "- `Hybrid / Full Pipeline`은 `rule_predicted OR model_predicted` 기준으로 집계한다. safe explanation guard가 model hit를 취소한 경우에는 JSON 결과의 `model_hit_cancelled_by_safe_guard_count`와 `model_hit_cancelled_by_safe_guard_tp`에 별도로 기록한다.",
             "- `Lakera/gandalf_ignore_instructions`는 공격 샘플 중심 데이터셋이므로 Precision, F1, FP, TN은 `N/A`로 표시하고 Recall과 Accuracy 중심으로 해석한다.",
             "- `model_status`가 `enabled`가 아니면 Hybrid 결과는 경량 분류 계층이 빠진 fallback 성격이므로 완전한 Hybrid 성능으로 과장하지 않는다.",
             "- sklearn artifact 버전 경고가 발생하면 같은 scikit-learn 버전으로 artifact를 재생성한 뒤 결과를 다시 확인한다.",

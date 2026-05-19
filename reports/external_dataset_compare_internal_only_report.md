@@ -1,0 +1,127 @@
+# External Dataset Rule/Model/Hybrid Comparison
+
+- Generated at: `2026-05-18T21:36:49`
+- Hugging Face split: `datasets\external_splits\eval_external_prompt_injection.jsonl`
+- Lightweight threshold: `0.70`
+
+본 프로젝트는 범용 Prompt Injection 탐지기가 아니라, 한국어 공공기관·사내망 환경에서 발생할 수 있는 개인정보 유출 및 정책 우회형 Prompt Injection을 우선 방어 대상으로 설계한 LLM 보안 프록시이다.
+
+외부 영어 데이터셋에서 낮은 Recall이 측정된 것은 현재 탐지 정책과 학습 데이터가 한국어 공공기관 시나리오에 집중되어 있기 때문이다. 이 결과는 시스템 실패로 숨기기보다, 범용 환경 확장을 위한 개선 지점으로 해석한다.
+
+## Lightweight Classifier Status
+
+| Item | Value |
+|---|---|
+| enabled | true |
+| status | enabled |
+| note | Lightweight model loaded. |
+| vectorizer_path | `C:\Users\jho87\Downloads\Capstone_Design\models\lightweight\vectorizer.joblib` |
+| classifier_path | `C:\Users\jho87\Downloads\Capstone_Design\models\lightweight\classifier.joblib` |
+
+## Model Version
+
+| Model Version | Training Data | Note |
+|---|---|---|
+| internal-only | internal Korean public-sector scenario data | No model metadata file found; interpreted as the current internal-oriented artifact. |
+
+## Runtime Versions
+
+| Package | Version |
+|---|---|
+| datasets | 4.8.5 |
+| joblib | 1.5.3 |
+| sklearn | 1.8.0 |
+
+## Dataset Loading
+
+| Dataset | Samples | Status | Role | Note |
+|---|---:|---|---|---|
+| `deepset/prompt-injections` | 199 | loaded | 정상/공격 프롬프트를 모두 포함하는 메인 외부 벤치마크 | Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl |
+| `protectai/prompt-injection-validation` | 969 | loaded | 3천 건 이상 규모의 추가 검증셋 | Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl |
+| `Lakera/gandalf_ignore_instructions` | 300 | loaded | 공격 샘플 중심의 ignore-instructions Recall 검증셋 | Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl |
+
+## Previous Reference
+
+기존 측정값은 비교 기준으로만 둔다. 이번 재평가의 핵심은 아래 `Current Mode Comparison`에서 Rule Only, Lightweight Model Only, Hybrid / Full Pipeline을 분리해 보는 것이다.
+기존 입력 문서의 일부 FN 값은 Precision/Recall/Accuracy와 수학적으로 맞지 않아, 저장소의 기존 `reports/external_prompt_injection_report.md` 및 혼동행렬과 일관되는 값으로 표시한다.
+
+| Dataset | Size | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `deepset/prompt-injections` | 662 | 1.0000 | 0.0760 | 0.1413 | 0.6329 | 20 | 0 | 399 | 243 |
+| `protectai/prompt-injection-validation` | 3227 | 0.8251 | 0.1796 | 0.2950 | 0.6297 | 250 | 53 | 1782 | 1142 |
+| `Lakera/gandalf_ignore_instructions` | 1000 | N/A | 0.4480 | N/A | 0.4480 | 448 | N/A | N/A | 552 |
+
+## Current Mode Comparison
+
+| Dataset | Model Version | Mode | Size | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN | Avg Latency(ms) | Model Status |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| `deepset/prompt-injections` | internal-only | Rule Only | 199 | 1.0000 | 0.0886 | 0.1628 | 0.6382 | 7 | 0 | 120 | 72 | 0.580 | disabled |
+| `deepset/prompt-injections` | internal-only | Lightweight Model Only | 199 | 0.0000 | 0.0000 | 0.0000 | 0.6030 | 0 | 0 | 120 | 79 | 1.210 | enabled |
+| `deepset/prompt-injections` | internal-only | Hybrid / Full Pipeline | 199 | 1.0000 | 0.0886 | 0.1628 | 0.6382 | 7 | 0 | 120 | 72 | 2.143 | enabled |
+| `protectai/prompt-injection-validation` | internal-only | Rule Only | 969 | 0.8448 | 0.2344 | 0.3670 | 0.6512 | 98 | 18 | 533 | 320 | 1.290 | disabled |
+| `protectai/prompt-injection-validation` | internal-only | Lightweight Model Only | 969 | 1.0000 | 0.0191 | 0.0376 | 0.5769 | 8 | 0 | 551 | 410 | 1.530 | enabled |
+| `protectai/prompt-injection-validation` | internal-only | Hybrid / Full Pipeline | 969 | 0.8448 | 0.2344 | 0.3670 | 0.6512 | 98 | 18 | 533 | 320 | 3.566 | enabled |
+| `Lakera/gandalf_ignore_instructions` | internal-only | Rule Only | 300 | N/A | 0.4300 | N/A | 0.4300 | 129 | N/A | N/A | 171 | 0.462 | disabled |
+| `Lakera/gandalf_ignore_instructions` | internal-only | Lightweight Model Only | 300 | N/A | 0.1033 | N/A | 0.1033 | 31 | N/A | N/A | 269 | 0.925 | enabled |
+| `Lakera/gandalf_ignore_instructions` | internal-only | Hybrid / Full Pipeline | 300 | N/A | 0.4600 | N/A | 0.4600 | 138 | N/A | N/A | 162 | 1.734 | enabled |
+
+## Improvement Summary
+
+동일한 held-out eval split에서 internal-only 모델과 external-tuned 모델을 비교한다. 기존 전체 데이터셋 기준 baseline은 위 `Previous Reference`에 보존했다.
+
+| Dataset | Rule Only Recall | Old Hybrid Recall | New Hybrid Recall | Improvement over Rule | Improvement over Old Hybrid |
+|---|---:|---:|---:|---:|---:|
+| `deepset/prompt-injections` | 0.0886 | 0.0854 | 0.0886 | +0.0000 | +0.0032 |
+| `protectai/prompt-injection-validation` | 0.2344 | 0.1881 | 0.2344 | +0.0000 | +0.0463 |
+| `Lakera/gandalf_ignore_instructions` | 0.4300 | 0.4630 | 0.4600 | +0.0300 | -0.0030 |
+
+## Model Contribution
+
+| Dataset | Old Model Unique TP | New Model Unique TP | Change |
+|---|---:|---:|---:|
+| `deepset/prompt-injections` | 0 | 11 | +11.0000 |
+| `protectai/prompt-injection-validation` | 0 | 229 | +229.0000 |
+| `Lakera/gandalf_ignore_instructions` | 6 | 164 | +158.0000 |
+
+## Threshold
+
+| Dataset | Model Version | Mode | Old Threshold | New Recommended Threshold | Reason |
+|---|---|---|---:|---:|---|
+| `deepset/prompt-injections` | external-tuned | Hybrid / Full Pipeline | 0.70 | 0.30 | best F1 with precision >= 0.70 preference |
+| `protectai/prompt-injection-validation` | external-tuned | Hybrid / Full Pipeline | 0.70 | 0.30 | best F1 with precision >= 0.70 preference |
+| `Lakera/gandalf_ignore_instructions` | external-tuned | Hybrid / Full Pipeline | 0.70 | 0.30 | positive-only dataset; recall-oriented recommendation |
+
+## Data Leakage Control
+
+- External datasets were split into train/eval subsets.
+- Eval samples were not used for training.
+- Random seed: `42`
+- Train/eval id overlap: `0`
+- Train size: `3421`, eval size: `1468`
+
+## Hybrid Delta vs Previous
+
+아래 표는 기존 전체 데이터셋 기준 수치와의 참고 비교다. 현재 표는 held-out eval split 기준이므로, 같은 split에서의 전/후 비교는 위 `Improvement Summary`를 우선 해석한다.
+
+| Dataset | Recall Delta | F1 Delta | Accuracy Delta | TP Delta | FP Delta | FN Delta |
+|---|---:|---:|---:|---:|---:|---:|
+| `deepset/prompt-injections` | +0.0126 | +0.0215 | +0.0053 | -13.0000 | +0.0000 | -171.0000 |
+| `protectai/prompt-injection-validation` | +0.0548 | +0.0720 | +0.0215 | -152.0000 | -35.0000 | -822.0000 |
+| `Lakera/gandalf_ignore_instructions` | +0.0120 | N/A | +0.0120 | -310.0000 | N/A | -390.0000 |
+
+## Why Rule Only and Hybrid are Similar
+
+internal-only baseline에서는 Hybrid / Full Pipeline 결과가 Rule Only와 거의 동일하게 나타났다. 이는 경량 모델 artifact가 로드되지 않았기 때문이 아니라, 로드된 모델이 Rule 계층이 놓친 영어 공격 샘플을 추가로 거의 탐지하지 못했기 때문이다.
+
+external-tuned 모델에서는 held-out eval split 기준으로 Model Only Unique TP가 증가했다. 따라서 새 Hybrid 성능은 더 이상 Rule 계층만으로 결정되지 않으며, 모델 계층이 rule miss를 실제로 추가 탐지한다.
+
+다만 external-tuned 모델은 영어 공개 데이터셋 train split을 포함한 별도 artifact이므로, 내부 한국어 공공기관 시나리오 성능은 별도로 회귀 검증해야 한다. 정량적인 unique TP 근거는 `reports/external_overlap_analysis_report.md`에서 확인한다.
+
+## Reading Guide
+
+- `Rule Only`는 `backend/app/detection/injection_detector.py`의 규칙·휴리스틱 Prompt Injection 탐지만 사용한다.
+- `Lightweight Model Only`는 `models/lightweight/vectorizer.joblib`와 `models/lightweight/classifier.joblib`가 실제로 로드된 경우에만 측정한다.
+- `Hybrid / Full Pipeline`은 현재 프로젝트의 다층형 탐지 파이프라인 실행 경로이며, 규칙 탐지와 경량 모델 계층을 함께 사용한다.
+- `Lakera/gandalf_ignore_instructions`는 공격 샘플 중심 데이터셋이므로 Precision, F1, FP, TN은 `N/A`로 표시하고 Recall과 Accuracy 중심으로 해석한다.
+- `model_status`가 `enabled`가 아니면 Hybrid 결과는 경량 분류 계층이 빠진 fallback 성격이므로 완전한 Hybrid 성능으로 과장하지 않는다.
+- sklearn artifact 버전 경고가 발생하면 같은 scikit-learn 버전으로 artifact를 재생성한 뒤 결과를 다시 확인한다.

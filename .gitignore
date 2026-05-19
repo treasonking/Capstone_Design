@@ -8,4 +8,5 @@ venv/
 build/
 logs/
 evaluation/results/*.csv
+datasets/external_splits/*.jsonl
 

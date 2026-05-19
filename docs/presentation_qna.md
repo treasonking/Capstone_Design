@@ -4,7 +4,7 @@
 
 A.
 - 맞다. 내부 데이터셋은 한국어 공공기관 업무 시나리오 중심으로 구성되어 있기 때문에 높은 성능이 나올 수 있다.
-- 그래서 외부 공개 데이터셋인 `deepset/prompt-injections`를 추가로 적용했고, 영어 기반 공격에서는 Recall이 낮다는 한계를 확인했다.
+- 그래서 외부 공개 데이터셋인 `deepset/prompt-injections`, `protectai/prompt-injection-validation`, `Lakera/gandalf_ignore_instructions`를 추가로 적용했고, 영어 기반 공격에서는 Recall이 낮다는 한계를 확인했다.
 - 본 프로젝트는 이 결과를 숨기지 않고 한계와 개선 과제로 명시했다.
 
 ## Q2. 왜 false positive가 0개인가요?
@@ -60,22 +60,25 @@ A.
 
 A.
 - 현재 버전은 범용 글로벌 Prompt Injection 탐지기가 아니라 한국어 공공기관·사내망 환경을 우선 대상으로 한 PoC이다.
-- 영어·혼합언어 공격 패턴은 현재 개선 과제로 식별했고, 일부 대표 패턴은 룰에 추가했다.
-- 실제 운영 수준으로 확장하려면 영어 데이터셋 기반 재학습과 threshold 조정이 필요하다.
+- internal-only baseline에서는 영어 공개 데이터셋에 대한 모델 기여도가 낮았고, 이를 한계로 명시했다.
+- 이번 개선에서는 외부 공개 데이터셋을 train/eval로 분리해 external-tuned 경량 모델을 학습했고, held-out eval split에서 Hybrid Recall과 Model Unique TP가 증가했다.
+- 실제 운영 수준으로 확장하려면 영어 데이터셋 기반 재학습을 계속하되, hard negative 보강과 threshold calibration을 함께 해야 한다.
 
 ## Q10. Hybrid가 Rule Only보다 좋은 근거가 있나요?
 
 A.
-- 최종 평가에서는 Rule Only, Lightweight Model Only, Hybrid를 분리하여 Precision, Recall, F1, latency를 비교했다.
-- 이를 통해 규칙 기반 탐지의 안정성과 경량 모델 기반 탐지의 보완 가능성을 비교했다.
-- 단, 모델 artifact가 없는 fallback 상태는 별도로 표시하여 완전한 Hybrid 성능으로 과장하지 않았다.
+- 최종 평가에서는 외부 공개 데이터셋 3종에 대해 Rule Only, Lightweight Model Only, Hybrid / Full Pipeline을 분리하여 Precision, Recall, F1, Accuracy, latency를 비교했다.
+- internal-only baseline에서는 `deepset`과 `protectai`에서 Rule Only와 Hybrid가 거의 같았고, `Lakera`에서만 소폭 개선됐다.
+- external-tuned 모델은 held-out eval split, threshold 0.30 기준 Hybrid Recall을 `deepset=0.6329`, `protectai=0.8876`, `Lakera=0.9867`까지 올렸다.
+- 따라서 답변은 "Hybrid가 항상 자동으로 좋아진다"가 아니라, "모델 계층이 Rule miss를 추가 탐지할 때 Hybrid가 좋아지며, 이번 external-tuned 결과에서는 그 기여가 overlap 분석으로 확인됐다"가 정확하다.
 
 ## Q11. 모델 artifact가 없으면 하이브리드라고 볼 수 있나요?
 
 A.
 - 모델 artifact가 없는 실행 환경에서는 rule fallback으로 동작한다.
 - 이는 시스템 중단을 방지하기 위한 안정성 설계이다.
-- 다만 평가 보고서에서는 `model_status`를 `loaded` 또는 `artifact_missing`으로 분리하여 해석한다.
+- 다만 평가 보고서에서는 `model_status`를 `enabled`, `artifact_missing`, `dependency_missing` 등으로 분리하여 해석한다.
+- 이번 외부 3종 재평가에서는 `vectorizer.joblib`와 `classifier.joblib`가 모두 로드되어 `model_status=enabled`였다.
 
 ## Q12. 이 프로젝트는 범용 Prompt Injection 탐지기인가요?
 
@@ -104,3 +107,12 @@ A.
 - 아니다. 보안 검증을 위해 upstream 응답을 먼저 버퍼링한다.
 - 이후 Validator Agent가 전체 출력 검사를 수행하고, 안전한 응답만 SSE 이벤트로 반환한다.
 - 따라서 현재 구현은 실시간 토큰 스트리밍이 아니라 검증 후 일괄 반환 구조에 가깝다.
+
+## Q16. Rule Only와 Hybrid 성능이 거의 같은데, Hybrid 구조가 의미 있나요?
+
+A.
+- Hybrid 구조가 의미 있으려면 모델 계층이 Rule 계층이 놓친 샘플을 추가로 탐지해야 한다.
+- internal-only baseline에서는 경량 모델이 영어 공격 표현을 충분히 일반화하지 못해 Rule Only와 Hybrid 성능이 유사했다.
+- held-out eval split 기준 internal-only `Model Only Unique TP`는 `deepset=0`, `protectai=0`, `Lakera=6`이었다.
+- external-tuned 모델에서는 같은 eval split에서 threshold 0.30 기준 `Model Only Unique TP`가 `deepset=43`, `protectai=273`, `Lakera=167`로 증가했다.
+- 즉, Hybrid 구조 자체가 불필요했던 것이 아니라, 기존 모델 학습 데이터가 영어 공개 데이터셋에 맞지 않았던 것이다. 외부 데이터 기반 재학습과 threshold optimizer를 통해 모델 계층의 독립 기여도를 늘릴 수 있음을 확인했다.

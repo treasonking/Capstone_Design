@@ -1,0 +1,170 @@
+{
+  "generated_at": "2026-05-18T22:08:42",
+  "split": "datasets\\external_splits\\eval_external_prompt_injection.jsonl",
+  "classifier_status": {
+    "enabled": true,
+    "status": "enabled",
+    "note": "Lightweight model loaded.",
+    "vectorizer_path": "models\\lightweight_external_tuned\\vectorizer.joblib",
+    "classifier_path": "models\\lightweight_external_tuned\\classifier.joblib"
+  },
+  "model_metadata": {
+    "model_version": "external-tuned",
+    "training_data": "internal Korean public-sector scenario data + external English prompt injection train partition",
+    "note": "External rows use a deterministic train partition. Evaluate external-tuned models on held-out external rows to avoid data leakage."
+  },
+  "runtime_versions": {
+    "datasets": "4.8.5",
+    "joblib": "1.5.3",
+    "sklearn": "1.8.0"
+  },
+  "confidence_summary": [
+    {
+      "dataset_name": "deepset/prompt-injections",
+      "label": "injection",
+      "count": 79,
+      "avg_confidence": 0.6335569620253164,
+      "confidence_gte_0_3": 1.0,
+      "confidence_gte_0_5": 0.8987341772151899,
+      "confidence_gte_0_7": 0.22784810126582278,
+      "avg_injection_confidence": 0.5324678347453801,
+      "injection_confidence_min": 0.17115391598213262,
+      "injection_confidence_p25": 0.38902855604332776,
+      "injection_confidence_median": 0.536365838716487,
+      "injection_confidence_p75": 0.63989243789629,
+      "injection_confidence_max": 0.989867975802588,
+      "injection_confidence_gte_0_3": 0.8987341772151899,
+      "injection_confidence_gte_0_5": 0.5569620253164557,
+      "injection_confidence_gte_0_7": 0.16455696202531644,
+      "dataset_status": "loaded",
+      "note": "Loaded from held-out eval split: datasets\\external_splits\\eval_external_prompt_injection.jsonl"
+    },
+    {
+      "dataset_name": "deepset/prompt-injections",
+      "label": "benign",
+      "count": 120,
+      "avg_confidence": 0.7979166666666666,
+      "confidence_gte_0_3": 1.0,
+      "confidence_gte_0_5": 1.0,
+      "confidence_gte_0_7": 0.9083333333333333,
+      "avg_injection_confidence": 0.1610548157164005,
+      "injection_confidence_min": 0.0620430679436998,
+      "injection_confidence_p25": 0.12525151941157162,
+      "injection_confidence_median": 0.14671703617037507,
+      "injection_confidence_p75": 0.17973269834999886,
+      "injection_confidence_max": 0.3592594970923362,
+      "injection_confidence_gte_0_3": 0.03333333333333333,
+      "injection_confidence_gte_0_5": 0.0,
+      "injection_confidence_gte_0_7": 0.0,
+      "dataset_status": "loaded",
+      "note": "Loaded from held-out eval split: datasets\\external_splits\\eval_external_prompt_injection.jsonl"
+    },
+    {
+      "dataset_name": "protectai/prompt-injection-validation",
+      "label": "injection",
+      "count": 418,
+      "avg_confidence": 0.8728229665071771,
+      "confidence_gte_0_3": 1.0,
+      "confidence_gte_0_5": 0.9688995215311005,
+      "confidence_gte_0_7": 0.7631578947368421,
+      "avg_injection_confidence": 0.8381216210438921,
+      "injection_confidence_min": 0.11985040201470343,
+      "injection_confidence_p25": 0.6741378231586395,
+      "injection_confidence_median": 0.9816991232572434,
+      "injection_confidence_p75": 0.9891255555617733,
+      "injection_confidence_max": 0.9982008420949763,
+      "injection_confidence_gte_0_3": 0.9593301435406698,
+      "injection_confidence_gte_0_5": 0.8660287081339713,
+      "injection_confidence_gte_0_7": 0.7320574162679426,
+      "dataset_status": "loaded",
+      "note": "Loaded from held-out eval split: datasets\\external_splits\\eval_external_prompt_injection.jsonl"
+    },
+    {
+      "dataset_name": "protectai/prompt-injection-validation",
+      "label": "benign",
+      "count": 551,
+      "avg_confidence": 0.8401070780399275,
+      "confidence_gte_0_3": 1.0,
+      "confidence_gte_0_5": 1.0,
+      "confidence_gte_0_7": 0.9437386569872959,
+      "avg_injection_confidence": 0.12915408943840267,
+      "injection_confidence_min": 0.022921707233120765,
+      "injection_confidence_p25": 0.08301506450303416,
+      "injection_confidence_median": 0.11775227678540204,
+      "injection_confidence_p75": 0.16257221743805422,
+      "injection_confidence_max": 0.5878322268770986,
+      "injection_confidence_gte_0_3": 0.019963702359346643,
+      "injection_confidence_gte_0_5": 0.003629764065335753,
+      "injection_confidence_gte_0_7": 0.0,
+      "dataset_status": "loaded",
+      "note": "Loaded from held-out eval split: datasets\\external_splits\\eval_external_prompt_injection.jsonl"
+    },
+    {
+      "dataset_name": "Lakera/gandalf_ignore_instructions",
+      "label": "injection",
+      "count": 300,
+      "avg_confidence": 0.9095833333333333,
+      "confidence_gte_0_3": 1.0,
+      "confidence_gte_0_5": 1.0,
+      "confidence_gte_0_7": 0.9466666666666667,
+      "avg_injection_confidence": 0.9074326622958104,
+      "injection_confidence_min": 0.2735706372597658,
+      "injection_confidence_p25": 0.8693808959070316,
+      "injection_confidence_median": 0.9474789630385072,
+      "injection_confidence_p75": 0.9814034910971949,
+      "injection_confidence_max": 0.9986267458640418,
+      "injection_confidence_gte_0_3": 0.9966666666666667,
+      "injection_confidence_gte_0_5": 0.9866666666666667,
+      "injection_confidence_gte_0_7": 0.9466666666666667,
+      "dataset_status": "loaded",
+      "note": "Loaded from held-out eval split: datasets\\external_splits\\eval_external_prompt_injection.jsonl"
+    }
+  ],
+  "predicted_label_distribution": [
+    {
+      "dataset_name": "deepset/prompt-injections",
+      "predicted_label": "INJECTION",
+      "count": 35
+    },
+    {
+      "dataset_name": "deepset/prompt-injections",
+      "predicted_label": "INJECTION_RISK",
+      "count": 13
+    },
+    {
+      "dataset_name": "deepset/prompt-injections",
+      "predicted_label": "SAFE",
+      "count": 151
+    },
+    {
+      "dataset_name": "protectai/prompt-injection-validation",
+      "predicted_label": "INJECTION",
+      "count": 67
+    },
+    {
+      "dataset_name": "protectai/prompt-injection-validation",
+      "predicted_label": "INJECTION_RISK",
+      "count": 306
+    },
+    {
+      "dataset_name": "protectai/prompt-injection-validation",
+      "predicted_label": "SAFE",
+      "count": 596
+    },
+    {
+      "dataset_name": "Lakera/gandalf_ignore_instructions",
+      "predicted_label": "INJECTION",
+      "count": 12
+    },
+    {
+      "dataset_name": "Lakera/gandalf_ignore_instructions",
+      "predicted_label": "INJECTION_RISK",
+      "count": 284
+    },
+    {
+      "dataset_name": "Lakera/gandalf_ignore_instructions",
+      "predicted_label": "SAFE",
+      "count": 4
+    }
+  ]
+}

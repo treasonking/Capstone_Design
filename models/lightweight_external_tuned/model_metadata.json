@@ -1,0 +1,29 @@
+{
+  "generated_at": "2026-05-18T22:03:57",
+  "model_version": "external-tuned",
+  "training_data": "internal Korean public-sector scenario data + external English prompt injection train partition",
+  "training_sources": [
+    "internal_korean_scenarios",
+    "datasets\\external_splits\\train_external_prompt_injection.jsonl"
+  ],
+  "note": "External rows use a deterministic train partition. Evaluate external-tuned models on held-out external rows to avoid data leakage.",
+  "random_seed": 42,
+  "dataset_paths": [
+    "C:\\Users\\jho87\\Downloads\\Capstone_Design\\datasets\\sample_dataset_v2.json"
+  ],
+  "sample_counts": {
+    "INJECTION": 1800,
+    "PII": 48,
+    "SAFE": 1406
+  },
+  "include_external_prompt_injection": true,
+  "external_train_path": "datasets\\external_splits\\train_external_prompt_injection.jsonl",
+  "external_train_size": 3421,
+  "external_datasets": [],
+  "external_train_ratio": 0.7,
+  "external_selected_counts": {
+    "Lakera/gandalf_ignore_instructions": 700,
+    "deepset/prompt-injections": 463,
+    "protectai/prompt-injection-validation": 2258
+  }
+}

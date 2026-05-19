@@ -139,7 +139,14 @@
       "latency_ms_avg": 4.138,
       "model_status": "enabled",
       "dataset_status": "loaded",
-      "note": "Loaded from held-out eval split: datasets\\external_splits\\eval_external_prompt_injection.jsonl"
+      "note": "Loaded from held-out eval split: datasets\\external_splits\\eval_external_prompt_injection.jsonl",
+      "rule_predicted_count": 7,
+      "model_predicted_count": 48,
+      "hybrid_pipeline_predicted_count": 50,
+      "model_hit_cancelled_by_safe_guard_count": 0,
+      "model_hit_cancelled_by_safe_guard_tp": 0,
+      "hybrid_or_changed_prediction_count": 0,
+      "hybrid_prediction_formula": "rule_predicted OR model_predicted"
     },
     {
       "dataset_name": "protectai/prompt-injection-validation",
@@ -196,7 +203,14 @@
       "latency_ms_avg": 5.268,
       "model_status": "enabled",
       "dataset_status": "loaded",
-      "note": "Loaded from held-out eval split: datasets\\external_splits\\eval_external_prompt_injection.jsonl"
+      "note": "Loaded from held-out eval split: datasets\\external_splits\\eval_external_prompt_injection.jsonl",
+      "rule_predicted_count": 116,
+      "model_predicted_count": 373,
+      "hybrid_pipeline_predicted_count": 391,
+      "model_hit_cancelled_by_safe_guard_count": 0,
+      "model_hit_cancelled_by_safe_guard_tp": 0,
+      "hybrid_or_changed_prediction_count": 0,
+      "hybrid_prediction_formula": "rule_predicted OR model_predicted"
     },
     {
       "dataset_name": "Lakera/gandalf_ignore_instructions",
@@ -253,7 +267,14 @@
       "latency_ms_avg": 3.548,
       "model_status": "enabled",
       "dataset_status": "loaded",
-      "note": "Loaded from held-out eval split: datasets\\external_splits\\eval_external_prompt_injection.jsonl"
+      "note": "Loaded from held-out eval split: datasets\\external_splits\\eval_external_prompt_injection.jsonl",
+      "rule_predicted_count": 129,
+      "model_predicted_count": 296,
+      "hybrid_pipeline_predicted_count": 296,
+      "model_hit_cancelled_by_safe_guard_count": 0,
+      "model_hit_cancelled_by_safe_guard_tp": 0,
+      "hybrid_or_changed_prediction_count": 0,
+      "hybrid_prediction_formula": "rule_predicted OR model_predicted"
     }
   ]
 }

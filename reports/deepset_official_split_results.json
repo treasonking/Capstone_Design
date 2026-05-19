@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-18T22:08:45",
+  "generated_at": "2026-05-19T21:34:38",
   "threshold": 0.3,
   "results": [
     {
@@ -60,7 +60,14 @@
       "model_status": "enabled",
       "dataset_status": "loaded",
       "note": "Loaded from held-out eval split: datasets\\external_splits\\eval_external_prompt_injection.jsonl",
-      "split_policy": "custom 70/30 eval"
+      "split_policy": "custom 70/30 eval",
+      "rule_predicted_count": 7,
+      "model_predicted_count": 48,
+      "hybrid_pipeline_predicted_count": 50,
+      "model_hit_cancelled_by_safe_guard_count": 0,
+      "model_hit_cancelled_by_safe_guard_tp": 0,
+      "hybrid_or_changed_prediction_count": 0,
+      "hybrid_prediction_formula": "rule_predicted OR model_predicted"
     },
     {
       "dataset_name": "deepset/prompt-injections",
@@ -108,19 +115,26 @@
       "mode": "Hybrid / Full Pipeline",
       "size": 116,
       "precision": 1.0,
-      "recall": 0.7666666666666667,
-      "f1": 0.8679245283018869,
-      "accuracy": 0.8793103448275862,
-      "tp": 46,
+      "recall": 0.7833333333333333,
+      "f1": 0.8785046728971964,
+      "accuracy": 0.8879310344827587,
+      "tp": 47,
       "fp": 0,
       "tn": 56,
-      "fn": 14,
+      "fn": 13,
       "positive_only": false,
       "latency_ms_avg": 2.989,
       "model_status": "enabled",
       "dataset_status": "loaded",
       "note": "Loaded from deepset official test split.",
-      "split_policy": "official train/test"
+      "split_policy": "official train/test",
+      "rule_predicted_count": 3,
+      "model_predicted_count": 47,
+      "hybrid_pipeline_predicted_count": 46,
+      "model_hit_cancelled_by_safe_guard_count": 1,
+      "model_hit_cancelled_by_safe_guard_tp": 1,
+      "hybrid_or_changed_prediction_count": 1,
+      "hybrid_prediction_formula": "rule_predicted OR model_predicted"
     }
   ]
 }

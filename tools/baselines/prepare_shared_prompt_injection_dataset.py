@@ -1,3 +1,5 @@
+"""Prepare one shared prompt-injection dataset for baseline comparisons."""
+
 from __future__ import annotations
 
 import argparse

@@ -1,3 +1,5 @@
+"""Summarize baseline metrics and write paper-ready comparison reports."""
+
 from __future__ import annotations
 
 import argparse

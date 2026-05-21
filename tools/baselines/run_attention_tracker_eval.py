@@ -1,3 +1,5 @@
+"""Run or import Attention Tracker baseline results on the shared dataset."""
+
 from __future__ import annotations
 
 import argparse

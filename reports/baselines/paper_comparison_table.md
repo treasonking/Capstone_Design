@@ -9,7 +9,9 @@
 | Total samples | 100 |
 | Attack samples | 44 |
 | Benign samples | 56 |
-| Evaluation scope | subset-100; local metrics use 75 successful Attention Tracker rows |
+| Evaluation scope | subset-100 |
+
+The full shared dataset contains 100 samples. Attention Tracker succeeded on 75 samples and failed on 25 samples because of local execution environment constraints. Our Capstone Hybrid Proxy was evaluated on the same 75-sample subset that Attention Tracker completed, so the local reproduction rows are aligned.
 
 ## Run Coverage
 
@@ -38,4 +40,8 @@ Attention Tracker's local reproduction result is computed on the capstone-select
 
 The paper-reported AUROC 0.98 refers to Qwen2 1.5B on the deepset prompt injection dataset. Local reproduction metrics are reported separately.
 
-The local Attention Tracker AUROC uses inverted focus scores: `attack_score = -focus_score`.
+The local Attention Tracker AUROC 0.9208 uses inverted focus scores: `attack_score = -focus_score`.
+
+The Attention Tracker paper-reported AUROC 0.98 is the original paper's reported value, not a locally reproduced score from this run.
+
+Our Capstone Hybrid Proxy's deepset subset F1 0.1176 is an external baseline result showing limitations on English public prompt-injection datasets. It should be interpreted separately from the project's internal public-sector and PII-specialized evaluation results.

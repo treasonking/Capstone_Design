@@ -33,3 +33,5 @@
 The capstone detector result is converted to a binary prompt injection prediction from `action` and `reason_codes`.
 
 Rows with injection reason codes such as `INJ_`, `PROMPT_INJECTION`, `JAILBREAK`, `POLICY_BYPASS`, `DIRECT_OVERRIDE`, `SYSTEM_PROMPT`, or `IGNORE_INSTRUCTION` are counted as attack predictions. PII-only reason codes are counted as benign for this prompt injection benchmark.
+
+The capstone detector was evaluated on the same 75-sample subset that Attention Tracker completed, while the full shared dataset contains 100 samples.

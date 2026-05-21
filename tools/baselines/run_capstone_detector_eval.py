@@ -1,3 +1,5 @@
+"""Evaluate the capstone hybrid detector on the shared baseline dataset."""
+
 from __future__ import annotations
 
 import argparse

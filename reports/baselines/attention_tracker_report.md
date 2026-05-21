@@ -32,8 +32,8 @@
 
 ## Notes
 
+Attention Tracker local metrics are computed only on successfully evaluated rows.
+
 Attention Tracker outputs a focus score where lower scores indicate higher prompt injection likelihood. AUROC is computed with `attack_score = -focus_score`.
 
 Attention Tracker's local reproduction result is computed on the capstone-selected evaluation dataset or subset. It is not identical to the paper's original full evaluation setting.
-
-The shared dataset has 100 samples. This local Attention Tracker run completed 75 samples and failed 25 samples because of local execution environment constraints.

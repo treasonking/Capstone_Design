@@ -1,47 +1,34 @@
 # Paper Baseline Comparison
 
-## Dataset
+## Dataset Coverage
 
-| Item | Value |
-|---|---:|
-| Dataset source | Capstone GitHub dataset (`datasets/external_splits/`, deepset rows) |
-| Evaluation file | `data/external/attention_tracker/shared_prompt_injection_eval.csv` |
-| Total samples | 100 |
-| Attack samples | 44 |
-| Benign samples | 56 |
-| Evaluation scope | subset-100 |
-
-The full shared dataset contains 100 samples. Attention Tracker succeeded on 75 samples and failed on 25 samples because of local execution environment constraints. Our Capstone Hybrid Proxy was evaluated on the same 75-sample subset that Attention Tracker completed, so the local reproduction rows are aligned.
-
-## Run Coverage
-
-| Method | Result rows | Error count |
-|---|---:|---:|
-| Attention Tracker | 75 | 25 |
-| Our Capstone Hybrid Proxy | 75 | 0 |
+| Method | Evaluation scope | Input rows | Result rows | Error count |
+|---|---|---:|---:|---:|
+| Attention Tracker | Capstone selected dataset | 100 | 75 | 25 |
+| Our Capstone Hybrid Proxy | Full capstone selected dataset | 100 | 100 | 0 |
+| Our Capstone Hybrid Proxy | Matched with Attention Tracker successful rows | 75 | 75 | 0 |
 
 ## Quantitative Results
 
-| Method | Result Type | Dataset | LLM Internal Access | Black-box API Compatible | PII Detection | Accuracy | Precision | Recall | F1 | AUROC |
-|---|---|---|---|---|---|---:|---:|---:|---:|---:|
-| Attention Tracker | Local reproduction | Capstone dataset subset | Required | No | No | 0.7600 | 0.6522 | 0.9375 | 0.7692 | 0.9208 |
-| Attention Tracker | Paper-reported | deepset/prompt-injections | Required | No | No | N/A | N/A | N/A | N/A | 0.98 |
-| Our Capstone Hybrid Proxy | Local reproduction | Same as above | Not required | Yes | Yes | 0.6000 | 1.0000 | 0.0625 | 0.1176 | N/A |
+| Method | Evaluation scope | Accuracy | Precision | Recall | F1 | AUROC |
+|---|---|---:|---:|---:|---:|---:|
+| Attention Tracker | Successful rows only | 0.7600 | 0.6522 | 0.9375 | 0.7692 | 0.9208 |
+| Our Capstone Hybrid Proxy | Same successful rows as Attention Tracker | 0.6000 | 1.0000 | 0.0625 | 0.1176 | N/A |
+| Our Capstone Hybrid Proxy | Full 100 rows | 0.5800 | 1.0000 | 0.0455 | 0.0870 | N/A |
+| Attention Tracker | Paper-reported deepset | N/A | N/A | N/A | N/A | 0.98 |
 
 ## Interpretation
 
-Attention Tracker is a strong research baseline for prompt injection detection, but it requires access to internal attention scores of the target LLM. This limits direct applicability to black-box LLM API environments.
+Attention Tracker local metrics are computed only on successfully evaluated rows.
 
-Our capstone system operates at the proxy layer and does not require access to model internals. It can inspect user input and LLM output, supports PII detection, provides reason codes, and records audit-friendly metadata.
+Because 25 out of 100 rows initially failed due to local runtime constraints, the 75-row local result must not be interpreted as full-dataset performance.
 
-Therefore, Attention Tracker is used as a high-performance research baseline, while the capstone system is evaluated as a deployment-oriented security proxy for public-sector or internal-network environments.
+Our Capstone Hybrid Proxy is additionally evaluated on the full 100-row selected dataset.
 
-Attention Tracker's local reproduction result is computed on the capstone-selected evaluation dataset or subset. It is not identical to the paper's original full evaluation setting.
+The matched subset comparison is included only for method-to-method comparison under identical row coverage.
 
-The paper-reported AUROC 0.98 refers to Qwen2 1.5B on the deepset prompt injection dataset. Local reproduction metrics are reported separately.
+Attention Tracker's paper-reported AUROC 0.98 is not a local reproduction result.
 
 The local Attention Tracker AUROC 0.9208 uses inverted focus scores: `attack_score = -focus_score`.
 
-The Attention Tracker paper-reported AUROC 0.98 is the original paper's reported value, not a locally reproduced score from this run.
-
-Our Capstone Hybrid Proxy's deepset subset F1 0.1176 is an external baseline result showing limitations on English public prompt-injection datasets. It should be interpreted separately from the project's internal public-sector and PII-specialized evaluation results.
+Our Capstone Hybrid Proxy's matched deepset subset F1 0.1176 is an external baseline result showing limitations on English public prompt-injection datasets. The full 100-row deepset subset F1 is 0.0870. These results should be interpreted separately from the project's internal public-sector and PII-specialized evaluation results.

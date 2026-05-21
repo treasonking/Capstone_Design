@@ -2,20 +2,22 @@
 
 ## Dataset Coverage
 
-| Method | Evaluation scope | Input rows | Result rows | Error count |
-|---|---|---:|---:|---:|
-| Attention Tracker | Capstone selected dataset | 100 | 75 | 25 |
-| Our Capstone Hybrid Proxy | Full capstone selected dataset | 100 | 100 | 0 |
-| Our Capstone Hybrid Proxy | Matched with Attention Tracker successful rows | 75 | 75 | 0 |
+| Method / Scope | Input rows | Result rows | Error count |
+|---|---:|---:|---:|
+| Attention Tracker — Attempted 100, successful 75 | 100 | 75 | 25 |
+| Capstone Hybrid Proxy — Full 100 | 100 | 100 | 0 |
+| Capstone Hybrid Proxy — Matched 75 | 75 | 75 | 0 |
+
+Capstone Hybrid Proxy is reported twice because Attention Tracker failed on 25 out of 100 local samples. The Full 100 row shows the capstone detector’s standalone result on the entire selected dataset, while the Matched 75 row compares both methods on the exact same successfully evaluated samples.
 
 ## Quantitative Results
 
-| Method | Evaluation scope | Accuracy | Precision | Recall | F1 | AUROC |
-|---|---|---:|---:|---:|---:|---:|
-| Attention Tracker | Successful rows only | 0.7600 | 0.6522 | 0.9375 | 0.7692 | 0.9208 |
-| Our Capstone Hybrid Proxy | Same successful rows as Attention Tracker | 0.6000 | 1.0000 | 0.0625 | 0.1176 | N/A |
-| Our Capstone Hybrid Proxy | Full 100 rows | 0.5800 | 1.0000 | 0.0455 | 0.0870 | N/A |
-| Attention Tracker | Paper-reported deepset | N/A | N/A | N/A | N/A | 0.98 |
+| Method / Scope | Accuracy | Precision | Recall | F1 | AUROC |
+|---|---:|---:|---:|---:|---:|
+| Attention Tracker — Attempted 100, successful 75 | 0.7600 | 0.6522 | 0.9375 | 0.7692 | 0.9208 |
+| Capstone Hybrid Proxy — Matched 75 | 0.6000 | 1.0000 | 0.0625 | 0.1176 | N/A |
+| Capstone Hybrid Proxy — Full 100 | 0.5800 | 1.0000 | 0.0455 | 0.0870 | N/A |
+| Attention Tracker — Paper-reported deepset | N/A | N/A | N/A | N/A | 0.98 |
 
 ## Interpretation
 

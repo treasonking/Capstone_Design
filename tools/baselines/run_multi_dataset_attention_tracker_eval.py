@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -25,6 +26,15 @@ DATASET_KEYS = ["deepset", "protectai", "lakera"]
 DEFAULT_INPUT_DIR = Path("reports/baselines/multi_dataset")
 DEFAULT_PRECOMPUTED_RESULTS = Path("reports/baselines/attention_tracker_results.csv")
 DEFAULT_PRECOMPUTED_ERRORS = Path("reports/baselines/attention_tracker_errors.csv")
+REQUIRED_DIRECT_MODULES = ["torch", "accelerate"]
+
+
+def missing_direct_dependencies() -> list[str]:
+    return [
+        module_name
+        for module_name in REQUIRED_DIRECT_MODULES
+        if importlib.util.find_spec(module_name) is None
+    ]
 
 
 def write_setup_failures(
@@ -42,6 +52,31 @@ def write_setup_failures(
                 "id": row.get("id", ""),
                 "label": row.get("label", ""),
                 "error": f"Attention Tracker setup failed: {error}",
+                "query_preview": row_text(row)[:500],
+                "stdout_tail": "",
+            },
+        )
+
+
+def write_not_executed(
+    rows: list[dict[str, str]],
+    output_csv: Path,
+    error_csv: Path,
+    missing_modules: list[str],
+) -> None:
+    reason = (
+        "Not executed: Local runtime dependency missing in Codex environment "
+        f"(missing: {', '.join(missing_modules)}). Do not count as performance result."
+    )
+    write_result_header(output_csv)
+    write_error_header(error_csv)
+    for row in rows:
+        append_error(
+            error_csv,
+            {
+                "id": row.get("id", ""),
+                "label": row.get("label", ""),
+                "error": reason,
                 "query_preview": row_text(row)[:500],
                 "stdout_tail": "",
             },
@@ -109,6 +144,15 @@ def run_one_dataset(
         )
         restore_deepset_ids(output_csv, dataset_key)
         restore_deepset_error_ids(error_csv, dataset_key)
+        return
+
+    missing_modules = missing_direct_dependencies()
+    if missing_modules:
+        write_not_executed(rows, output_csv, error_csv, missing_modules)
+        print(
+            f"[DONE] {dataset_key}: not executed; missing local dependencies: "
+            f"{', '.join(missing_modules)}"
+        )
         return
 
     try:

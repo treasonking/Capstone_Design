@@ -93,6 +93,32 @@ def dataset_label_counts(rows: list[dict[str, str]]) -> tuple[int, int]:
     return attacks, benign
 
 
+def attention_note(dataset_key: str, rows: list[dict[str, str]], errors: list[dict[str, str]]) -> str:
+    if rows:
+        return "Local metrics use successfully evaluated rows only; AUROC uses inverted focus score."
+    if errors and "Local runtime dependency missing" in errors[0].get("error", ""):
+        return "Local runtime dependency missing in Codex environment; do not count as performance result."
+    if errors:
+        return "No successful Attention Tracker rows; do not count as performance result."
+    return "No Attention Tracker output available."
+
+
+def capstone_full_note(dataset_key: str, dataset_rows: list[dict[str, str]]) -> str:
+    _, benign = dataset_label_counts(dataset_rows)
+    if dataset_key == "lakera" or benign == 0:
+        return (
+            "Lakera subset is attack-only and should be interpreted as attack recall stress test, "
+            "not balanced binary classification. Precision is limited because no benign rows exist."
+        )
+    return "Standalone capstone detector result on the full selected dataset."
+
+
+def capstone_matched_note(rows: list[dict[str, str]]) -> str:
+    if not rows:
+        return "No Attention Tracker successful rows; matched comparison is not available."
+    return "Same row coverage as Attention Tracker local reproduction."
+
+
 def coverage_rows(input_dir: Path) -> list[str]:
     lines = [
         "# Dataset Coverage Summary",
@@ -123,30 +149,35 @@ def quantitative_lines(input_dir: Path) -> list[str]:
     lines = [
         "# Multi-Dataset Baseline Comparison",
         "",
-        "| Dataset | Method | Evaluation scope | Accuracy | Precision | Recall | F1 | AUROC |",
-        "|---|---|---|---:|---:|---:|---:|---:|",
+        "| Dataset | Method | Result type | Evaluation scope | Accuracy | Precision | Recall | F1 | AUROC | Notes |",
+        "|---|---|---|---|---:|---:|---:|---:|---:|---|",
     ]
     for dataset_key in DATASET_KEYS:
         name = DISPLAY_NAMES[dataset_key]
+        dataset_rows = read_rows(input_dir / f"{dataset_key}_shared_eval.csv")
+        attention_rows = read_rows(input_dir / f"{dataset_key}_attention_tracker_results.csv")
+        attention_errors = read_rows(input_dir / f"{dataset_key}_attention_tracker_errors.csv")
         attention = binary_metrics(
-            read_rows(input_dir / f"{dataset_key}_attention_tracker_results.csv"),
+            attention_rows,
             score_column="score",
             invert_score=True,
         )
-        capstone_matched = binary_metrics(
-            read_rows(input_dir / f"{dataset_key}_capstone_results_matched.csv")
-        )
-        capstone_full = binary_metrics(
-            read_rows(input_dir / f"{dataset_key}_capstone_results_full.csv")
-        )
+        capstone_matched_rows = read_rows(input_dir / f"{dataset_key}_capstone_results_matched.csv")
+        capstone_full_rows = read_rows(input_dir / f"{dataset_key}_capstone_results_full.csv")
+        capstone_matched = binary_metrics(capstone_matched_rows)
+        capstone_full = binary_metrics(capstone_full_rows)
+        attention_result_type = "Local reproduction" if attention_rows else "Not executed"
+        attention_scope = "Successful rows only" if attention_rows else "Attempted selected dataset"
         lines.extend(
             [
-                f"| {name} | Attention Tracker | Successful rows only | {fmt(attention.accuracy)} | {fmt(attention.precision)} | {fmt(attention.recall)} | {fmt(attention.f1)} | {fmt(attention.auroc)} |",
-                f"| {name} | Capstone Hybrid Proxy | Same rows as Attention Tracker | {fmt(capstone_matched.accuracy)} | {fmt(capstone_matched.precision)} | {fmt(capstone_matched.recall)} | {fmt(capstone_matched.f1)} | N/A |",
-                f"| {name} | Capstone Hybrid Proxy | Full selected dataset | {fmt(capstone_full.accuracy)} | {fmt(capstone_full.precision)} | {fmt(capstone_full.recall)} | {fmt(capstone_full.f1)} | N/A |",
+                f"| {name} | Attention Tracker | {attention_result_type} | {attention_scope} | {fmt(attention.accuracy)} | {fmt(attention.precision)} | {fmt(attention.recall)} | {fmt(attention.f1)} | {fmt(attention.auroc)} | {attention_note(dataset_key, attention_rows, attention_errors)} |",
+                f"| {name} | Capstone Hybrid Proxy | Matched local comparison | Same rows as Attention Tracker | {fmt(capstone_matched.accuracy)} | {fmt(capstone_matched.precision)} | {fmt(capstone_matched.recall)} | {fmt(capstone_matched.f1)} | N/A | {capstone_matched_note(capstone_matched_rows)} |",
+                f"| {name} | Capstone Hybrid Proxy | Full capstone evaluation | Full selected dataset | {fmt(capstone_full.accuracy)} | {fmt(capstone_full.precision)} | {fmt(capstone_full.recall)} | {fmt(capstone_full.f1)} | N/A | {capstone_full_note(dataset_key, dataset_rows)} |",
             ]
         )
-    lines.append("| Attention Tracker | Paper-reported deepset | Original paper | N/A | N/A | N/A | N/A | 0.98 |")
+    lines.append(
+        "| deepset | Attention Tracker | Paper-reported | Original paper | N/A | N/A | N/A | N/A | 0.98 | Original paper Qwen2 1.5B result; not a local reproduction result. |"
+    )
     lines.extend(
         [
             "",
@@ -159,6 +190,8 @@ def quantitative_lines(input_dir: Path) -> list[str]:
             "Attention Tracker's paper-reported AUROC 0.98 is not a local reproduction result. It is the original paper's Qwen2 1.5B result on deepset.",
             "",
             "Attention Tracker AUROC values in local reproduction rows use inverted focus scores: `attack_score = -focus_score`.",
+            "",
+            "Lakera subset is attack-only and should be interpreted as attack recall stress test, not balanced binary classification.",
         ]
     )
     setup_failures = runtime_failure_notes(input_dir)
@@ -175,9 +208,9 @@ def runtime_failure_notes(input_dir: Path) -> list[str]:
         if not errors:
             continue
         first_error = errors[0].get("error", "")
-        if "No module named 'torch'" in first_error:
+        if "Local runtime dependency missing" in first_error or "No module named 'torch'" in first_error:
             notes.append(
-                f"- {DISPLAY_NAMES[dataset_key]} Attention Tracker local execution failed in this environment because PyTorch is unavailable (`No module named 'torch'`)."
+                f"- {DISPLAY_NAMES[dataset_key]} Attention Tracker local metrics were not executed because local runtime dependencies are missing in the Codex environment. This is not a performance result."
             )
     return notes
 
@@ -195,6 +228,10 @@ def readme_summary(input_dir: Path) -> list[str]:
         "Attention Tracker's paper-reported AUROC 0.98 is listed separately from local reproduction results; it is the original paper's Qwen2 1.5B result on deepset.",
         "",
         "Capstone Hybrid Proxy is evaluated both on the full selected dataset and on the matched subset where Attention Tracker produced a local result. Low recall on English public prompt-injection benchmarks should be interpreted as a limitation analysis, separate from internal public-sector and PII-focused evaluations.",
+        "",
+        "deepset has a partial Attention Tracker local reproduction. ProtectAI and Lakera are marked as not executed if the Codex/local runtime cannot provide Attention Tracker dependencies, and those rows are not treated as performance results.",
+        "",
+        "Lakera is attack-only in this selected subset, so it should be read as an attack recall stress test rather than balanced binary classification.",
         "",
         "### Coverage",
         "",

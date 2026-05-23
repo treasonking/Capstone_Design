@@ -1,4 +1,4 @@
-"""Summarize historical Attention Tracker and Capstone reproduction artifacts."""
+"""Summarize multi-dataset external baseline evaluation artifacts."""
 
 from __future__ import annotations
 
@@ -15,6 +15,23 @@ DISPLAY_NAMES = {
     "lakera": "Lakera",
 }
 DEFAULT_INPUT_DIR = Path("reports/baselines/multi_dataset")
+PENDING_BASELINES = [
+    (
+        "PIGuard",
+        "Main paper comparison target",
+        "`leolee99/PIGuard`; official code `https://github.com/leolee99/PIGuard`",
+    ),
+    (
+        "Meta Prompt Guard 2",
+        "Execution baseline",
+        "`meta-llama/Llama-Prompt-Guard-2-86M`",
+    ),
+    (
+        "ProtectAI detector",
+        "Execution baseline",
+        "`protectai/deberta-v3-base-prompt-injection`; fallback `protectai/deberta-v3-small-prompt-injection-v2`",
+    ),
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,6 +49,10 @@ def read_rows(path: Path) -> list[dict[str, str]]:
         return []
     with path.open("r", encoding="utf-8-sig", newline="") as f:
         return list(csv.DictReader(f))
+
+
+def write_lines_lf(path: Path, lines: list[str]) -> None:
+    path.write_bytes(("\n".join(lines) + "\n").encode("utf-8"))
 
 
 def safe_div(numerator: float, denominator: float) -> float:
@@ -116,14 +137,14 @@ def capstone_full_note(dataset_key: str, dataset_rows: list[dict[str, str]]) -> 
 def capstone_matched_note(rows: list[dict[str, str]]) -> str:
     if not rows:
         return "No Attention Tracker successful rows; matched comparison is not available."
-    return "Same row coverage as Attention Tracker local reproduction."
+    return "Same row coverage as the historical Attention Tracker successful-row subset."
 
 
 def coverage_rows(input_dir: Path) -> list[str]:
     lines = [
-        "# Historical Attention Tracker Dataset Coverage",
+        "# Multi-Dataset External Baseline Coverage",
         "",
-        "> Status: historical reproduction only. Attention Tracker is retained for related-work context, not as the main baseline.",
+        "This coverage summary supports comparison baseline selection and execution pipeline preparation. It is not a final PIGuard / Prompt Guard 2 / ProtectAI detector performance result.",
         "",
         "| Dataset | Method | Evaluation scope | Input rows | Result rows | Error count |",
         "|---|---|---|---:|---:|---:|",
@@ -139,9 +160,13 @@ def coverage_rows(input_dir: Path) -> list[str]:
 
         lines.extend(
             [
-                f"| {name} | Attention Tracker | Attempted selected dataset | {len(dataset_rows)} | {len(attention_rows)} | {attention_error_count} |",
+                f"| {name} | Shared dataset | Common-format input | {len(dataset_rows)} | {len(dataset_rows)} | 0 |",
                 f"| {name} | Capstone Hybrid Proxy | Local full evaluation | {len(dataset_rows)} | {len(capstone_full)} | 0 |",
                 f"| {name} | Capstone Hybrid Proxy | Matched with Attention Tracker successful rows | {len(attention_rows)} | {len(capstone_matched)} | 0 |",
+                f"| {name} | Attention Tracker | Related-work local attempt, excluded from main comparison | {len(dataset_rows)} | {len(attention_rows)} | {attention_error_count} |",
+                f"| {name} | PIGuard | Pending / Not measured | {len(dataset_rows)} | 0 | {len(dataset_rows)} |",
+                f"| {name} | Meta Prompt Guard 2 | Pending / Not measured | {len(dataset_rows)} | 0 | {len(dataset_rows)} |",
+                f"| {name} | ProtectAI detector | Pending / Not measured | {len(dataset_rows)} | 0 | {len(dataset_rows)} |",
             ]
         )
     return lines
@@ -149,59 +174,50 @@ def coverage_rows(input_dir: Path) -> list[str]:
 
 def quantitative_lines(input_dir: Path) -> list[str]:
     lines = [
-        "# Historical Attention Tracker Multi-Dataset Reproduction",
+        "# Multi-Dataset External Baseline Evaluation",
         "",
-        "> Status: historical reproduction only. This file is no longer the main baseline comparison. Use `reports/baselines/text_guard_comparison_table.md` for the PIGuard / Prompt Guard 2 / ProtectAI detector baseline plan, and `reports/baselines/related_work_attention_tracker.md` for Attention Tracker related-work context.",
+        "This table records comparison baseline selection and execution pipeline preparation. Capstone Hybrid Proxy has local full evaluation results. PIGuard, Meta Prompt Guard 2, and ProtectAI detector are selected baselines but remain Pending / Not measured until their models are executed on the shared CSV inputs.",
         "",
-        "| Dataset | Method | Result type | Evaluation scope | Accuracy | Precision | Recall | F1 | AUROC | Notes |",
-        "|---|---|---|---|---:|---:|---:|---:|---:|---|",
+        "Attention Tracker is excluded from the main local comparison and retained only as related work with paper-reported AUROC reference values.",
+        "",
+        "| Dataset | Method | Result type | Evaluation scope | Rows | Accuracy | Precision | Recall | F1 | AUROC | Notes |",
+        "|---|---|---|---|---:|---:|---:|---:|---:|---:|---|",
     ]
     for dataset_key in DATASET_KEYS:
         name = DISPLAY_NAMES[dataset_key]
         dataset_rows = read_rows(input_dir / f"{dataset_key}_shared_eval.csv")
         attention_rows = read_rows(input_dir / f"{dataset_key}_attention_tracker_results.csv")
-        attention_errors = read_rows(input_dir / f"{dataset_key}_attention_tracker_errors.csv")
-        attention = binary_metrics(
-            attention_rows,
-            score_column="score",
-            invert_score=True,
-        )
         capstone_matched_rows = read_rows(input_dir / f"{dataset_key}_capstone_results_matched.csv")
         capstone_full_rows = read_rows(input_dir / f"{dataset_key}_capstone_results_full.csv")
         capstone_matched = binary_metrics(capstone_matched_rows)
         capstone_full = binary_metrics(capstone_full_rows)
-        attention_result_type = "Local reproduction" if attention_rows else "Not executed"
-        attention_scope = "Successful rows only" if attention_rows else "Attempted selected dataset"
         lines.extend(
             [
-                f"| {name} | Attention Tracker | {attention_result_type} | {attention_scope} | {fmt(attention.accuracy)} | {fmt(attention.precision)} | {fmt(attention.recall)} | {fmt(attention.f1)} | {fmt(attention.auroc)} | {attention_note(dataset_key, attention_rows, attention_errors)} |",
-                f"| {name} | Capstone Hybrid Proxy | Matched local comparison | Same rows as Attention Tracker | {fmt(capstone_matched.accuracy)} | {fmt(capstone_matched.precision)} | {fmt(capstone_matched.recall)} | {fmt(capstone_matched.f1)} | N/A | {capstone_matched_note(capstone_matched_rows)} |",
-                f"| {name} | Capstone Hybrid Proxy | Local full evaluation | Local full evaluation | {fmt(capstone_full.accuracy)} | {fmt(capstone_full.precision)} | {fmt(capstone_full.recall)} | {fmt(capstone_full.f1)} | N/A | {capstone_full_note(dataset_key, dataset_rows)} |",
+                f"| {name} | Capstone Hybrid Proxy | Full | Local full evaluation | {capstone_full.total} | {fmt(capstone_full.accuracy)} | {fmt(capstone_full.precision)} | {fmt(capstone_full.recall)} | {fmt(capstone_full.f1)} | N/A | {capstone_full_note(dataset_key, dataset_rows)} |",
+                f"| {name} | Capstone Hybrid Proxy | Matched | Same rows as Attention Tracker successful local attempt | {capstone_matched.total} | {fmt(capstone_matched.accuracy)} | {fmt(capstone_matched.precision)} | {fmt(capstone_matched.recall)} | {fmt(capstone_matched.f1)} | N/A | {capstone_matched_note(capstone_matched_rows)} |",
             ]
         )
+        for method, role, source in PENDING_BASELINES:
+            lines.append(
+                f"| {name} | {method} | Not executed | Pending / Not measured | 0 | N/A | N/A | N/A | N/A | N/A | {role}; selected source {source}. |"
+            )
     lines.append(
-        "| deepset | Attention Tracker | Paper-reported | Original paper | N/A | N/A | N/A | N/A | 0.98 | Original paper Qwen2 1.5B result; not a local reproduction result. |"
+        "| deepset | Attention Tracker | Paper-reported | Related work only | N/A | N/A | N/A | N/A | N/A | 0.98 | Original paper Qwen2 1.5B result; not a local reproduction result and not part of the main local comparison. |"
     )
     lines.extend(
         [
             "",
             "## Interpretation",
             "",
-            "Attention Tracker local metrics are computed only on successfully evaluated rows. If some rows fail due to local runtime constraints, those rows are excluded from Attention Tracker local metrics and reported separately in the coverage table.",
+            "Capstone Hybrid Proxy is reported as local full evaluation on the three shared datasets. Matched rows are included only to preserve compatibility with the historical Attention Tracker reproduction artifacts.",
             "",
-            "Capstone Hybrid Proxy is evaluated in two ways: full selected dataset and matched subset. The matched subset is used for fair comparison with Attention Tracker, while the full selected dataset shows standalone detector behavior.",
+            "PIGuard is the main paper comparison target. Meta Prompt Guard 2 and ProtectAI detector are executable baselines. They are Pending / Not measured until their HuggingFace models are run on the shared CSV inputs.",
             "",
-            "Attention Tracker's paper-reported AUROC 0.98 is not a local reproduction result. It is the original paper's Qwen2 1.5B result on deepset.",
-            "",
-            "Attention Tracker AUROC values in local reproduction rows use inverted focus scores: `attack_score = -focus_score`.",
+            "Attention Tracker is discussed only as related work here. Its paper-reported deepset AUROC 0.98 is not a local reproduction result.",
             "",
             "Lakera subset is attack-only and should be interpreted as attack recall stress test, not balanced binary classification.",
         ]
     )
-    setup_failures = runtime_failure_notes(input_dir)
-    if setup_failures:
-        lines.extend(["", "## Local Runtime Notes", ""])
-        lines.extend(setup_failures)
     return lines
 
 
@@ -221,47 +237,73 @@ def runtime_failure_notes(input_dir: Path) -> list[str]:
 
 def readme_summary(input_dir: Path) -> list[str]:
     lines = [
-        "## Historical Attention Tracker Reproduction",
+        "## Multi-Dataset External Baseline Summary",
         "",
-        "> Status: historical reproduction only. This section is no longer the main baseline comparison. Use `reports/baselines/readme_text_guard_summary.md` for the current PIGuard / Prompt Guard 2 / ProtectAI detector baseline summary.",
+        "This section summarizes comparison baseline selection and execution pipeline preparation for three external prompt-injection datasets: deepset, ProtectAI, and Lakera.",
         "",
-        "This section reports a limited reproduction experiment for a paper baseline, not the main performance claim of this project.",
+        "Capstone Hybrid Proxy has local full evaluation results. PIGuard is the main paper comparison target, while Meta Prompt Guard 2 and ProtectAI detector are selected executable baselines. PIGuard / Meta Prompt Guard 2 / ProtectAI detector remain Pending / Not measured until their models are executed on the shared CSV inputs.",
         "",
-        "The experiment compares Attention Tracker with the Capstone Hybrid Proxy on three prompt-injection benchmark sources: deepset, ProtectAI, and Lakera. Attention Tracker requires access to internal attention scores, while the Capstone system runs as a deployment-oriented proxy for PII leakage prevention and prompt-injection blocking.",
+        "Attention Tracker is excluded from the main local comparison and kept only as related work with paper-reported AUROC reference values.",
         "",
-        "Attention Tracker local metrics are computed only on successfully evaluated rows. Failed rows are reported in the coverage table and are not silently counted as full-dataset performance.",
+        "### Prepared Inputs",
         "",
-        "Attention Tracker's paper-reported AUROC 0.98 is listed separately from local reproduction results; it is the original paper's Qwen2 1.5B result on deepset.",
-        "",
-        "Capstone Hybrid Proxy is evaluated both on the full selected dataset and on the matched subset where Attention Tracker produced a local result. Low recall on English public prompt-injection benchmarks should be interpreted as a limitation analysis, separate from internal public-sector and PII-focused evaluations.",
-        "",
-        "deepset has a partial Attention Tracker local reproduction. ProtectAI and Lakera are marked as not executed if the Codex/local runtime cannot provide Attention Tracker dependencies, and those rows are not treated as performance results.",
-        "",
-        "Lakera is attack-only in this selected subset, so it should be read as an attack recall stress test rather than balanced binary classification.",
-        "",
-        "### Coverage",
-        "",
-        "| Dataset | Attention Tracker rows | Attention Tracker errors | Capstone full rows | Capstone matched rows |",
-        "|---|---:|---:|---:|---:|",
+        "| Dataset | Rows | Attack rows | Benign rows | Common-format file |",
+        "|---|---:|---:|---:|---|",
     ]
     for dataset_key in DATASET_KEYS:
         name = DISPLAY_NAMES[dataset_key]
         dataset_rows = read_rows(input_dir / f"{dataset_key}_shared_eval.csv")
-        attention_rows = read_rows(input_dir / f"{dataset_key}_attention_tracker_results.csv")
-        attention_errors = read_rows(input_dir / f"{dataset_key}_attention_tracker_errors.csv")
-        capstone_full = read_rows(input_dir / f"{dataset_key}_capstone_results_full.csv")
-        capstone_matched = read_rows(input_dir / f"{dataset_key}_capstone_results_matched.csv")
-        error_count = max(len(dataset_rows) - len(attention_rows), len(attention_errors))
+        attacks, benign = dataset_label_counts(dataset_rows)
         lines.append(
-            f"| {name} | {len(attention_rows)} | {error_count} | {len(capstone_full)} | {len(capstone_matched)} |"
+            f"| {name} | {len(dataset_rows)} | {attacks} | {benign} | `reports/baselines/multi_dataset/{dataset_key}_shared_eval.csv` |"
         )
 
-    lines.extend(["", "### Quantitative Summary", ""])
-    lines.extend(quantitative_lines(input_dir)[2:6 + (len(DATASET_KEYS) * 3)])
-    runtime_notes = runtime_failure_notes(input_dir)
-    if runtime_notes:
-        lines.extend(["", "### Local Runtime Notes", ""])
-        lines.extend(runtime_notes)
+    lines.extend(
+        [
+            "",
+            "### Capstone Hybrid Proxy Local Full Evaluation",
+            "",
+            "| Dataset | Rows | Accuracy | Precision | Recall | F1 | Notes |",
+            "|---|---:|---:|---:|---:|---:|---|",
+        ]
+    )
+    for dataset_key in DATASET_KEYS:
+        name = DISPLAY_NAMES[dataset_key]
+        dataset_rows = read_rows(input_dir / f"{dataset_key}_shared_eval.csv")
+        capstone_full = read_rows(input_dir / f"{dataset_key}_capstone_results_full.csv")
+        metrics = binary_metrics(capstone_full)
+        lines.append(
+            f"| {name} | {metrics.total} | {fmt(metrics.accuracy)} | {fmt(metrics.precision)} | {fmt(metrics.recall)} | {fmt(metrics.f1)} | {capstone_full_note(dataset_key, dataset_rows)} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "### Pending / Not Measured Baselines",
+            "",
+            "| Method | Role | Status | Source |",
+            "|---|---|---|---|",
+        ]
+    )
+    for method, role, source in PENDING_BASELINES:
+        lines.append(f"| {method} | {role} | Pending / Not measured | {source} |")
+
+    lines.extend(
+        [
+            "",
+            "### Attention Tracker Related-Work Reference",
+            "",
+            "| Dataset | Target model | Result type | AUROC | Note |",
+            "|---|---|---|---:|---|",
+            "| deepset prompt injection | Qwen2 1.5B | Paper-reported | 0.98 | Related-work reference only; not a local reproduction result. |",
+            "",
+            "### Limitations",
+            "",
+            "- This update prepares comparison baselines and execution pipeline outputs; it does not claim final PIGuard / Prompt Guard 2 / ProtectAI detector performance.",
+            "- Lakera is attack-only in the selected local subset, so interpret it as a recall stress test rather than balanced binary classification.",
+            "- Capstone Hybrid Proxy results on external English prompt-injection datasets should be interpreted separately from internal public-sector and PII-focused evaluations.",
+        ]
+    )
     return lines
 
 
@@ -273,7 +315,7 @@ def write_dataset_info(input_dir: Path) -> None:
         "|---|---:|---:|---:|---|",
     ]
     notes = {
-        "deepset": "Preserves prior deepset local Attention Tracker reproduction subset.",
+        "deepset": "Repository-local selected subset in common prompt-injection format.",
         "protectai": "Balanced subset selected from repository-local external split.",
         "lakera": "Attack-focused dataset; no benign rows available in repository-local split.",
     }
@@ -283,7 +325,7 @@ def write_dataset_info(input_dir: Path) -> None:
         lines.append(
             f"| {DISPLAY_NAMES[dataset_key]} | {len(rows)} | {attacks} | {benign} | {notes[dataset_key]} |"
         )
-    (input_dir / "selected_dataset_summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    write_lines_lf(input_dir / "selected_dataset_summary.md", lines)
 
 
 def parse_args() -> argparse.Namespace:
@@ -297,18 +339,9 @@ def main() -> None:
     input_dir = Path(args.input_dir)
     input_dir.mkdir(parents=True, exist_ok=True)
 
-    (input_dir / "dataset_coverage_summary.md").write_text(
-        "\n".join(coverage_rows(input_dir)) + "\n",
-        encoding="utf-8",
-    )
-    (input_dir / "multi_dataset_comparison_table.md").write_text(
-        "\n".join(quantitative_lines(input_dir)) + "\n",
-        encoding="utf-8",
-    )
-    (input_dir / "readme_baseline_summary.md").write_text(
-        "\n".join(readme_summary(input_dir)) + "\n",
-        encoding="utf-8",
-    )
+    write_lines_lf(input_dir / "dataset_coverage_summary.md", coverage_rows(input_dir))
+    write_lines_lf(input_dir / "multi_dataset_comparison_table.md", quantitative_lines(input_dir))
+    write_lines_lf(input_dir / "readme_baseline_summary.md", readme_summary(input_dir))
     write_dataset_info(input_dir)
     print(f"coverage={input_dir / 'dataset_coverage_summary.md'}")
     print(f"comparison={input_dir / 'multi_dataset_comparison_table.md'}")

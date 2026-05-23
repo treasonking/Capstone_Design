@@ -47,6 +47,10 @@ def read_csv_rows(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(f))
 
 
+def write_lines_lf(path: Path, lines: list[str]) -> None:
+    path.write_bytes(("\n".join(lines) + "\n").encode("utf-8"))
+
+
 def read_jsonl_rows(path: Path) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as f:
@@ -163,7 +167,7 @@ def write_source_notes(
                 **note
             )
         )
-    (output_dir / "dataset_source_notes.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    write_lines_lf(output_dir / "dataset_source_notes.md", lines)
 
 
 def parse_args() -> argparse.Namespace:
@@ -186,7 +190,7 @@ def main() -> None:
             source = "data/external/attention_tracker/shared_prompt_injection_eval.csv"
             split = "capstone-selected subset"
             columns = "id,text,label,instruction"
-            selection_note = "preserves previous Attention Tracker local reproduction subset"
+            selection_note = "preserves existing deepset selected subset for cross-baseline comparability"
         else:
             samples = load_internal_external_split(dataset_name)
             source = "datasets/external_splits/eval_external_prompt_injection.jsonl; datasets/external_splits/train_external_prompt_injection.jsonl"

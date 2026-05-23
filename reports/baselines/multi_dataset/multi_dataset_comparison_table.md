@@ -1,33 +1,34 @@
-# Historical Attention Tracker Multi-Dataset Reproduction
+# Multi-Dataset External Baseline Evaluation
 
-> Status: historical reproduction only. This file is no longer the main baseline comparison. Use `reports/baselines/text_guard_comparison_table.md` for the PIGuard / Prompt Guard 2 / ProtectAI detector baseline plan, and `reports/baselines/related_work_attention_tracker.md` for Attention Tracker related-work context.
+This table records comparison baseline selection and execution pipeline preparation. Capstone Hybrid Proxy has local full evaluation results. PIGuard, Meta Prompt Guard 2, and ProtectAI detector are selected baselines but remain Pending / Not measured until their models are executed on the shared CSV inputs.
 
-| Dataset | Method | Result type | Evaluation scope | Accuracy | Precision | Recall | F1 | AUROC | Notes |
-|---|---|---|---|---:|---:|---:|---:|---:|---|
-| deepset | Attention Tracker | Local reproduction | Successful rows only | 0.7600 | 0.6522 | 0.9375 | 0.7692 | 0.9208 | Local metrics use successfully evaluated rows only; AUROC uses inverted focus score. |
-| deepset | Capstone Hybrid Proxy | Matched local comparison | Same rows as Attention Tracker | 0.6000 | 1.0000 | 0.0625 | 0.1176 | N/A | Same row coverage as Attention Tracker local reproduction. |
-| deepset | Capstone Hybrid Proxy | Local full evaluation | Local full evaluation | 0.5800 | 1.0000 | 0.0455 | 0.0870 | N/A | Capstone detector result on the full local selected dataset. |
-| ProtectAI | Attention Tracker | Not executed | Attempted selected dataset | N/A | N/A | N/A | N/A | N/A | Local runtime dependency missing in Codex environment; do not count as performance result. |
-| ProtectAI | Capstone Hybrid Proxy | Matched local comparison | Same rows as Attention Tracker | N/A | N/A | N/A | N/A | N/A | No Attention Tracker successful rows; matched comparison is not available. |
-| ProtectAI | Capstone Hybrid Proxy | Local full evaluation | Local full evaluation | 0.5000 | 0.0000 | 0.0000 | 0.0000 | N/A | Capstone detector result on the full local selected dataset. |
-| Lakera | Attention Tracker | Not executed | Attempted selected dataset | N/A | N/A | N/A | N/A | N/A | Local runtime dependency missing in Codex environment; do not count as performance result. |
-| Lakera | Capstone Hybrid Proxy | Matched local comparison | Same rows as Attention Tracker | N/A | N/A | N/A | N/A | N/A | No Attention Tracker successful rows; matched comparison is not available. |
-| Lakera | Capstone Hybrid Proxy | Local full evaluation | Local full evaluation | 0.4800 | 1.0000 | 0.4800 | 0.6486 | N/A | Lakera subset is attack-only and should be interpreted as attack recall stress test, not balanced binary classification. Precision is limited because no benign rows exist. |
-| deepset | Attention Tracker | Paper-reported | Original paper | N/A | N/A | N/A | N/A | 0.98 | Original paper Qwen2 1.5B result; not a local reproduction result. |
+Attention Tracker is excluded from the main local comparison and retained only as related work with paper-reported AUROC reference values.
+
+| Dataset | Method | Result type | Evaluation scope | Rows | Accuracy | Precision | Recall | F1 | AUROC | Notes |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|---|
+| deepset | Capstone Hybrid Proxy | Full | Local full evaluation | 100 | 0.5800 | 1.0000 | 0.0455 | 0.0870 | N/A | Capstone detector result on the full local selected dataset. |
+| deepset | Capstone Hybrid Proxy | Matched | Same rows as Attention Tracker successful local attempt | 75 | 0.6000 | 1.0000 | 0.0625 | 0.1176 | N/A | Same row coverage as the historical Attention Tracker successful-row subset. |
+| deepset | PIGuard | Not executed | Pending / Not measured | 0 | N/A | N/A | N/A | N/A | N/A | Main paper comparison target; selected source `leolee99/PIGuard`; official code `https://github.com/leolee99/PIGuard`. |
+| deepset | Meta Prompt Guard 2 | Not executed | Pending / Not measured | 0 | N/A | N/A | N/A | N/A | N/A | Execution baseline; selected source `meta-llama/Llama-Prompt-Guard-2-86M`. |
+| deepset | ProtectAI detector | Not executed | Pending / Not measured | 0 | N/A | N/A | N/A | N/A | N/A | Execution baseline; selected source `protectai/deberta-v3-base-prompt-injection`; fallback `protectai/deberta-v3-small-prompt-injection-v2`. |
+| ProtectAI | Capstone Hybrid Proxy | Full | Local full evaluation | 100 | 0.5000 | 0.0000 | 0.0000 | 0.0000 | N/A | Capstone detector result on the full local selected dataset. |
+| ProtectAI | Capstone Hybrid Proxy | Matched | Same rows as Attention Tracker successful local attempt | 0 | N/A | N/A | N/A | N/A | N/A | No Attention Tracker successful rows; matched comparison is not available. |
+| ProtectAI | PIGuard | Not executed | Pending / Not measured | 0 | N/A | N/A | N/A | N/A | N/A | Main paper comparison target; selected source `leolee99/PIGuard`; official code `https://github.com/leolee99/PIGuard`. |
+| ProtectAI | Meta Prompt Guard 2 | Not executed | Pending / Not measured | 0 | N/A | N/A | N/A | N/A | N/A | Execution baseline; selected source `meta-llama/Llama-Prompt-Guard-2-86M`. |
+| ProtectAI | ProtectAI detector | Not executed | Pending / Not measured | 0 | N/A | N/A | N/A | N/A | N/A | Execution baseline; selected source `protectai/deberta-v3-base-prompt-injection`; fallback `protectai/deberta-v3-small-prompt-injection-v2`. |
+| Lakera | Capstone Hybrid Proxy | Full | Local full evaluation | 100 | 0.4800 | 1.0000 | 0.4800 | 0.6486 | N/A | Lakera subset is attack-only and should be interpreted as attack recall stress test, not balanced binary classification. Precision is limited because no benign rows exist. |
+| Lakera | Capstone Hybrid Proxy | Matched | Same rows as Attention Tracker successful local attempt | 0 | N/A | N/A | N/A | N/A | N/A | No Attention Tracker successful rows; matched comparison is not available. |
+| Lakera | PIGuard | Not executed | Pending / Not measured | 0 | N/A | N/A | N/A | N/A | N/A | Main paper comparison target; selected source `leolee99/PIGuard`; official code `https://github.com/leolee99/PIGuard`. |
+| Lakera | Meta Prompt Guard 2 | Not executed | Pending / Not measured | 0 | N/A | N/A | N/A | N/A | N/A | Execution baseline; selected source `meta-llama/Llama-Prompt-Guard-2-86M`. |
+| Lakera | ProtectAI detector | Not executed | Pending / Not measured | 0 | N/A | N/A | N/A | N/A | N/A | Execution baseline; selected source `protectai/deberta-v3-base-prompt-injection`; fallback `protectai/deberta-v3-small-prompt-injection-v2`. |
+| deepset | Attention Tracker | Paper-reported | Related work only | N/A | N/A | N/A | N/A | N/A | 0.98 | Original paper Qwen2 1.5B result; not a local reproduction result and not part of the main local comparison. |
 
 ## Interpretation
 
-Attention Tracker local metrics are computed only on successfully evaluated rows. If some rows fail due to local runtime constraints, those rows are excluded from Attention Tracker local metrics and reported separately in the coverage table.
+Capstone Hybrid Proxy is reported as local full evaluation on the three shared datasets. Matched rows are included only to preserve compatibility with the historical Attention Tracker reproduction artifacts.
 
-Capstone Hybrid Proxy is evaluated in two ways: full selected dataset and matched subset. The matched subset is used for fair comparison with Attention Tracker, while the full selected dataset shows standalone detector behavior.
+PIGuard is the main paper comparison target. Meta Prompt Guard 2 and ProtectAI detector are executable baselines. They are Pending / Not measured until their HuggingFace models are run on the shared CSV inputs.
 
-Attention Tracker's paper-reported AUROC 0.98 is not a local reproduction result. It is the original paper's Qwen2 1.5B result on deepset.
-
-Attention Tracker AUROC values in local reproduction rows use inverted focus scores: `attack_score = -focus_score`.
+Attention Tracker is discussed only as related work here. Its paper-reported deepset AUROC 0.98 is not a local reproduction result.
 
 Lakera subset is attack-only and should be interpreted as attack recall stress test, not balanced binary classification.
-
-## Local Runtime Notes
-
-- ProtectAI Attention Tracker local metrics were not executed because local runtime dependencies are missing in the Codex environment. This is not a performance result.
-- Lakera Attention Tracker local metrics were not executed because local runtime dependencies are missing in the Codex environment. This is not a performance result.

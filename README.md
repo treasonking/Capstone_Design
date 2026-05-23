@@ -225,6 +225,15 @@ False Negative는 실제 Prompt Injection 문장인데 프록시가 차단하지
 - 올바른 표현: `Hugging Face deepset 공개 데이터셋 기준 Injection F1 0.1413`
 - 올바른 표현: `내부 회귀 테스트 결과와 외부 스타일 검증 결과는 목적이 다르며, 일반화 성능은 외부 스타일 검증과 공개 데이터셋 평가로 별도 확인한다.`
 
+### Text-Guard Baseline 준비 상태
+
+현재 text-guard baseline 작업은 최종 성능 비교 결과가 아니라 비교 baseline 선정 및 실행 파이프라인 준비 단계입니다.
+
+- Capstone Hybrid Proxy 결과는 deepset, ProtectAI, Lakera 3개 데이터셋에서 local full evaluation으로 표시합니다.
+- PIGuard, Meta Prompt Guard 2, ProtectAI detector는 실제 실행 결과가 생성되기 전까지 `Pending / Not measured`로 표시합니다.
+- Attention Tracker는 메인 비교 baseline에서 제외하고 related work와 paper-reported AUROC 참고값으로만 둡니다.
+- 상세 표는 `reports/baselines/text_guard_comparison_table.md`, 요약은 `reports/baselines/readme_text_guard_summary.md`, Attention Tracker 관련연구 정리는 `reports/baselines/related_work_attention_tracker.md`를 기준으로 합니다.
+
 ## 데이터셋 구성 방향
 
 내부 데이터셋만 사용할 경우 탐지 룰에 과적합될 수 있으므로, 데이터셋을 역할별로 분리합니다.

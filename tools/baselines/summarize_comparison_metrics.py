@@ -280,7 +280,7 @@ def write_comparison_table(
 | Method | Evaluation scope | Input rows | Result rows | Error count |
 |---|---|---:|---:|---:|
 | Attention Tracker | Capstone selected dataset | {summary["total"]} | {attention_metrics.total} | {attention_error_count} |
-| Our Capstone Hybrid Proxy | Full capstone selected dataset | {summary["total"]} | {capstone_full_metrics.total} | 0 |
+| Our Capstone Hybrid Proxy | Local full evaluation | {summary["total"]} | {capstone_full_metrics.total} | 0 |
 | Our Capstone Hybrid Proxy | Matched with Attention Tracker successful rows | {attention_metrics.total} | {capstone_matched_metrics.total} | 0 |
 
 ## Quantitative Results
@@ -289,7 +289,7 @@ def write_comparison_table(
 |---|---|---:|---:|---:|---:|---:|
 | Attention Tracker | Successful rows only | {fmt(attention_metrics.accuracy)} | {fmt(attention_metrics.precision)} | {fmt(attention_metrics.recall)} | {fmt(attention_metrics.f1)} | {fmt(attention_metrics.auroc)} |
 | Our Capstone Hybrid Proxy | Same successful rows as Attention Tracker | {fmt(capstone_matched_metrics.accuracy)} | {fmt(capstone_matched_metrics.precision)} | {fmt(capstone_matched_metrics.recall)} | {fmt(capstone_matched_metrics.f1)} | N/A |
-| Our Capstone Hybrid Proxy | Full 100 rows | {fmt(capstone_full_metrics.accuracy)} | {fmt(capstone_full_metrics.precision)} | {fmt(capstone_full_metrics.recall)} | {fmt(capstone_full_metrics.f1)} | N/A |
+| Our Capstone Hybrid Proxy | Local full evaluation | {fmt(capstone_full_metrics.accuracy)} | {fmt(capstone_full_metrics.precision)} | {fmt(capstone_full_metrics.recall)} | {fmt(capstone_full_metrics.f1)} | N/A |
 | Attention Tracker | Paper-reported deepset | N/A | N/A | N/A | N/A | 0.98 |
 
 ## Interpretation
@@ -298,7 +298,7 @@ Attention Tracker local metrics are computed only on successfully evaluated rows
 
 Because 25 out of 100 rows initially failed due to local runtime constraints, the 75-row local result must not be interpreted as full-dataset performance.
 
-Our Capstone Hybrid Proxy is additionally evaluated on the full 100-row selected dataset.
+Our Capstone Hybrid Proxy is additionally reported as local full evaluation on the 100-row selected dataset.
 
 The matched subset comparison is included only for method-to-method comparison under identical row coverage.
 

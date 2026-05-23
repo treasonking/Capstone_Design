@@ -2,7 +2,7 @@
 
 ## Placement
 
-Attention Tracker is no longer part of the main quantitative baseline comparison. It should be cited only as related work because it is structurally different from deployable text-guard classifiers and from the Capstone Hybrid Proxy.
+Attention Tracker is no longer part of the main quantitative baseline table. It should be cited only as related work because it is structurally different from deployable text-guard classifiers and from the Capstone Hybrid Proxy.
 
 ## Method Summary
 
@@ -36,7 +36,7 @@ Earlier repository artifacts include partial local Attention Tracker reproductio
 
 If mentioned, use language such as:
 
-> Attention Tracker was reviewed as a structurally different research method requiring model attention access. We cite its paper-reported AUROC values for context, while the main baseline plan uses PIGuard, Meta Prompt Guard 2, and ProtectAI detector on shared text-only inputs.
+> Attention Tracker was reviewed as a structurally different research method requiring model attention access. We cite its paper-reported AUROC values for context, while the baseline selection and execution pipeline uses PIGuard, Meta Prompt Guard 2, and ProtectAI detector on shared text-only inputs.
 
 ## References
 

@@ -110,7 +110,7 @@ def capstone_full_note(dataset_key: str, dataset_rows: list[dict[str, str]]) -> 
             "Lakera subset is attack-only and should be interpreted as attack recall stress test, "
             "not balanced binary classification. Precision is limited because no benign rows exist."
         )
-    return "Standalone capstone detector result on the full selected dataset."
+    return "Capstone detector result on the full local selected dataset."
 
 
 def capstone_matched_note(rows: list[dict[str, str]]) -> str:
@@ -140,7 +140,7 @@ def coverage_rows(input_dir: Path) -> list[str]:
         lines.extend(
             [
                 f"| {name} | Attention Tracker | Attempted selected dataset | {len(dataset_rows)} | {len(attention_rows)} | {attention_error_count} |",
-                f"| {name} | Capstone Hybrid Proxy | Full selected dataset | {len(dataset_rows)} | {len(capstone_full)} | 0 |",
+                f"| {name} | Capstone Hybrid Proxy | Local full evaluation | {len(dataset_rows)} | {len(capstone_full)} | 0 |",
                 f"| {name} | Capstone Hybrid Proxy | Matched with Attention Tracker successful rows | {len(attention_rows)} | {len(capstone_matched)} | 0 |",
             ]
         )
@@ -176,7 +176,7 @@ def quantitative_lines(input_dir: Path) -> list[str]:
             [
                 f"| {name} | Attention Tracker | {attention_result_type} | {attention_scope} | {fmt(attention.accuracy)} | {fmt(attention.precision)} | {fmt(attention.recall)} | {fmt(attention.f1)} | {fmt(attention.auroc)} | {attention_note(dataset_key, attention_rows, attention_errors)} |",
                 f"| {name} | Capstone Hybrid Proxy | Matched local comparison | Same rows as Attention Tracker | {fmt(capstone_matched.accuracy)} | {fmt(capstone_matched.precision)} | {fmt(capstone_matched.recall)} | {fmt(capstone_matched.f1)} | N/A | {capstone_matched_note(capstone_matched_rows)} |",
-                f"| {name} | Capstone Hybrid Proxy | Full capstone evaluation | Full selected dataset | {fmt(capstone_full.accuracy)} | {fmt(capstone_full.precision)} | {fmt(capstone_full.recall)} | {fmt(capstone_full.f1)} | N/A | {capstone_full_note(dataset_key, dataset_rows)} |",
+                f"| {name} | Capstone Hybrid Proxy | Local full evaluation | Local full evaluation | {fmt(capstone_full.accuracy)} | {fmt(capstone_full.precision)} | {fmt(capstone_full.recall)} | {fmt(capstone_full.f1)} | N/A | {capstone_full_note(dataset_key, dataset_rows)} |",
             ]
         )
     lines.append(

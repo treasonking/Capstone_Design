@@ -1,4 +1,6 @@
-## Baseline Comparison: Attention Tracker vs. Capstone Hybrid Proxy
+## Historical Attention Tracker Reproduction
+
+> Status: historical reproduction only. This section is no longer the main baseline comparison. Use `reports/baselines/readme_text_guard_summary.md` for the current PIGuard / Prompt Guard 2 / ProtectAI detector baseline summary.
 
 This section reports a limited reproduction experiment for a paper baseline, not the main performance claim of this project.
 

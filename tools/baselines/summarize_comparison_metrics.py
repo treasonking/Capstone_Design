@@ -1,4 +1,4 @@
-"""Summarize coverage-aware baseline metrics and write paper-ready reports."""
+"""Summarize historical Attention Tracker reproduction metrics."""
 
 from __future__ import annotations
 
@@ -271,7 +271,9 @@ def write_comparison_table(
     capstone_matched_metrics: Metrics,
 ) -> None:
     summary = dataset_summary(dataset_rows)
-    content = f"""# Paper Baseline Comparison
+    content = f"""# Historical Attention Tracker Reproduction
+
+> Status: historical reproduction only. This file is no longer the main baseline comparison. Use `reports/baselines/text_guard_comparison_table.md` for the PIGuard / Prompt Guard 2 / ProtectAI detector baseline plan, and `reports/baselines/related_work_attention_tracker.md` for Attention Tracker related-work context.
 
 ## Dataset Coverage
 

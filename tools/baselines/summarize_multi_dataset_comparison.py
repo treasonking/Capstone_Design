@@ -1,4 +1,4 @@
-"""Summarize multi-dataset Attention Tracker and Capstone baseline comparisons."""
+"""Summarize historical Attention Tracker and Capstone reproduction artifacts."""
 
 from __future__ import annotations
 
@@ -121,7 +121,9 @@ def capstone_matched_note(rows: list[dict[str, str]]) -> str:
 
 def coverage_rows(input_dir: Path) -> list[str]:
     lines = [
-        "# Dataset Coverage Summary",
+        "# Historical Attention Tracker Dataset Coverage",
+        "",
+        "> Status: historical reproduction only. Attention Tracker is retained for related-work context, not as the main baseline.",
         "",
         "| Dataset | Method | Evaluation scope | Input rows | Result rows | Error count |",
         "|---|---|---|---:|---:|---:|",
@@ -147,7 +149,9 @@ def coverage_rows(input_dir: Path) -> list[str]:
 
 def quantitative_lines(input_dir: Path) -> list[str]:
     lines = [
-        "# Multi-Dataset Baseline Comparison",
+        "# Historical Attention Tracker Multi-Dataset Reproduction",
+        "",
+        "> Status: historical reproduction only. This file is no longer the main baseline comparison. Use `reports/baselines/text_guard_comparison_table.md` for the PIGuard / Prompt Guard 2 / ProtectAI detector baseline plan, and `reports/baselines/related_work_attention_tracker.md` for Attention Tracker related-work context.",
         "",
         "| Dataset | Method | Result type | Evaluation scope | Accuracy | Precision | Recall | F1 | AUROC | Notes |",
         "|---|---|---|---|---:|---:|---:|---:|---:|---|",
@@ -217,7 +221,9 @@ def runtime_failure_notes(input_dir: Path) -> list[str]:
 
 def readme_summary(input_dir: Path) -> list[str]:
     lines = [
-        "## Baseline Comparison: Attention Tracker vs. Capstone Hybrid Proxy",
+        "## Historical Attention Tracker Reproduction",
+        "",
+        "> Status: historical reproduction only. This section is no longer the main baseline comparison. Use `reports/baselines/readme_text_guard_summary.md` for the current PIGuard / Prompt Guard 2 / ProtectAI detector baseline summary.",
         "",
         "This section reports a limited reproduction experiment for a paper baseline, not the main performance claim of this project.",
         "",

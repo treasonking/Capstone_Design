@@ -1,4 +1,6 @@
-# Paper Baseline Comparison
+# Historical Attention Tracker Reproduction
+
+> Status: historical reproduction only. This file is no longer the main baseline comparison. Use `reports/baselines/text_guard_comparison_table.md` for the PIGuard / Prompt Guard 2 / ProtectAI detector baseline plan, and `reports/baselines/related_work_attention_tracker.md` for Attention Tracker related-work context.
 
 ## Dataset Coverage
 

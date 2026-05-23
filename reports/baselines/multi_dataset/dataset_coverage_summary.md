@@ -1,4 +1,6 @@
-# Dataset Coverage Summary
+# Historical Attention Tracker Dataset Coverage
+
+> Status: historical reproduction only. Attention Tracker is retained for related-work context, not as the main baseline.
 
 | Dataset | Method | Evaluation scope | Input rows | Result rows | Error count |
 |---|---|---|---:|---:|---:|

@@ -1,61 +1,36 @@
-# Text-Guard Baseline Selection And Pipeline Summary
+### External Text-Guard Baseline Evaluation
 
-## Current Baseline Direction
+We evaluated the Capstone Hybrid Proxy on three external prompt-injection datasets: deepset, ProtectAI, and Lakera. We also added ProtectAI's HuggingFace prompt-injection detector as the first executable text-guard baseline.
 
-The main text-guard comparison is changed from Attention Tracker to PIGuard. Attention Tracker should no longer appear as a main quantitative baseline; it is retained only as related work and as a paper-reported AUROC reference.
+PIGuard is selected as the main paper-level comparison target because it is an input-text-based prompt guard study, while Attention Tracker is retained only as related work due to its requirement for internal LLM attention access.
 
-This is a baseline selection and execution pipeline preparation update, not a final performance comparison result.
+Meta Prompt Guard 2 is still an executable baseline candidate, but it has not produced local metrics in this repository yet. PIGuard also remains pending until its official model/code path is executed locally.
 
-The executable baseline priority is:
+These results should be interpreted as external generalization analysis, not as the primary project performance benchmark. The project target remains proxy-level PII leakage prevention, prompt-injection blocking, reason-code generation, and audit-friendly logging for public-sector or internal-network environments.
 
-1. Meta Prompt Guard 2: `meta-llama/Llama-Prompt-Guard-2-86M`
-2. ProtectAI detector: `protectai/deberta-v3-base-prompt-injection`
-3. ProtectAI fallback: `protectai/deberta-v3-small-prompt-injection-v2`
+#### Dataset Coverage
 
-PIGuard remains the main external guard-model comparison target when official model/code execution is available.
-
-## Prepared Inputs
-
-The three benchmark sources are already represented in a common CSV format:
-
-| Dataset | Rows | Attack | Benign | File |
+| Dataset | Rows | Attack | Benign | Notes |
 |---|---:|---:|---:|---|
-| `deepset/prompt-injections` | 100 | 44 | 56 | `reports/baselines/multi_dataset/deepset_shared_eval.csv` |
-| `protectai/prompt-injection-validation` | 100 | 50 | 50 | `reports/baselines/multi_dataset/protectai_shared_eval.csv` |
-| `Lakera/gandalf_ignore_instructions` | 100 | 100 | 0 | `reports/baselines/multi_dataset/lakera_shared_eval.csv` |
+| deepset | 100 | 44 | 56 | balanced or selected subset |
+| ProtectAI | 100 | 50 | 50 | selected subset |
+| Lakera | 100 | 100 | 0 | attack-only recall stress test |
 
-Lakera is attack-only in the selected local subset, so it should be described as a recall stress test rather than a balanced classification benchmark.
+#### Local Metrics Snapshot
 
-## Capstone Local Full Evaluation
+| Dataset | Method | Result type | Accuracy | Precision | Recall | F1 | AUROC |
+|---|---|---|---:|---:|---:|---:|---:|
+| deepset | Capstone Hybrid Proxy | Local full evaluation | 0.5800 | 1.0000 | 0.0455 | 0.0870 | N/A |
+| deepset | ProtectAI detector | Local reproduction | 0.7700 | 1.0000 | 0.4773 | 0.6462 | 0.7614 |
+| ProtectAI | Capstone Hybrid Proxy | Local full evaluation | 0.5000 | 0.0000 | 0.0000 | 0.0000 | N/A |
+| ProtectAI | ProtectAI detector | Local reproduction | 0.5500 | 0.8571 | 0.1200 | 0.2105 | 0.5616 |
+| Lakera | Capstone Hybrid Proxy | Local full evaluation | 0.4800 | 1.0000 | 0.4800 | 0.6486 | N/A |
+| Lakera | ProtectAI detector | Local reproduction | 0.9900 | 1.0000 | 0.9900 | 0.9950 | N/A |
 
-Our Capstone Hybrid Proxy is reported as local full evaluation on all three shared datasets:
+#### Pending Baselines
 
-| Dataset | Accuracy | Precision | Recall | F1 | TP | FP | TN | FN |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| deepset | 0.5800 | 1.0000 | 0.0455 | 0.0870 | 2 | 0 | 56 | 42 |
-| ProtectAI | 0.5000 | 0.0000 | 0.0000 | 0.0000 | 0 | 0 | 50 | 50 |
-| Lakera | 0.4800 | 1.0000 | 0.4800 | 0.6486 | 48 | 0 | 0 | 52 |
-
-These results show that the current hybrid detector is conservative on external English prompt-injection corpora: false positives are low, but recall is limited outside the project's internal public-sector and PII-focused scenarios.
-
-## Pending / Not Measured Baselines
-
-Meta Prompt Guard 2, ProtectAI detector, and PIGuard do not yet have measured results in this repository. Do not present these rows as measured local performance until the models are actually executed on the shared CSV inputs.
-
-When the runtime is available, run the text-guard baselines on the same three common-format CSV files and append their metrics to `reports/baselines/text_guard_comparison_table.md`.
-
-## Recommended Claim Wording
-
-Use:
-
-> We prepared deepset, ProtectAI, and Lakera prompt-injection datasets in a common evaluation format and produced Capstone Hybrid Proxy local full evaluation results. This update is a comparison baseline selection and execution pipeline preparation step: PIGuard is the main external guard-model comparison target, while Meta Prompt Guard 2 and ProtectAI detector are the first executable baselines. Attention Tracker is discussed only as related work with paper-reported AUROC values.
-
-Avoid:
-
-> Attention Tracker is the main baseline.
-
-Avoid:
-
-> Prompt Guard 2, ProtectAI detector, or PIGuard outperformed/underperformed on our shared datasets.
-
-That claim is not valid until those models are actually run on the shared CSV inputs.
+| Method | Status | Note |
+|---|---|---|
+| PIGuard | Pending | Main paper baseline; local metrics have not been produced yet. |
+| Meta Prompt Guard 2 | Pending | Executable candidate; local metrics have not been produced yet. |
+| Attention Tracker | Related work only | Excluded from the main local comparison because it requires internal attention scores. |

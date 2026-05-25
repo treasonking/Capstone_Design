@@ -9,8 +9,8 @@ from pathlib import Path
 
 
 DATASETS = (
-    ("deepset", "deepset", "balanced or selected subset"),
-    ("protectai", "ProtectAI", "selected subset"),
+    ("deepset", "deepset", "selected external prompt-injection subset"),
+    ("protectai", "ProtectAI", "selected external detector dataset subset"),
     ("lakera", "Lakera", "attack-only recall stress test"),
 )
 DEFAULT_INPUT_DIR = Path("reports/baselines/multi_dataset")
@@ -109,10 +109,9 @@ def protectai_status(result_rows: list[dict[str, str]], runtime_notes_path: Path
 
 def protectai_note(result_rows: list[dict[str, str]], dataset_key: str, runtime_notes_path: Path) -> str:
     if result_rows:
-        model_name = result_rows[0].get("model_name", "ProtectAI HuggingFace detector")
         if dataset_key == "lakera":
-            return f"HF text classifier `{model_name}`; attack-only recall stress test."
-        return f"HF text classifier `{model_name}`."
+            return "HF text classifier; attack-only"
+        return "HF text classifier"
     if runtime_notes_path.exists():
         return "HF model download/runtime failed; not interpreted as a performance result."
     return "not measured yet"
@@ -121,6 +120,12 @@ def protectai_note(result_rows: list[dict[str, str]], dataset_key: str, runtime_
 def comparison_table(input_dir: Path, runtime_notes_path: Path) -> list[str]:
     lines = [
         "# Text Guard Baseline Comparison",
+        "",
+        "## Scope",
+        "",
+        "This report compares the Capstone Hybrid Proxy with an executable external text-guard baseline, ProtectAI detector, on three selected external prompt-injection datasets.",
+        "",
+        "PIGuard is selected as the main paper-level comparison target, but local metrics are not included in this revision. Meta Prompt Guard 2 is also retained as a future executable baseline. Attention Tracker is moved to related work because it requires internal LLM attention access.",
         "",
         "## Dataset Summary",
         "",
@@ -165,10 +170,10 @@ def comparison_table(input_dir: Path, runtime_notes_path: Path) -> list[str]:
         )
 
         lines.append(
-            f"| {display_name} | Meta Prompt Guard 2 | Pending | N/A | N/A | N/A | N/A | N/A | not measured yet |"
+            f"| {display_name} | PIGuard | Pending | N/A | N/A | N/A | N/A | N/A | main paper baseline, not measured yet |"
         )
         lines.append(
-            f"| {display_name} | PIGuard | Pending | N/A | N/A | N/A | N/A | N/A | main paper baseline, not measured yet |"
+            f"| {display_name} | Meta Prompt Guard 2 | Pending | N/A | N/A | N/A | N/A | N/A | future executable baseline |"
         )
 
     lines.extend(
@@ -176,11 +181,11 @@ def comparison_table(input_dir: Path, runtime_notes_path: Path) -> list[str]:
             "",
             "## Interpretation",
             "",
-            "ProtectAI detector rows marked Local reproduction are executable HuggingFace baseline results produced on the same shared CSV inputs as the Capstone Hybrid Proxy.",
+            "The Capstone Hybrid Proxy is conservative on external English prompt-injection datasets. It shows low false positives but limited recall, especially on deepset and ProtectAI. ProtectAI detector improves recall on deepset but still shows dataset-dependent behavior.",
+            "",
+            "The Lakera selected subset contains only attack samples. Therefore, its result should be interpreted as an attack-recall stress test rather than balanced binary-classification performance.",
             "",
             "PIGuard remains the main paper-level text-guard comparison target, but no local PIGuard metrics are reported until its official model/code is executed. Meta Prompt Guard 2 is also still pending.",
-            "",
-            "Attention Tracker is excluded from the main quantitative table and retained only as related work because it requires internal LLM attention access.",
             "",
             "These external prompt-injection datasets are used for generalization analysis, not as the primary project performance benchmark.",
         ]
@@ -239,6 +244,20 @@ def readme_summary(input_dir: Path, runtime_notes_path: Path) -> list[str]:
 
     lines.extend(
         [
+            "",
+            "#### Limitations Observed from External Datasets",
+            "",
+            "The external dataset evaluation shows that the current Capstone Hybrid Proxy is conservative on English prompt-injection corpora. This behavior reduces false positives but significantly lowers recall on general English attack prompts.",
+            "",
+            "The main reasons are:",
+            "",
+            "1. The detector was designed primarily for public-sector/internal-network proxy scenarios.",
+            "2. PII leakage prevention and policy-bypass detection are prioritized over broad jailbreak classification.",
+            "3. The current rules and lightweight classifier are not yet sufficiently tuned for English prompt-injection corpora.",
+            "4. External datasets differ in label distribution and attack style.",
+            "5. Lakera selected subset is attack-only, limiting balanced evaluation.",
+            "",
+            "Future work should include English prompt-injection pattern expansion, additional classifier training, and ensemble use with external text-guard models such as ProtectAI detector, Meta Prompt Guard 2, or PIGuard.",
             "",
             "#### Pending Baselines",
             "",

@@ -278,7 +278,7 @@ def parse_args() -> argparse.Namespace:
         "--limit",
         type=int,
         default=DEFAULT_LIMIT,
-        help="Default is subset-100 so Attention Tracker and capstone runs align.",
+        help="Default is subset-100 so external baseline and capstone runs align.",
     )
     return parser.parse_args()
 

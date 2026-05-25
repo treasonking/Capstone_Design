@@ -1,4 +1,4 @@
-"""Run Capstone Hybrid Proxy evaluation for full and matched multi-dataset subsets."""
+"""Run Capstone Hybrid Proxy evaluation for the selected multi-dataset subsets."""
 
 from __future__ import annotations
 
@@ -21,13 +21,6 @@ FIELDNAMES = ["id", "label", "prediction", "action", "reason_codes"]
 def read_rows(path: Path) -> list[dict[str, str]]:
     with path.open("r", encoding="utf-8-sig", newline="") as f:
         return list(csv.DictReader(f))
-
-
-def read_success_ids(path: Path) -> set[str]:
-    if not path.exists():
-        return set()
-    with path.open("r", encoding="utf-8-sig", newline="") as f:
-        return {row["id"] for row in csv.DictReader(f)}
 
 
 def write_results(path: Path, rows: list[dict[str, str]]) -> None:
@@ -74,17 +67,9 @@ def main() -> None:
 
     for dataset_key in DATASET_KEYS:
         rows = read_rows(input_dir / f"{dataset_key}_shared_eval.csv")
-        attention_ids = read_success_ids(output_dir / f"{dataset_key}_attention_tracker_results.csv")
-        matched_rows = [row for row in rows if row["id"] in attention_ids]
-
         full_output = output_dir / f"{dataset_key}_capstone_results_full.csv"
-        matched_output = output_dir / f"{dataset_key}_capstone_results_matched.csv"
         write_results(full_output, rows)
-        write_results(matched_output, matched_rows)
-        print(
-            f"{dataset_key}: full_rows={len(rows)} matched_rows={len(matched_rows)} "
-            f"full={full_output} matched={matched_output}"
-        )
+        print(f"{dataset_key}: full_rows={len(rows)} full={full_output}")
 
 
 if __name__ == "__main__":

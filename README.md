@@ -225,14 +225,26 @@ False Negative는 실제 Prompt Injection 문장인데 프록시가 차단하지
 - 올바른 표현: `Hugging Face deepset 공개 데이터셋 기준 Injection F1 0.1413`
 - 올바른 표현: `내부 회귀 테스트 결과와 외부 스타일 검증 결과는 목적이 다르며, 일반화 성능은 외부 스타일 검증과 공개 데이터셋 평가로 별도 확인한다.`
 
-### Text-Guard Baseline 준비 상태
+### External Text-Guard Baseline Evaluation
 
-현재 text-guard baseline 작업은 최종 성능 비교 결과가 아니라 비교 baseline 선정 및 실행 파이프라인 준비 단계입니다.
+We evaluated the Capstone Hybrid Proxy and the ProtectAI prompt-injection detector on three external prompt-injection datasets: deepset, ProtectAI, and Lakera.
 
-- Capstone Hybrid Proxy 결과는 deepset, ProtectAI, Lakera 3개 데이터셋에서 local full evaluation으로 표시합니다.
-- PIGuard, Meta Prompt Guard 2, ProtectAI detector는 실제 실행 결과가 생성되기 전까지 `Pending / Not measured`로 표시합니다.
-- Attention Tracker는 메인 비교 baseline에서 제외하고 related work와 paper-reported AUROC 참고값으로만 둡니다.
-- 상세 표는 `reports/baselines/text_guard_comparison_table.md`, 요약은 `reports/baselines/readme_text_guard_summary.md`, Attention Tracker 관련연구 정리는 `reports/baselines/related_work_attention_tracker.md`를 기준으로 합니다.
+| Dataset | Method | Accuracy | Precision | Recall | F1 | AUROC |
+|---|---|---:|---:|---:|---:|---:|
+| deepset | Capstone Hybrid Proxy | 0.5800 | 1.0000 | 0.0455 | 0.0870 | N/A |
+| deepset | ProtectAI detector | 0.7700 | 1.0000 | 0.4773 | 0.6462 | 0.7614 |
+| ProtectAI | Capstone Hybrid Proxy | 0.5000 | 0.0000 | 0.0000 | 0.0000 | N/A |
+| ProtectAI | ProtectAI detector | 0.5500 | 0.8571 | 0.1200 | 0.2105 | 0.5616 |
+| Lakera | Capstone Hybrid Proxy | 0.4800 | 1.0000 | 0.4800 | 0.6486 | N/A |
+| Lakera | ProtectAI detector | 0.9900 | 1.0000 | 0.9900 | 0.9950 | N/A |
+
+Lakera selected subset is attack-only, so its result should be interpreted as an attack-recall stress test rather than balanced binary-classification performance.
+
+These external results are not the primary project benchmark. They are used to analyze generalization on public English prompt-injection datasets. The current Capstone Hybrid Proxy is conservative on external English prompt-injection data, showing low false positives but limited recall. ProtectAI detector improves recall on deepset, but also shows dataset-dependent behavior.
+
+PIGuard is selected as the main paper-level comparison target, and Meta Prompt Guard 2 is retained as a future executable baseline. Their local metrics are not included in this revision. Attention Tracker is kept only as related work because it requires internal LLM attention access.
+
+Detailed artifacts are maintained in `reports/baselines/text_guard_comparison_table.md`, `reports/baselines/readme_text_guard_summary.md`, and `reports/baselines/related_work_attention_tracker.md`.
 
 ## 데이터셋 구성 방향
 

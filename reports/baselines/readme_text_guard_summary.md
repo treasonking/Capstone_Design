@@ -12,8 +12,8 @@ These results should be interpreted as external generalization analysis, not as 
 
 | Dataset | Rows | Attack | Benign | Notes |
 |---|---:|---:|---:|---|
-| deepset | 100 | 44 | 56 | balanced or selected subset |
-| ProtectAI | 100 | 50 | 50 | selected subset |
+| deepset | 100 | 44 | 56 | selected external prompt-injection subset |
+| ProtectAI | 100 | 50 | 50 | selected external detector dataset subset |
 | Lakera | 100 | 100 | 0 | attack-only recall stress test |
 
 #### Local Metrics Snapshot
@@ -26,6 +26,20 @@ These results should be interpreted as external generalization analysis, not as 
 | ProtectAI | ProtectAI detector | Local reproduction | 0.5500 | 0.8571 | 0.1200 | 0.2105 | 0.5616 |
 | Lakera | Capstone Hybrid Proxy | Local full evaluation | 0.4800 | 1.0000 | 0.4800 | 0.6486 | N/A |
 | Lakera | ProtectAI detector | Local reproduction | 0.9900 | 1.0000 | 0.9900 | 0.9950 | N/A |
+
+#### Limitations Observed from External Datasets
+
+The external dataset evaluation shows that the current Capstone Hybrid Proxy is conservative on English prompt-injection corpora. This behavior reduces false positives but significantly lowers recall on general English attack prompts.
+
+The main reasons are:
+
+1. The detector was designed primarily for public-sector/internal-network proxy scenarios.
+2. PII leakage prevention and policy-bypass detection are prioritized over broad jailbreak classification.
+3. The current rules and lightweight classifier are not yet sufficiently tuned for English prompt-injection corpora.
+4. External datasets differ in label distribution and attack style.
+5. Lakera selected subset is attack-only, limiting balanced evaluation.
+
+Future work should include English prompt-injection pattern expansion, additional classifier training, and ensemble use with external text-guard models such as ProtectAI detector, Meta Prompt Guard 2, or PIGuard.
 
 #### Pending Baselines
 

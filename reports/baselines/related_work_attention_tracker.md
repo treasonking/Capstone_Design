@@ -4,6 +4,8 @@
 
 Attention Tracker is no longer part of the main quantitative baseline table. It should be cited only as related work because it is structurally different from deployable text-guard classifiers and from the Capstone Hybrid Proxy.
 
+Although the paper reports high AUROC values, Attention Tracker requires access to internal LLM attention scores. For that reason, it is excluded from the main proxy-level text-guard baseline comparison and is not treated as a local reproduction baseline in this repository.
+
 ## Method Summary
 
 Attention Tracker is a training-free prompt-injection detection method that uses a target LLM's internal attention patterns. Instead of classifying text with an external guard model, it tracks how attention to the trusted instruction changes when untrusted data contains injection content.
@@ -32,7 +34,7 @@ The Attention Tracker paper reports AUROC on public prompt-injection datasets. T
 
 ## Local Reproduction Note
 
-Earlier repository artifacts include partial local Attention Tracker reproduction attempts under `reports/baselines/` and `reports/baselines/multi_dataset/`. Those artifacts should not be used as the main comparison baseline because row coverage and runtime dependency status differ by dataset.
+Earlier repository artifacts included partial local Attention Tracker reproduction attempts under `reports/baselines/` and `reports/baselines/multi_dataset/`. Those artifacts were removed from the main report path because row coverage and runtime dependency status differed by dataset.
 
 If mentioned, use language such as:
 

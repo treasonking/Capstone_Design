@@ -1,0 +1,104 @@
+# Repository-local Codex operating profile for Capstone_Design.
+
+[project]
+name = "Capstone_Design"
+classification = "security_capstone_portfolio"
+language = "ko-KR"
+primary_domain = "Public-sector and internal-network LLM security proxy"
+operator_role = "security_project_operator"
+
+[mission]
+summary = "Operate this repository as a security capstone and portfolio project for preventing PII leakage and prompt-injection abuse in LLM proxy flows."
+protected_assets = [
+  "public-sector and internal-network prompts",
+  "PII such as RRN, phone, email, address, account, and civil-service records",
+  "policy decisions and audit-log integrity metadata",
+  "README, docs, reports, evaluation outputs, and benchmark evidence",
+]
+
+[feature_boundaries]
+implemented = [
+  "PII detection through regex, heuristic rules, and the enabled lightweight classifier path",
+  "prompt-injection detection through heuristic rules and lightweight classifier support",
+  "policy decisions using ALLOW, MASK, BLOCK, and WARN",
+  "Validator Agent as a deterministic post-generation output validation layer",
+  "audit-log summaries with input_action, output_action, final_action, validator result, detector summary, and integrity metadata",
+]
+mock_or_demo = [
+  "Mock LLM execution path",
+  "MOCK-ML-DSA audit signer implemented with HMAC-SHA256 behind an ML-DSA-replaceable interface",
+]
+not_claimed = [
+  "production ML-DSA implementation",
+  "PQC-based improvement of PII or prompt-injection detection accuracy",
+  "real-time token-by-token streaming validation when the current SSE path buffers before validation",
+  "general-purpose prompt-injection detection across all languages and threat models",
+]
+
+[truth_rules]
+separate_implemented_mock_and_planned = true
+never_invent_metrics = true
+metrics_must_come_from = [
+  "reports/*.csv",
+  "reports/*.json",
+  "reports/*.md",
+  "evaluation output",
+  "test output",
+]
+warn_before_changing_conflicting_metrics = true
+separate_internal_and_external_dataset_results = true
+include_limitations_in_paper_and_presentation_wording = true
+
+[documentation_policy]
+keep_consistent = [
+  "README.md",
+  "docs/*.md",
+  "reports/*.md",
+  "reports/*.csv",
+  "reports/*.json",
+  "evaluation/*.py",
+  "evaluation/*.json",
+]
+do_not_remove_without_explicit_reason = [
+  "Docker execution commands",
+  "evaluation commands",
+  "README major sections",
+  "benchmark interpretation warnings",
+  "security limitations",
+]
+required_distinctions = [
+  "PII detection",
+  "prompt-injection detection",
+  "Validator Agent",
+  "Mock PQC",
+  "audit log",
+  "internal toy or regression datasets",
+  "external public benchmark datasets",
+]
+
+[verification]
+after_code_changes = [
+  "Run focused pytest targets for the touched modules.",
+  "Run the relevant evaluation command when detection logic, datasets, reports, or metrics change.",
+  "Run at least a minimal verification command before saying the work is complete.",
+]
+minimum_doc_or_config_checks = [
+  "git diff --check",
+  "git status --short --branch",
+]
+preferred_security_tests = [
+  "python -m pytest backend/tests/test_pii_detector.py backend/tests/test_injection_detector.py backend/tests/test_validator_agent.py backend/tests/test_pqc_signer.py",
+]
+
+[github_policy]
+update_github_at_end = true
+preferred_flow = "commit_and_push_current_branch_when_changes_are_verified"
+if_blocked = "Report the blocker, local diff summary, verification result, and exact command that still needs approval."
+
+[final_response]
+required_table_columns = [
+  "변경 요약",
+  "수정 파일",
+  "검증 결과",
+  "남은 리스크",
+]

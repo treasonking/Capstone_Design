@@ -27,6 +27,15 @@ These results should be interpreted as external generalization analysis, not as 
 | Lakera | Capstone Hybrid Proxy | Local full evaluation | 0.4800 | 1.0000 | 0.4800 | 0.6486 | N/A |
 | Lakera | ProtectAI detector | Local reproduction | 0.9900 | 1.0000 | 0.9900 | 0.9950 | N/A |
 
+#### Comparison Reference
+
+- ProtectAI, `protectai/deberta-v3-base-prompt-injection-v2`, Hugging Face model card. Model: https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2
+- Li et al., "PIGuard: Prompt Injection Guardrail via Mitigating Overdefense for Free," ACL 2025. Paper: https://aclanthology.org/2025.acl-long.1468/ DOI: https://doi.org/10.18653/v1/2025.acl-long.1468
+- Meta, `meta-llama/Llama-Prompt-Guard-2-22M` and `meta-llama/Llama-Prompt-Guard-2-86M`, Hugging Face model cards, 2025. Models: https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-22M, https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-86M
+- This comparison is based on each source's described architecture, supported detection scope, evaluation setting, and deployment assumptions. It is an interpretive project-positioning comparison, not a reproduction of an original paper table.
+
+Reference format for the paper body: Li, H., Liu, X., Zhang, N., & Xiao, C. (2025). PIGuard: Prompt Injection Guardrail via Mitigating Overdefense for Free. In *Proceedings of ACL 2025* (pp. 30420-30437). Association for Computational Linguistics. https://doi.org/10.18653/v1/2025.acl-long.1468
+
 #### Limitations Observed from External Datasets
 
 The external dataset evaluation shows that the current Capstone Hybrid Proxy is conservative on English prompt-injection corpora. This behavior reduces false positives but significantly lowers recall on general English attack prompts.

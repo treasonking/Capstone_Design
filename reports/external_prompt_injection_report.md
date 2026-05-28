@@ -68,6 +68,15 @@ This external public dataset evaluation was run against the currently active Hyb
 
 두 실험은 동일 데이터셋과 동일 방어 방식을 사용하지 않으므로 절대적인 성능 우열 비교는 제한적이다. 대신 본 프로젝트는 기준 연구에서 제시한 Prompt Injection 방어 평가 필요성을 바탕으로, 공개 데이터셋 기반 정량 평가를 추가하고 현재 탐지기의 한계와 개선 방향을 도출하였다.
 
+## Reference Study Source
+
+- Yupei Liu, Yuqi Jia, Runpeng Geng, Jinyuan Jia, and Neil Zhenqiang Gong. "Formalizing and Benchmarking Prompt Injection Attacks and Defenses." USENIX Security 2024. Paper: https://www.usenix.org/conference/usenixsecurity24/presentation/liu-yupei arXiv: https://arxiv.org/abs/2310.12815
+- This project references the study's evaluation perspective and metric framing, but it does not directly compare absolute scores because the datasets, defenses, and deployment assumptions differ.
+
+Reference format for the paper body:
+
+- Liu, Y., Jia, Y., Geng, R., Jia, J., & Gong, N. Z. (2024). Formalizing and Benchmarking Prompt Injection Attacks and Defenses. In *Proceedings of the 33rd USENIX Security Symposium* (pp. 1831-1847). USENIX Association.
+
 ## Planned Improvements
 
 외부 공개 데이터셋 평가 결과를 바탕으로 다음 개선 작업을 진행할 예정이다.

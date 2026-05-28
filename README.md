@@ -238,6 +238,18 @@ We evaluated the Capstone Hybrid Proxy and the ProtectAI prompt-injection detect
 | Lakera | Capstone Hybrid Proxy | 0.4800 | 1.0000 | 0.4800 | 0.6486 | N/A |
 | Lakera | ProtectAI detector | 0.9900 | 1.0000 | 0.9900 | 0.9950 | N/A |
 
+### Comparison Reference
+
+- ProtectAI, `protectai/deberta-v3-base-prompt-injection-v2`, Hugging Face model card.  
+  Model: https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2
+- Li et al., "PIGuard: Prompt Injection Guardrail via Mitigating Overdefense for Free," ACL 2025.  
+  Paper: https://aclanthology.org/2025.acl-long.1468/ DOI: https://doi.org/10.18653/v1/2025.acl-long.1468
+- Meta, `meta-llama/Llama-Prompt-Guard-2-22M` and `meta-llama/Llama-Prompt-Guard-2-86M`, Hugging Face model cards, 2025.  
+  Models: https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-22M, https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-86M
+- This comparison is based on each source's described architecture, supported detection scope, evaluation setting, and deployment assumptions. It is an interpretive positioning comparison for this project, not a reproduction of an original paper table.
+
+Reference format for the paper body: Li, H., Liu, X., Zhang, N., & Xiao, C. (2025). PIGuard: Prompt Injection Guardrail via Mitigating Overdefense for Free. In *Proceedings of ACL 2025* (pp. 30420-30437). Association for Computational Linguistics. https://doi.org/10.18653/v1/2025.acl-long.1468
+
 Lakera selected subset is attack-only, so its result should be interpreted as an attack-recall stress test rather than balanced binary-classification performance.
 
 These external results are not the primary project benchmark. They are used to analyze generalization on public English prompt-injection datasets. The current Capstone Hybrid Proxy is conservative on external English prompt-injection data, showing low false positives but limited recall. ProtectAI detector improves recall on deepset, but also shows dataset-dependent behavior.
@@ -781,6 +793,14 @@ Threshold optimizer는 external-tuned 모델의 held-out eval split에서 `0.30`
 본 프로젝트는 기준 연구의 평가 관점을 참고하되, 실제 공공기관·사내망 환경에서 사용할 수 있는 프록시형 보안 게이트웨이를 구현하는 데 초점을 두었습니다. 따라서 본 프로젝트의 평가는 Precision, Recall, F1-score, Accuracy를 사용하여 현재 탐지기의 일반화 성능을 확인하는 방식으로 수행했습니다.
 
 두 실험은 동일 데이터셋과 동일 방어 방식을 사용하지 않으므로 절대적인 성능 우열 비교는 제한적입니다. 대신 본 프로젝트는 기준 연구에서 제시한 Prompt Injection 방어 평가 필요성을 바탕으로, 공개 데이터셋 기반 정량 평가를 추가하고 현재 탐지기의 한계와 개선 방향을 도출했습니다.
+
+### Reference Study Source
+
+- Liu et al., "Formalizing and Benchmarking Prompt Injection Attacks and Defenses," USENIX Security 2024.  
+  Paper: https://www.usenix.org/conference/usenixsecurity24/presentation/liu-yupei arXiv: https://arxiv.org/abs/2310.12815
+- This project references the study's evaluation perspective and metric framing, but it does not directly compare absolute scores because the datasets, defenses, and deployment assumptions differ.
+
+Reference format for the paper body: Liu, Y., Jia, Y., Geng, R., Jia, J., & Gong, N. Z. (2024). Formalizing and Benchmarking Prompt Injection Attacks and Defenses. In *Proceedings of the 33rd USENIX Security Symposium* (pp. 1831-1847). USENIX Association.
 
 ### Planned Improvements
 

@@ -19,6 +19,15 @@ This makes it useful as a research comparison, but it is not a direct drop-in ba
 | Primary output | Focus/attention score | Binary or policy action such as allow/warn/block |
 | Best use in this project | Related work and paper AUROC reference | Main baseline and project performance comparison |
 
+## Comparison Reference
+
+- Kuo-Han Hung, Ching-Yun Ko, Ambrish Rawat, I-Hsin Chung, Winston H. Hsu, and Pin-Yu Chen. "Attention Tracker: Detecting Prompt Injection Attacks in LLMs." Findings of NAACL 2025. Paper: https://aclanthology.org/2025.findings-naacl.123/ arXiv: https://arxiv.org/abs/2411.00348
+- This comparison is based on the paper's described method, required model-internal access, evaluation scope, and deployment assumptions. The table is an interpretive comparison for positioning this project, not a reproduction of the original paper's table.
+
+Reference format for the paper body:
+
+- Hung, K.-H., Ko, C.-Y., Rawat, A., Chung, I.-H., Hsu, W. H., & Chen, P.-Y. (2025). Attention Tracker: Detecting Prompt Injection Attacks in LLMs. In *Findings of the Association for Computational Linguistics: NAACL 2025*. Association for Computational Linguistics. https://aclanthology.org/2025.findings-naacl.123/
+
 ## Paper-Reported AUROC Reference
 
 The Attention Tracker paper reports AUROC on public prompt-injection datasets. These numbers are paper-reported references, not this repository's local reproduction results.

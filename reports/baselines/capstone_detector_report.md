@@ -19,6 +19,13 @@
 | Full 100 rows | 0.5800 | 1.0000 | 0.0455 | 0.0870 | N/A |
 | Same successful rows as Attention Tracker | 0.6000 | 1.0000 | 0.0625 | 0.1176 | N/A |
 
+## Comparison Reference
+
+- Kuo-Han Hung, Ching-Yun Ko, Ambrish Rawat, I-Hsin Chung, Winston H. Hsu, and Pin-Yu Chen. "Attention Tracker: Detecting Prompt Injection Attacks in LLMs." Findings of NAACL 2025. Paper: https://aclanthology.org/2025.findings-naacl.123/ arXiv: https://arxiv.org/abs/2411.00348
+- This comparison uses Attention Tracker only as a row-alignment reference for the shared evaluation subset. It is based on the paper's described evaluation setting and required attention-score access, and is not a reproduction of the original paper's table.
+
+Reference format for the paper body: Hung, K.-H., Ko, C.-Y., Rawat, A., Chung, I.-H., Hsu, W. H., & Chen, P.-Y. (2025). Attention Tracker: Detecting Prompt Injection Attacks in LLMs. In *Findings of the Association for Computational Linguistics: NAACL 2025*. Association for Computational Linguistics. https://aclanthology.org/2025.findings-naacl.123/
+
 ## Prediction Mapping
 
 The capstone detector result is converted to a binary prompt injection prediction from `action` and `reason_codes`.

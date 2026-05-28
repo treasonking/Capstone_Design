@@ -176,6 +176,12 @@ external-tuned 결과는 외부 공개 데이터셋 일부를 학습에 포함�
 
 추가 검증 결과, custom split의 id overlap은 0이지만 전체 normalized text-hash overlap은 42건입니다. deepset 자체는 exact text overlap 0건, near duplicate 4건이며, deepset official train/test split에서는 Hybrid Recall 0.7667로 custom split 0.6329보다 낮아지지 않았습니다. 따라서 deepset 결과는 label mapping 오류나 명백한 exact leakage로 무효화되지는 않지만, supervised tuning 결과로 제한해 표현합니다.
 
+### Latency Benchmark
+
+2026-05-29 후속 측정에서는 upstream LLM을 stub 응답으로 대체하고 detector/proxy 내부 처리 시간을 분리 측정했습니다. 대표 시나리오 5개를 각 30회 측정한 결과, `detector_only` 평균은 `2.717ms`, p95는 `4.982ms`였고, `proxy_end_to_end` 평균 응답 시간은 `42.092ms`, p95는 `69.408ms`였습니다. action별 proxy 평균은 `ALLOW=52.301ms`, `BLOCK=27.400ms`, `MASK=50.442ms`, `WARN=52.916ms`였습니다. BLOCK은 upstream을 호출하지 않으므로 다른 action보다 낮게 해석합니다.
+
+세부 결과는 `reports/latency_benchmark_report.md`, `reports/latency_benchmark_results.csv`, `reports/latency_benchmark_results.json`에 보존했습니다.
+
 ### 공개 데이터셋 기반 Prompt Injection 본 실험 결과
 
 기준 데이터셋: Hugging Face 공개 Prompt Injection 데이터셋, `Hybrid / Full Pipeline` 모드

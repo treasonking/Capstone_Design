@@ -1,0 +1,11 @@
+benchmark,action,sample_count,measurement_count,avg_latency_ms,avg_response_time_ms,p95_latency_ms,min_latency_ms,max_latency_ms
+detector_only,ALL,5,150,2.717,,4.982,1.387,8.34
+detector_only,ALLOW,1,30,2.904,,6.247,1.387,8.34
+detector_only,BLOCK,2,60,2.53,,3.811,1.521,5.758
+detector_only,MASK,1,30,2.665,,4.572,1.442,5.105
+detector_only,WARN,1,30,2.956,,5.258,1.44,6.103
+proxy_end_to_end,ALL,5,150,42.092,42.092,69.408,18.528,111.824
+proxy_end_to_end,ALLOW,1,30,52.301,52.301,71.495,40.22,87.123
+proxy_end_to_end,BLOCK,2,60,27.4,27.4,39.169,18.528,46.152
+proxy_end_to_end,MASK,1,30,50.442,50.442,69.408,39.849,70.472
+proxy_end_to_end,WARN,1,30,52.916,52.916,71.196,40.317,111.824

@@ -34,13 +34,16 @@ PIGuard is selected as the main paper-level comparison target, but local metrics
 ## Comparison Reference
 
 - ProtectAI, `protectai/deberta-v3-base-prompt-injection-v2`, Hugging Face model card. Model: https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2
-- Hao Li, Xiaogeng Liu, Ning Zhang, and Chaowei Xiao. "PIGuard: Prompt Injection Guardrail via Mitigating Overdefense for Free." ACL 2025. Paper: https://aclanthology.org/2025.acl-long.1468/ DOI: https://doi.org/10.18653/v1/2025.acl-long.1468
+- Hao Li, Xiaogeng Liu, Ning Zhang, and Chaowei Xiao. "PIGuard: Prompt Injection Guardrail via Mitigating Overdefense for Free." ACL 2025.  
+  Paper: https://aclanthology.org/2025.acl-long.1468/  
+  DOI: https://doi.org/10.18653/v1/2025.acl-long.1468  
+  Code: https://github.com/leolee99/PIGuard
 - Meta, `meta-llama/Llama-Prompt-Guard-2-22M` and `meta-llama/Llama-Prompt-Guard-2-86M`, Hugging Face model cards, 2025. Models: https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-22M, https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-86M
 - This comparison is based on the referenced sources' described architecture, supported detection scope, evaluation setting, and deployment assumptions. The table is an interpretive comparison for positioning this project, not a reproduction of an original paper table.
 
 Reference format for the paper body:
 
-- Li, H., Liu, X., Zhang, N., & Xiao, C. (2025). PIGuard: Prompt Injection Guardrail via Mitigating Overdefense for Free. In *Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)* (pp. 30420-30437). Association for Computational Linguistics. https://doi.org/10.18653/v1/2025.acl-long.1468
+- Li, H., Liu, X., Zhang, N., & Xiao, C. (2025). PIGuard: Prompt Injection Guardrail via Mitigating Overdefense for Free. In *Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)* (pp. 30420-30437). Association for Computational Linguistics. https://doi.org/10.18653/v1/2025.acl-long.1468 Official code: https://github.com/leolee99/PIGuard
 - ProtectAI. (n.d.). `protectai/deberta-v3-base-prompt-injection-v2` [Hugging Face model card]. Hugging Face. https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2
 - Meta. (2025). `Llama-Prompt-Guard-2-22M` and `Llama-Prompt-Guard-2-86M` [Hugging Face model cards]. Hugging Face. https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-22M
 

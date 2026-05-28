@@ -338,6 +338,10 @@ def _render_fix_report(
         "",
         "protectai/prompt-injection-validation 데이터셋에서 초기 Hybrid 파이프라인은 Lightweight Model Only보다 낮은 F1을 보였다. 원인 분석 결과, Hybrid는 Model Only와 동일한 TP/FN을 기록했지만 FP가 2건에서 20건으로 증가하였다. 이는 Rule 계층이 해당 데이터셋에서 모델이 놓친 공격을 추가로 복구하지 못하고, 일부 정상 샘플을 위험으로 오탐했기 때문이다. 따라서 본 시스템의 Hybrid 구조는 모든 벤치마크에서 단일 모델보다 우수한 분류기로 해석하기보다, 개인정보 탐지, 정책 결정, reason_code, 감사 가능성을 결합한 운영형 보안 파이프라인으로 해석한다.",
         "",
+        "## Claim Boundary",
+        "",
+        "이 결과는 Hybrid Calibrated가 Model Only보다 높은 탐지 성능을 달성했다는 의미가 아니다. 기존 Hybrid OR 결합에서 발생한 rule-driven false positive를 억제하여 Model Only 수준의 F1을 회복했다는 의미다. 따라서 본 결과는 “Hybrid 우수성”의 근거가 아니라 “Hybrid 결합 정책 보정 필요성”의 근거로 해석한다.",
+        "",
     ]
     return "\n".join(lines)
 

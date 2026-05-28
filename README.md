@@ -150,7 +150,7 @@ flowchart TD
 | internal | Model Only | 1.000 | 0.127 | 0.225 | 10 / 0 / 69 | 2.994 |
 | internal | Hybrid | 1.000 | 1.000 | 1.000 | 79 / 0 / 0 | 3.724 |
 
-외부 공개 데이터셋 기준 최신 비교 결과는 다음과 같습니다. 아래 표는 외부 데이터셋을 train 70% / eval 30%로 분리한 held-out eval split 기준이며, eval 샘플은 external-tuned 모델 학습에 사용하지 않았습니다.
+외부 공개 데이터셋 기준 비교 결과는 다음과 같습니다. 아래 표는 외부 데이터셋을 train 70% / eval 30%로 분리한 held-out eval split 기준이며, eval 샘플은 external-tuned 모델 학습에 사용하지 않았습니다. 이 표의 `Hybrid / Full Pipeline` protectai 값은 보정 전 기존 OR 결합 결과로 보존한 값이며, calibrated fusion 적용 후 결과는 아래 별도 표에서 분리해 제시합니다.
 
 | Dataset | Model Version | Mode | Precision | Recall | F1 | Accuracy | TP / FP / FN |
 |---|---|---|---:|---:|---:|---:|---:|
@@ -164,7 +164,21 @@ flowchart TD
 | `Lakera/gandalf_ignore_instructions` | external-tuned | Lightweight Model Only | N/A | 0.9867 | N/A | 0.9867 | 296 / N/A / 4 |
 | `Lakera/gandalf_ignore_instructions` | external-tuned | Hybrid / Full Pipeline | N/A | 0.9867 | N/A | 0.9867 | 296 / N/A / 4 |
 
+`N/A`는 성능이 0이라는 뜻이 아니라, 해당 지표를 계산할 수 없거나 평가 범위에 포함되지 않는다는 의미다. 예를 들어 `Lakera/gandalf_ignore_instructions`는 공격 샘플 중심 데이터셋이므로 정상 샘플 기반 FP/TN을 정의하기 어렵고, Precision/F1보다 Recall 중심의 attack-recall stress test로 해석한다. Prompt Injection 공개 데이터셋은 PII 탐지 성능 평가 대상이 아니므로 PII 지표와도 분리한다.
+
 protectai/prompt-injection-validation 데이터셋에서는 Lightweight Model Only가 Hybrid보다 높은 F1을 보였다. 세부적으로 Model Only와 Hybrid는 동일한 TP/FN을 기록했으나, Hybrid에서 FP가 2건에서 20건으로 증가하였다. 이는 Rule 계층이 해당 데이터셋에서 추가적인 공격 탐지 이득을 제공하지 못하고, 일부 정상 문장을 위험으로 오탐했기 때문이다. 따라서 본 연구에서는 Hybrid 구조를 단일 모델 대비 항상 우수한 탐지기로 주장하지 않고, 개인정보 탐지, 정책 결정, reason_code 기반 설명 가능성, 감사 가능성을 포함한 운영형 보안 프록시 구조로 해석한다. 세부 분석은 `reports/protectai_hybrid_fp_analysis.md`와 `reports/protectai_hybrid_fix_report.md`에 보존했다.
+
+#### protectai Hybrid Calibrated 결과
+
+`protectai/prompt-injection-validation` 데이터셋에서는 기존 `Hybrid / Full Pipeline` OR 결합 방식이 `Lightweight Model Only`보다 낮은 F1을 보였다. 원인 분석 결과, 기존 Hybrid는 Model Only와 동일한 TP/FN을 기록했지만 FP가 2건에서 20건으로 증가하였다. 이후 calibrated fusion을 적용하여 medium severity rule은 모델 점수의 보조 근거가 있을 때만 최종 positive로 반영하도록 조정하였다.
+
+| Mode | Precision | Recall | F1 | TP / FP / FN | 해석 |
+|---|---:|---:|---:|---|---|
+| Lightweight Model Only | 0.9946 | 0.8876 | 0.9381 | 371 / 2 / 47 | 모델 단독 기준 |
+| Hybrid / Full Pipeline 기존 OR | 0.9488 | 0.8876 | 0.9172 | 371 / 20 / 47 | Rule FP가 추가되어 F1 하락 |
+| Hybrid Calibrated | 0.9946 | 0.8876 | 0.9381 | 371 / 2 / 47 | 불필요한 rule override를 억제하여 Model Only 수준으로 회복 |
+
+이 결과는 Hybrid Calibrated가 Model Only보다 우수하다는 의미가 아니다. 본 결과는 prompt-injection-only benchmark에서 rule 기반 보안 정책을 모델 결과와 결합할 때 severity 분류와 threshold 보정이 필요하다는 점을 보여준다. 본 프로젝트의 Hybrid 구조는 단일 분류 성능 향상만을 목표로 하는 앙상블이 아니라, 개인정보 탐지, 정책 결정, reason_code 기반 설명 가능성, 감사 가능성을 함께 제공하는 운영형 보안 파이프라인으로 해석한다.
 
 internal-only baseline에서는 외부 영어 데이터셋에서 Hybrid / Full Pipeline 결과가 Rule Only와 유사했다. 이는 경량 모델이 로드되지 않았기 때문이 아니라, 기존 모델이 Rule 계층이 놓친 영어 공격 샘플을 거의 추가 탐지하지 못했기 때문이다.
 
@@ -766,7 +780,7 @@ False Negative cases are the most important review target because they represent
 | `protectai/prompt-injection-validation` | 3,227 | 0.8399 | 0.1997 | 0.3227 | 0.6384 |
 | `Lakera/gandalf_ignore_instructions` | 1,000 | N/A | 0.4680 | N/A | 0.4680 |
 
-held-out eval split 기준 external-tuned 최신 결과(`Hybrid / Full Pipeline`)는 다음과 같습니다.
+held-out eval split 기준 external-tuned 기존 OR 결합 결과(`Hybrid / Full Pipeline`, 보정 전)는 다음과 같이 참고값으로 보존합니다. protectai 보정 전/후 해석은 위 `protectai Hybrid Calibrated 결과`와 `reports/protectai_hybrid_fix_report.md`를 기준으로 합니다.
 
 | Dataset | Eval Size | Precision | Recall | F1 | Accuracy | Model Unique TP |
 |---|---:|---:|---:|---:|---:|---:|

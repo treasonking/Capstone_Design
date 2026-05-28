@@ -163,6 +163,21 @@ def _safe_div(numerator: float, denominator: float) -> float:
     return numerator / denominator if denominator else 0.0
 
 
+def _na_reason(
+    dataset_status: str,
+    model_status: str,
+    *,
+    positive_only: bool = False,
+) -> str:
+    if dataset_status in {"unavailable", "empty"}:
+        return f"dataset_{dataset_status}"
+    if positive_only:
+        return "positive_only_dataset_precision_f1_not_applicable"
+    if model_status in {"artifact_missing", "dependency_missing", "disabled", "error"}:
+        return f"model_{model_status}"
+    return ""
+
+
 def _is_model_injection_prediction(prediction: LightweightPrediction) -> bool:
     if not prediction.detected:
         return False
@@ -346,6 +361,11 @@ def _metric_result(
 
     size = len(dataset.samples)
     positive_only = size > 0 and all(sample.expected_injection for sample in dataset.samples)
+    na_reason = (
+        "positive_only_dataset_precision_f1_not_applicable"
+        if positive_only
+        else ""
+    )
     precision = None if positive_only else _safe_div(tp, tp + fp)
     recall = _safe_div(tp, tp + fn)
     f1 = None if precision is None else _safe_div(2 * precision * recall, precision + recall)
@@ -365,6 +385,8 @@ def _metric_result(
         "tn": None if positive_only else tn,
         "fn": fn,
         "positive_only": positive_only,
+        "na_reason": na_reason,
+        "metric_scope": "prompt_injection_binary_classification",
         "latency_ms_avg": round(sum(latencies) / len(latencies), 3) if latencies else 0.0,
         "model_status": model_status,
         "dataset_status": dataset.status,
@@ -396,6 +418,12 @@ def _na_result(
         "tn": None,
         "fn": None,
         "positive_only": dataset.spec.positive_only,
+        "na_reason": _na_reason(
+            dataset.status,
+            model_status,
+            positive_only=dataset.spec.positive_only,
+        ),
+        "metric_scope": "not_available",
         "latency_ms_avg": None,
         "model_status": model_status,
         "dataset_status": dataset.status,
@@ -668,6 +696,8 @@ def _render_markdown(
             "",
             "## Current Mode Comparison",
             "",
+            "현재 `Hybrid / Full Pipeline` 행은 prompt-injection benchmark용 calibrated fusion 기준이다. protectai 보정 전 기존 OR 결합 결과와 보정 후 비교는 `reports/protectai_hybrid_fix_report.md`에 별도로 보존한다.",
+            "",
             "| Dataset | Model Version | Mode | Size | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN | Avg Latency(ms) | Model Status |",
             "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
         ]
@@ -798,6 +828,26 @@ def _render_markdown(
             "`deepset/prompt-injections`의 external-tuned 결과는 held-out eval split 기준으로 크게 개선되었다. 다만 이 평가는 all split을 프로젝트 내부에서 70/30으로 다시 나눈 custom split 기준이므로, 원본 official split 또는 text-hash leakage 검사를 함께 해석해야 한다. 특히 Precision 1.0000, FP 0이 관찰되므로 label mapping, text overlap, near-duplicate 여부를 추가 확인한다.",
             "",
             "관련 검증 보고서: `reports/external_split_leakage_report.md`, `reports/external_label_sanity_check.md`, `reports/deepset_official_split_report.md`, `reports/external_model_confidence_report.md`.",
+            "",
+            "## N/A Interpretation",
+            "",
+            "본 보고서에서 `N/A`는 성능이 0이라는 의미가 아니다. 지표를 계산할 수 없거나 해당 평가 범위에 포함되지 않는 경우를 의미한다.",
+            "",
+            "| N/A 유형 | 원인 | 해당 사례 | 해석 |",
+            "|---|---|---|---|",
+            "| Positive-only dataset | 데이터셋이 공격 샘플만 포함하여 FP/TN을 정의할 수 없음 | `Lakera/gandalf_ignore_instructions` | Precision/F1 대신 Recall과 Accuracy를 attack-recall stress test로 해석 |",
+            "| Model unavailable | 경량 모델 artifact 누락, 의존성 누락, 비활성화, 로딩 실패 | Model Only가 N/A인 경우 | 모델 성능이 0이라는 뜻이 아니라 해당 실행 조건에서 모델 평가가 불가능했다는 의미 |",
+            "| Metric not computed | AUROC 등 별도 score 기반 지표를 산출하지 않음 | AUROC N/A | 해당 지표를 측정하지 않았다는 의미 |",
+            "| Dataset unavailable | 데이터셋 로딩 실패 또는 샘플 없음 | dataset_status가 unavailable/empty | 평가 대상 데이터가 없어 결과 산출 불가 |",
+            "| Scope mismatch | Prompt Injection 데이터셋이므로 PII 성능을 평가하지 않음 | deepset/protectai/Lakera의 PII 결과 | PII 탐지 성능과 별도로 해석 |",
+            "",
+            "특히 `Lakera/gandalf_ignore_instructions`는 공격 중심 데이터셋이므로 정상 샘플 기반의 FP/TN을 계산할 수 없다. 따라서 Precision과 F1은 `N/A`로 표시하고, Recall과 Accuracy를 공격 샘플을 얼마나 탐지했는지 보는 stress test 지표로 해석한다.",
+            "",
+            "## protectai Hybrid Fusion Interpretation",
+            "",
+            "`protectai/prompt-injection-validation` 데이터셋에서 기존 Hybrid OR 결합 방식은 Lightweight Model Only보다 낮은 F1을 보였다. 이는 Rule 계층이 모델이 놓친 공격을 추가로 탐지하지 못하고, 정상 샘플 일부를 prompt injection으로 오탐했기 때문이다.",
+            "",
+            "따라서 protectai 결과는 Hybrid 구조가 항상 단일 모델보다 우수하다는 근거로 사용하지 않는다. 본 프로젝트에서는 해당 결과를 rule severity와 model support threshold가 필요한 사례로 해석한다. 세부 FP 샘플과 reason_code 분석은 `reports/protectai_hybrid_fp_analysis.md`에 기록하고, 보정 전/후 결과는 `reports/protectai_hybrid_fix_report.md`에 기록한다.",
         ]
     )
 
@@ -912,6 +962,8 @@ def _write_csv(rows: list[dict[str, Any]], path: Path) -> None:
         "tn",
         "fn",
         "positive_only",
+        "na_reason",
+        "metric_scope",
         "latency_ms_avg",
         "model_status",
         "dataset_status",

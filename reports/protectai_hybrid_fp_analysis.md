@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Generated at: `2026-05-29T00:48:04`
+- Generated at: `2026-05-29T01:53:31`
 - Dataset: protectai/prompt-injection-validation
 - Dataset note: Loaded from held-out eval split: datasets\external_splits\eval_external_prompt_injection.jsonl
 - Model version: `external-tuned`

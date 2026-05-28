@@ -14,20 +14,21 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.app.config import DetectionSettings
-from backend.app.detection.hybrid_detector import detect_hybrid
 from backend.app.detection.injection_detector import detect_injection
 from backend.app.detection.lightweight_classifier import (
     LightweightClassifier,
     LightweightModelStatus,
     LightweightPrediction,
 )
-from backend.app.detection.models import DetectorType
 from evaluation.external_datasets import (
     ExternalSample,
     load_deepset_prompt_injections,
     load_lakera_gandalf_ignore_instructions,
     load_protectai_prompt_injection_validation,
+)
+from evaluation.prompt_injection_fusion import (
+    fuse_prompt_injection_decision,
+    prompt_injection_model_score,
 )
 
 
@@ -91,6 +92,11 @@ class PredictionDecision:
     rule_predicted: bool | None = None
     model_predicted: bool | None = None
     pipeline_predicted: bool | None = None
+    final_action: str = ""
+    rule_reason_codes: tuple[str, ...] = ()
+    high_reason_codes: tuple[str, ...] = ()
+    medium_reason_codes: tuple[str, ...] = ()
+    low_reason_codes: tuple[str, ...] = ()
     model_hit_cancelled_by_safe_guard: bool = False
 
 
@@ -184,41 +190,33 @@ def _model_only(classifier: LightweightClassifier) -> Predictor:
 
 
 def _hybrid_pipeline(classifier: LightweightClassifier, threshold: float) -> Predictor:
-    settings = DetectionSettings(
-        enable_model_detector=True,
-        detection_mode="hybrid",
-        model_detector_threshold=threshold,
-        model_detector_fail_mode="warn",
-    )
-
     def predict(text: str) -> PredictionDecision:
-        rule_predicted = _rule_only(text)
-        result = detect_hybrid(text, classifier=classifier, settings=settings)
-        model_predicted = (
-            _is_model_injection_prediction(result.model_prediction)
-            if result.model_prediction is not None
-            else False
+        rule_hits = detect_injection(text)
+        rule_predicted = bool(rule_hits)
+        model_prediction = classifier.classify(text)
+        model_predicted = _is_model_injection_prediction(model_prediction)
+        model_score = prompt_injection_model_score(
+            classifier,
+            text,
+            model_prediction,
+            model_predicted,
         )
-        pipeline_predicted = any(
-            detection.detector_type == DetectorType.INJECTION
-            for detection in result.detections
-        )
-        model_injection_detection = any(
-            detection.detector_type == DetectorType.INJECTION
-            and detection.detector_name == "llm"
-            for detection in result.detections
-        )
-        model_hit_cancelled_by_safe_guard = (
-            model_predicted
-            and not model_injection_detection
-            and "SAFE_SECURITY_EXPLANATION" in result.reason_codes
+        fusion = fuse_prompt_injection_decision(
+            model_predicted=model_predicted,
+            model_score=model_score,
+            rule_hits=rule_hits,
+            text=text,
         )
         return PredictionDecision(
-            predicted=rule_predicted or model_predicted,
+            predicted=fusion.predicted,
             rule_predicted=rule_predicted,
             model_predicted=model_predicted,
-            pipeline_predicted=pipeline_predicted,
-            model_hit_cancelled_by_safe_guard=model_hit_cancelled_by_safe_guard,
+            pipeline_predicted=fusion.predicted,
+            final_action=fusion.final_action,
+            rule_reason_codes=fusion.rule_reason_codes,
+            high_reason_codes=fusion.high_reason_codes,
+            medium_reason_codes=fusion.medium_reason_codes,
+            low_reason_codes=fusion.low_reason_codes,
         )
 
     return predict
@@ -374,7 +372,7 @@ def _metric_result(
     }
     if saw_decision_diagnostics:
         row.update(decision_diagnostics)
-        row["hybrid_prediction_formula"] = "rule_predicted OR model_predicted"
+        row["hybrid_prediction_formula"] = "calibrated_prompt_injection_fusion"
     return row
 
 
@@ -843,7 +841,7 @@ def _render_markdown(
             "",
             "- `Rule Only`는 `backend/app/detection/injection_detector.py`의 규칙·휴리스틱 Prompt Injection 탐지만 사용한다.",
             "- `Lightweight Model Only`는 `models/lightweight/vectorizer.joblib`와 `models/lightweight/classifier.joblib`가 실제로 로드된 경우에만 측정한다.",
-            "- `Hybrid / Full Pipeline`은 `rule_predicted OR model_predicted` 기준으로 집계한다. safe explanation guard가 model hit를 취소한 경우에는 JSON 결과의 `model_hit_cancelled_by_safe_guard_count`와 `model_hit_cancelled_by_safe_guard_tp`에 별도로 기록한다.",
+            "- `Hybrid / Full Pipeline`은 prompt-injection benchmark 기준에서 PII rule을 제외하고, 모델 탐지 또는 HIGH severity injection rule, 또는 충분한 모델 support가 있는 MEDIUM severity injection rule만 positive로 집계한다.",
             "- `Lakera/gandalf_ignore_instructions`는 공격 샘플 중심 데이터셋이므로 Precision, F1, FP, TN은 `N/A`로 표시하고 Recall과 Accuracy 중심으로 해석한다.",
             "- `model_status`가 `enabled`가 아니면 Hybrid 결과는 경량 분류 계층이 빠진 fallback 성격이므로 완전한 Hybrid 성능으로 과장하지 않는다.",
             "- sklearn artifact 버전 경고가 발생하면 같은 scikit-learn 버전으로 artifact를 재생성한 뒤 결과를 다시 확인한다.",

@@ -164,9 +164,11 @@ flowchart TD
 | `Lakera/gandalf_ignore_instructions` | external-tuned | Lightweight Model Only | N/A | 0.9867 | N/A | 0.9867 | 296 / N/A / 4 |
 | `Lakera/gandalf_ignore_instructions` | external-tuned | Hybrid / Full Pipeline | N/A | 0.9867 | N/A | 0.9867 | 296 / N/A / 4 |
 
+protectai/prompt-injection-validation 데이터셋에서는 Lightweight Model Only가 Hybrid보다 높은 F1을 보였다. 세부적으로 Model Only와 Hybrid는 동일한 TP/FN을 기록했으나, Hybrid에서 FP가 2건에서 20건으로 증가하였다. 이는 Rule 계층이 해당 데이터셋에서 추가적인 공격 탐지 이득을 제공하지 못하고, 일부 정상 문장을 위험으로 오탐했기 때문이다. 따라서 본 연구에서는 Hybrid 구조를 단일 모델 대비 항상 우수한 탐지기로 주장하지 않고, 개인정보 탐지, 정책 결정, reason_code 기반 설명 가능성, 감사 가능성을 포함한 운영형 보안 프록시 구조로 해석한다. 세부 분석은 `reports/protectai_hybrid_fp_analysis.md`와 `reports/protectai_hybrid_fix_report.md`에 보존했다.
+
 internal-only baseline에서는 외부 영어 데이터셋에서 Hybrid / Full Pipeline 결과가 Rule Only와 유사했다. 이는 경량 모델이 로드되지 않았기 때문이 아니라, 기존 모델이 Rule 계층이 놓친 영어 공격 샘플을 거의 추가 탐지하지 못했기 때문이다.
 
-동일 held-out eval split의 overlap 분석 기준 `Model Only Unique TP`는 internal-only에서 `deepset=0`, `protectai=0`, `Lakera=6`이었고, external-tuned 모델에서는 threshold 0.30 기준 `deepset=43`, `protectai=273`, `Lakera=167`로 증가했다. 따라서 이번 개선은 Hybrid가 Rule miss를 실제로 추가 탐지하도록 모델 계층 기여도를 높인 결과다.
+동일 held-out eval split의 overlap 분석 기준 `Model Only Unique TP`는 internal-only에서 `deepset=0`, `protectai=0`, `Lakera=6`이었고, external-tuned 모델에서는 threshold 0.30 기준 `deepset=43`, `protectai=273`, `Lakera=167`로 증가했다. 다만 protectai에서는 Rule 계층이 Model Only의 FN을 추가로 복구하지 못했으므로, Hybrid 평가는 모델 기여도와 rule-driven FP를 함께 해석한다.
 
 Threshold optimizer는 external-tuned 모델에서 `0.30`을 추천했다. 다만 이는 eval split 기준 F1/Recall 후보값이므로 운영 threshold로 즉시 고정하기보다 hard negative와 실제 운영 분포에서 FP를 다시 확인해야 한다.
 

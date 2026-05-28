@@ -195,27 +195,96 @@ class LightweightClassifier:
             )
 
     def _confidence(self, features: Any, predicted_label: str) -> float:
+        probabilities_by_class = self._class_probabilities(features)
+        if probabilities_by_class:
+            if predicted_label in probabilities_by_class:
+                return probabilities_by_class[predicted_label]
+            return max(probabilities_by_class.values())
+
+        return 1.0
+
+    def prompt_injection_score(self, text: str) -> float:
+        if not text.strip():
+            return 0.0
+
+        self._ensure_loaded()
+        if not self.enabled:
+            return 0.0
+
+        try:
+            features = self._vectorizer.transform([text])
+            probabilities_by_class = self._class_probabilities(features)
+        except Exception:  # pragma: no cover
+            self._vectorizer = None
+            self._classifier = None
+            self._status_code = "error"
+            self._status_note = "Lightweight model inference failed."
+            return 0.0
+
+        return round(
+            max(
+                (
+                    probability
+                    for label, probability in probabilities_by_class.items()
+                    if _is_injection_label(label)
+                ),
+                default=0.0,
+            ),
+            3,
+        )
+
+    def _class_probabilities(self, features: Any) -> dict[str, float]:
+        classes = [
+            str(item).strip().lower()
+            for item in getattr(self._classifier, "classes_", [])
+        ]
+        if not classes:
+            return {}
+
         if hasattr(self._classifier, "predict_proba"):
-            probabilities = self._classifier.predict_proba(features)[0]
-            classes = [
-                str(item).strip().lower()
-                for item in getattr(self._classifier, "classes_", [])
-            ]
-            if predicted_label in classes:
-                return float(probabilities[classes.index(predicted_label)])
-            return float(max(probabilities))
+            try:
+                probabilities = self._classifier.predict_proba(features)[0]
+                return {
+                    label: float(probabilities[index])
+                    for index, label in enumerate(classes)
+                    if index < len(probabilities)
+                }
+            except AttributeError:
+                # Older sklearn runtimes can load newer LogisticRegression
+                # artifacts but fail inside predict_proba because a newly
+                # expected attribute is missing. The decision function still
+                # carries the same class margins, so derive probabilities from
+                # those margins instead of marking the model unavailable.
+                pass
 
         if hasattr(self._classifier, "decision_function"):
             margin = self._classifier.decision_function(features)
             if hasattr(margin, "__len__"):
-                value = float(
-                    margin[0] if len(margin) == 1 else max(margin[0])
-                )
+                raw_values = margin[0] if len(margin) == 1 else margin
+                if hasattr(raw_values, "__len__"):
+                    values = [float(item) for item in raw_values]
+                else:
+                    values = [float(raw_values)]
             else:
-                value = float(margin)
-            return 1.0 / (1.0 + math.exp(-value))
+                values = [float(margin)]
 
-        return 1.0
+            if len(classes) == 2 and len(values) == 1:
+                positive_probability = 1.0 / (1.0 + math.exp(-values[0]))
+                return {
+                    classes[0]: 1.0 - positive_probability,
+                    classes[1]: positive_probability,
+                }
+            if len(values) == len(classes):
+                max_value = max(values)
+                exp_values = [math.exp(value - max_value) for value in values]
+                total = sum(exp_values)
+                if total:
+                    return {
+                        label: exp_values[index] / total
+                        for index, label in enumerate(classes)
+                    }
+
+        return {}
 
 
 @dataclass(frozen=True, slots=True)
@@ -244,6 +313,15 @@ def _map_label(label: str) -> _LabelMapping | None:
             ReasonCode.MODEL_INJECTION_RISK.value,
         )
     return None
+
+
+def _is_injection_label(label: str) -> bool:
+    normalized = label.lower()
+    return (
+        "inj" in normalized
+        or "prompt" in normalized
+        or "jailbreak" in normalized
+    )
 
 
 def prediction_to_detection(

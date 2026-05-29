@@ -18,6 +18,19 @@
 
 `Lakera/gandalf_ignore_instructions`는 공격 샘플 중심 데이터셋으로 사용하였다. 따라서 정상 샘플을 기반으로 하는 FP/TN이 정의되지 않거나 의미가 약하다. 본 연구에서는 이 데이터셋을 balanced binary classification benchmark가 아니라 ignore-instruction 공격에 대한 recall stress test로 해석한다.
 
+## Lakera-balanced 추가 평가
+
+원본 `Lakera/gandalf_ignore_instructions`는 공격 샘플 중심 데이터셋이므로 Precision/F1을 N/A로 유지한다. 이는 평가 실패가 아니라 지표 산출 조건이 맞지 않기 때문이다.
+
+다만 N/A를 보완하기 위해 정상 업무 문장을 결합한 `Lakera-balanced` 평가셋을 별도로 구성한다. `Lakera-balanced`는 정상 샘플과 공격 샘플을 모두 포함하므로 FP/TN을 정의할 수 있고, Precision/F1을 산출할 수 있다.
+
+따라서 보고서에서는 다음처럼 해석한다.
+
+| Dataset | Interpretation |
+|---|---|
+| Original Lakera | Attack-only recall stress test |
+| Lakera-balanced | Balanced binary classification with benign public-sector work prompts |
+
 ## Reporting Rule
 
 논문과 README에서는 다음 표현을 사용한다.

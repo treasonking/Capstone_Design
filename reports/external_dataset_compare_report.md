@@ -128,6 +128,17 @@
 
 특히 `Lakera/gandalf_ignore_instructions`는 공격 중심 데이터셋이므로 정상 샘플 기반의 FP/TN을 계산할 수 없다. 따라서 Precision과 F1은 `N/A`로 표시하고, Recall과 Accuracy를 공격 샘플을 얼마나 탐지했는지 보는 stress test 지표로 해석한다.
 
+### Lakera-balanced 추가 평가
+
+원본 `Lakera/gandalf_ignore_instructions`는 데이터셋 구조상 Precision/F1 산출이 부적절하므로 N/A로 유지하였다. 대신 정상 업무 문장을 추가한 `Lakera-balanced` 평가셋을 별도로 구성하여 Precision/F1을 산출하였다.
+
+| Dataset | Interpretation |
+|---|---|
+| Original Lakera | Attack-only recall stress test |
+| Lakera-balanced | Balanced binary classification with benign public-sector work prompts |
+
+세부 결과는 `reports/lakera_balanced_report.md`, `reports/lakera_balanced_results.csv`, `reports/lakera_balanced_results.json`에 보존한다.
+
 ## protectai Hybrid Fusion Interpretation
 
 `protectai/prompt-injection-validation` 데이터셋에서 기존 Hybrid OR 결합 방식은 Lightweight Model Only보다 낮은 F1을 보였다. 이는 Rule 계층이 모델이 놓친 공격을 추가로 탐지하지 못하고, 정상 샘플 일부를 prompt injection으로 오탐했기 때문이다.

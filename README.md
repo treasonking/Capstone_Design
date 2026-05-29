@@ -166,6 +166,19 @@ flowchart TD
 
 `N/A`는 성능이 0이라는 뜻이 아니라, 해당 지표를 계산할 수 없거나 평가 범위에 포함되지 않는다는 의미다. 예를 들어 `Lakera/gandalf_ignore_instructions`는 공격 샘플 중심 데이터셋이므로 정상 샘플 기반 FP/TN을 정의하기 어렵고, Precision/F1보다 Recall 중심의 attack-recall stress test로 해석한다. Prompt Injection 공개 데이터셋은 PII 탐지 성능 평가 대상이 아니므로 PII 지표와도 분리한다.
 
+#### Lakera-balanced 평가셋
+
+`Lakera/gandalf_ignore_instructions` 원본 평가는 공격 중심 데이터셋이므로 Precision/F1을 `N/A`로 유지하고 Recall 중심의 attack-recall stress test로 해석한다.
+
+추가로 정상 업무 문장을 결합한 `Lakera-balanced` 평가셋을 구성하였다. 이 평가셋은 Lakera 공격 샘플과 공공기관·사내망 업무형 정상 문장을 함께 포함하므로 FP/TN을 정의할 수 있고, Precision, Recall, F1을 함께 산출할 수 있다.
+
+| Dataset | Purpose | Precision/F1 |
+|---|---|---|
+| `Lakera/gandalf_ignore_instructions` | Attack-recall stress test | N/A 유지 |
+| `Lakera-balanced` | Balanced binary classification | 산출 가능 |
+
+세부 결과는 `reports/lakera_balanced_report.md`에 보존한다.
+
 protectai/prompt-injection-validation 데이터셋에서는 Lightweight Model Only가 Hybrid보다 높은 F1을 보였다. 세부적으로 Model Only와 Hybrid는 동일한 TP/FN을 기록했으나, Hybrid에서 FP가 2건에서 20건으로 증가하였다. 이는 Rule 계층이 해당 데이터셋에서 추가적인 공격 탐지 이득을 제공하지 못하고, 일부 정상 문장을 위험으로 오탐했기 때문이다. 따라서 본 연구에서는 Hybrid 구조를 단일 모델 대비 항상 우수한 탐지기로 주장하지 않고, 개인정보 탐지, 정책 결정, reason_code 기반 설명 가능성, 감사 가능성을 포함한 운영형 보안 프록시 구조로 해석한다. 세부 분석은 `reports/protectai_hybrid_fp_analysis.md`와 `reports/protectai_hybrid_fix_report.md`에 보존했다.
 
 #### protectai Hybrid Calibrated 결과
@@ -666,6 +679,9 @@ python -m evaluation.external_dataset_compare --eval-path datasets/external_spli
 - `reports/external_dataset_compare_report.md`
 - `reports/external_dataset_compare_results.json`
 - `reports/external_dataset_compare_results.csv`
+- `reports/lakera_balanced_report.md`
+- `reports/lakera_balanced_results.json`
+- `reports/lakera_balanced_results.csv`
 - `reports/external_overlap_analysis_report.md`
 - `reports/external_overlap_analysis_results.json`
 - `reports/external_overlap_analysis_results.csv`
@@ -679,6 +695,13 @@ python -m evaluation.external_dataset_compare --eval-path datasets/external_spli
 - `reports/external_model_confidence_results.json`
 
 이 평가는 Hugging Face 공개 데이터셋 `deepset/prompt-injections`, `protectai/prompt-injection-validation`, `Lakera/gandalf_ignore_instructions`를 사용하며, `Rule Only`, `Lightweight Model Only`, `Hybrid / Full Pipeline`을 분리 측정합니다.
+
+원본 Lakera는 positive-only 데이터셋이므로 Precision/F1을 `N/A`로 유지합니다. 정상 업무 문장을 결합한 별도 `Lakera-balanced` 평가셋은 다음 명령으로 생성 및 평가합니다.
+
+```bash
+python -m evaluation.lakera_balanced_dataset --source datasets/external_splits/eval_external_prompt_injection.jsonl --output evaluation/lakera_balanced_eval.jsonl --per-class 300
+python -m evaluation.external_dataset_compare --eval-path evaluation/lakera_balanced_eval.jsonl --model-dir models/lightweight_external_tuned --model-version external-tuned --threshold 0.30 --csv reports/lakera_balanced_results.csv --json reports/lakera_balanced_results.json --report reports/lakera_balanced_report.md
+```
 
 추가 분석 명령:
 
@@ -804,6 +827,9 @@ False Negative cases are the most important review target because they represent
 - `reports/external_dataset_compare_report.md`
 - `reports/external_dataset_compare_results.json`
 - `reports/external_dataset_compare_results.csv`
+- `reports/lakera_balanced_report.md`
+- `reports/lakera_balanced_results.json`
+- `reports/lakera_balanced_results.csv`
 - `reports/external_overlap_analysis_report.md`
 - `reports/external_threshold_sweep_report.md`
 - `reports/external_threshold_optimizer_report.md`
@@ -830,6 +856,8 @@ held-out eval split 기준 external-tuned 기존 OR 결합 결과(`Hybrid / Full
 | `deepset/prompt-injections` | 199 | 1.0000 | 0.6329 | 0.7752 | 0.8543 | 43 |
 | `protectai/prompt-injection-validation` | 969 | 0.9488 | 0.8876 | 0.9172 | 0.9309 | 273 |
 | `Lakera/gandalf_ignore_instructions` | 300 | N/A | 0.9867 | N/A | 0.9867 | 167 |
+
+`Lakera/gandalf_ignore_instructions`는 원본 구조상 attack-recall stress test로 유지한다. 별도 `Lakera-balanced` 평가셋은 Lakera 공격 샘플 300건과 정상 업무 문장 300건을 결합한 600건 binary classification 평가셋이며, Precision/F1과 FP/TN 산출을 위해 추가했다. 이 결과는 원본 Lakera의 N/A를 대체하지 않는다.
 
 실행 명령:
 

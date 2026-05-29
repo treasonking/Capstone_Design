@@ -23,24 +23,46 @@ Request
   → Validator Agent
   → Response
   → Audit Log
-  → PQC-based Integrity Signature
+  → Audit Integrity Signature
 ```
 
-Validator Agent는 LLM 응답 생성 이후 최종 사용자 반환 이전 단계에서 출력 재검사를 수행합니다. 출력 내 개인정보 잔존, 정책 위반 응답, 마스킹 누락을 검사하고 `output_action`을 `ALLOW`, `MASK`, `BLOCK`, `WARN`으로 분리 기록합니다.
+Validator Agent는 핵심 탐지 모델이 아니라, LLM 응답 생성 이후 최종 사용자 반환 이전 단계에서 프록시의 정책 결정 결과를 재검증하기 위한 운영형 확장 요소입니다. 출력 내 개인정보 잔존, 정책 위반 응답, 마스킹 누락을 확인하고 `output_action`을 `ALLOW`, `MASK`, `BLOCK`, `WARN`으로 분리 기록합니다.
 
-PQC는 탐지 성능 개선이 아니라 감사 로그 무결성 보호를 위한 확장 기능입니다. 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니며, 현재 구현은 ML-DSA 교체가 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조입니다. 감사 로그의 normalized JSON에서 `integrity.signature` 필드를 제외하고 SHA-256 해시를 만든 뒤, 개발 환경에서는 내부적으로 HMAC-SHA256을 사용하는 `MOCK-ML-DSA` signer로 서명합니다.
+PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 향상시키기 위한 요소가 아니라, 감사로그의 사후 위·변조 가능성을 줄이기 위한 무결성 확장 요소입니다. 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니며, 현재 구현은 ML-DSA 교체가 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조입니다. 감사 로그의 normalized JSON에서 `integrity.signature` 필드를 제외하고 SHA-256 해시를 만든 뒤, 개발 환경에서는 내부적으로 HMAC-SHA256을 사용하는 `MOCK-ML-DSA` signer로 서명합니다.
 
 `logs/audit_log.jsonl`에는 raw prompt, raw response, API key, system prompt, 개인정보 원문을 저장하지 않습니다. 감사 로그에는 `input_action`, `output_action`, `final_action`, Validator Agent 결과, detector 요약, integrity signature만 저장합니다.
 
+### Validator Agent and Audit Integrity Scope
+
+Validator Agent는 본 프로젝트의 핵심 탐지 모델이 아니라, 프록시가 산출한 정책 결정 결과를 재검증하기 위한 운영형 확장 요소이다. 입력 탐지와 출력 검사를 수행한 뒤 생성된 `action`과 `reason_code`가 정책 기준에 부합하는지 확인함으로써, 실제 운영 환경에서 정책 결정의 일관성과 설명 가능성을 높이는 데 목적이 있다.
+
+다만 본 브랜치에서는 Validator Agent 자체의 독립적인 성능 벤치마킹을 수행하지 않는다. 따라서 Validator Agent는 정량 성능 비교 대상에서 제외하고, 향후 연구 과제로 분리한다.
+
+PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 향상시키기 위한 요소가 아니라, 감사로그의 사후 위·변조 가능성을 줄이기 위한 무결성 확장 요소이다. 공공기관·사내망 환경에서는 원문 프롬프트를 저장하지 않더라도 어떤 정책 판단이 수행되었는지 추적할 수 있어야 하므로, `action`, `reason_code`, `timestamp`, `request_id` 등 최소 메타데이터에 대한 무결성 검증 구조가 필요하다.
+
+현재 구현은 실제 ML-DSA 완전 적용이 아니라, ML-DSA로 교체 가능한 서명 인터페이스와 Mock signer 기반 검증 구조를 포함한다. 실제 PQC 알고리즘 적용 및 성능 평가는 후속 연구 범위로 둔다.
+
+감사로그의 목적은 원문 프롬프트나 응답을 저장하는 것이 아니라, 어떤 요청이 어떤 정책에 따라 처리되었는지 사후 확인할 수 있도록 최소 메타데이터를 남기는 것이다. 특히 공공기관·사내망 환경에서는 개인정보가 포함된 요청을 원문 그대로 저장하는 것 자체가 추가 위험이 될 수 있으므로, `request_id`, `timestamp`, `action`, `reason_code`, `detector_count`, `upstream_call` 등 최소 항목만 기록한다.
+
+| 항목 | 목적 |
+|---|---|
+| request_id | 요청 단위 추적 |
+| timestamp | 처리 시점 확인 |
+| action | ALLOW/MASK/BLOCK/WARN 정책 결정 확인 |
+| reason_code | 정책 판단 근거 확인 |
+| detector_count | 탐지 근거 수 확인 |
+| upstream_call | 외부 LLM 호출 여부 확인 |
+| signature/mock_signature | 감사로그 무결성 검증 |
+
 발표용 요약:
 
-> Validator Agent는 LLM 응답 생성 이후 최종 사용자 반환 이전 단계에 배치하여, 출력 내 개인정보 잔존 여부와 정책 위반 응답을 재검사하는 출력 검증 계층이다.
+> Validator Agent는 본 연구의 핵심 탐지 모델이 아니라, 프록시 정책 결정 결과의 일관성과 설명 가능성을 재검증하기 위한 운영형 확장 요소이다.
 
-> PQC는 개인정보 탐지나 프롬프트 인젝션 탐지 성능을 향상시키기 위한 기술이 아니라, 탐지 결과와 정책 판정이 기록된 감사 로그의 장기 무결성을 보장하기 위한 보안 확장 요소로 적용한다.
+> PQC는 개인정보 탐지나 프롬프트 인젝션 탐지 성능을 향상시키기 위한 기술이 아니라, 탐지 결과와 정책 판정이 기록된 감사 로그의 무결성 검증을 위한 보안 확장 요소로 적용한다.
 
 > 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니며, 현재 구현은 ML-DSA 교체가 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조이다.
 
-> 본 시스템은 입력 탐지, 정책엔진, 출력 검증, 감사 로그, PQC 기반 무결성 검증으로 구성되며, 이를 통해 LLM 사용 과정에서 발생할 수 있는 개인정보 유출과 정책 위반 응답을 단계적으로 차단한다.
+> Validator Agent와 PQC는 본 연구의 탐지 성능을 높이는 핵심 기법이 아니라, 실제 공공기관·사내망 운영 환경에서 프록시 정책 결정의 신뢰성, 감사 가능성, 로그 무결성을 높이기 위한 확장 요소이다.
 
 ## 프로젝트 배경
 
@@ -73,7 +95,7 @@ User Response
   ↓
 Audit Log
   ↓
-PQC-based Integrity Signature
+Audit Integrity Signature
 ```
 
 ```mermaid
@@ -88,7 +110,7 @@ flowchart TD
     L --> V["Validator Agent<br/>Output Re-check"]
     V --> A["User Response"]
     A --> G["Audit Log"]
-    G --> S["PQC-based Integrity Signature"]
+    G --> S["Audit Integrity Signature<br/>Mock signer"]
 ```
 
 ## 왜 정규식만 사용하지 않는가?
@@ -524,7 +546,7 @@ tools/
 10. 출력에 마스킹 가능한 PII가 있으면 `output_action=MASK`로 마스킹 후 반환하고, 시스템 프롬프트 또는 내부 정책 노출은 `output_action=BLOCK`으로 차단합니다.
 11. `input_action`과 `output_action` 중 더 강한 조치를 `final_action`으로 기록합니다.
 12. audit summary에는 입력/출력 탐지 요약, Validator Agent 결과, 기존 호환성 필드인 `hybrid_detection.model_status` 메타데이터를 남깁니다.
-13. 저장된 audit log에는 PQC-compatible integrity signature를 추가합니다.
+13. 저장된 audit log에는 ML-DSA 교체 가능한 인터페이스를 둔 Mock signer 기반 integrity signature를 추가합니다.
    `detector_counts`는 match가 나온 detector 개수이며, `detectors_invoked`는 실제로 실행된 detector 목록입니다.
 
 `/proxy/analyze`는 LLM 호출이 없는 사전 분석 API이므로 Validator Agent 출력 재검사는 `SKIPPED`로 기록됩니다. SSE 엔드포인트는 보안 검증을 위해 upstream 응답을 버퍼링한 뒤 Validator Agent 검증 후 안전한 응답만 반환하므로, 실시간 토큰 스트리밍이 아니라 검증 후 일괄 반환에 가깝습니다.
@@ -946,7 +968,15 @@ Invoke-RestMethod `
 - `policy_id`는 `default`와 `strict`만 허용되며, 각각 `policies/policy.yaml`과 `policies/strict.yaml`을 사용합니다.
 - `logs/audit_log.jsonl`에는 원문 prompt/response를 저장하지 않고 메타데이터만 기록합니다.
 - 입력 정책 평가, Validator Agent 출력 검증, `final_action`이 audit summary와 audit log에 분리 기록됩니다.
-- audit log는 `MOCK-ML-DSA` 기반 PQC-compatible signer로 무결성 서명을 남깁니다. 이는 실제 ML-DSA 구현이 아니라 내부적으로 HMAC-SHA256을 사용하는 개발용 mock signer입니다.
+- audit log는 ML-DSA 교체 가능한 인터페이스와 `MOCK-ML-DSA` 개발용 mock signer로 무결성 서명을 남깁니다. 이는 실제 ML-DSA 구현이 아니라 내부적으로 HMAC-SHA256을 사용하는 검증 구조입니다.
+
+## Validator Agent and PQC as Future Work
+
+본 연구에서는 개인정보 유출 방지 프록시의 입력 탐지, 출력 검사, 정책 결정, 감사로그 구조를 중심으로 평가하였다. Validator Agent와 PQC 기반 감사로그 무결성 구조는 실제 운영 환경에서의 신뢰성과 추적성을 높이기 위한 확장 요소로 설계하였다.
+
+Validator Agent는 프록시의 `action`과 `reason_code`가 정책 기준에 부합하는지 재검증하기 위한 구조이며, 탐지 모델 자체를 대체하거나 독립적인 성능 향상을 보장하는 요소는 아니다. 따라서 본 연구에서는 Validator Agent를 정량 성능 비교 대상에서 제외하고, 적용 전후 오탐·미탐 변화와 latency를 평가하는 별도 벤치마킹을 향후 연구로 둔다.
+
+PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 높이는 요소가 아니라, 원문을 저장하지 않는 감사로그의 사후 위·변조 가능성을 줄이기 위한 무결성 확장 요소이다. 현재 구현은 ML-DSA 교체 가능한 인터페이스와 Mock signer 기반 검증 구조를 포함하며, 실제 PQC 알고리즘 적용 및 성능 평가는 후속 연구로 남긴다.
 
 ## 문서
 

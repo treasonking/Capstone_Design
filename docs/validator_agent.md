@@ -1,14 +1,20 @@
 # Validator Agent
 
-Validator Agent is an output validation layer that checks LLM-generated responses after generation and before returning them to the user.
+Validator Agent is an operational output validation layer that re-checks proxy policy decisions after LLM response generation and before returning the response to the user.
 
 ## 정의
 
-Validator Agent는 LLM 또는 Mock LLM이 생성한 출력값을 최종 사용자에게 반환하기 전에 검사하는 정책 기반 보안 검증 계층이다. 입력 단계에서 탐지되지 않았거나, LLM 응답 과정에서 새롭게 생성된 개인정보, 정책 위반 응답, 마스킹 누락을 재검사한다.
+Validator Agent는 LLM 또는 Mock LLM이 생성한 출력값을 최종 사용자에게 반환하기 전에 검사하는 정책 기반 보안 검증 계층이다. 핵심 탐지 모델이 아니라, 프록시가 산출한 `action`과 `reason_code`가 정책 기준에 부합하는지 재검증하기 위한 운영형 확장 요소이다.
 
 발표용 문장:
 
-> Validator Agent는 LLM 응답 생성 이후 최종 사용자 반환 이전 단계에 배치하여, 출력 내 개인정보 잔존 여부와 정책 위반 응답을 재검사하는 출력 검증 계층이다.
+> Validator Agent는 본 연구의 핵심 탐지 모델이 아니라, LLM 응답 생성 이후 최종 사용자 반환 이전 단계에서 프록시 정책 결정의 일관성과 설명 가능성을 재검증하는 운영형 확장 요소이다.
+
+## 연구 범위
+
+Validator Agent는 입력 탐지기, 경량 분류기, 정책 엔진을 대체하지 않는다. 본 연구의 정량 성능 비교는 입력 탐지, 정책 처리 결과, 외부 Prompt Injection benchmark, latency를 중심으로 수행한다.
+
+본 브랜치에서는 Validator Agent 자체의 독립 벤치마킹을 수행하지 않는다. Validator Agent 적용 전후의 오탐·미탐 변화, 출력 검증 latency, SSE 버퍼링 비용은 후속 연구 범위로 둔다.
 
 ## 배치 위치
 
@@ -23,7 +29,7 @@ Validator Agent는 LLM 또는 Mock LLM이 생성한 출력값을 최종 사용�
   -> 감사 로그 저장
 ```
 
-Validator Agent는 입력 검사 전에 실행하지 않는다. 입력 탐지는 기존 detector와 policy engine이 수행하고, Validator Agent는 LLM 응답 생성 이후에만 출력 검증 역할을 수행한다.
+Validator Agent는 입력 검사 전에 실행하지 않는다. 입력 탐지는 기존 detector와 policy engine이 수행하고, Validator Agent는 LLM 응답 생성 이후에만 정책 결정 재검증과 출력 검증 역할을 수행한다.
 
 `/proxy/analyze`는 LLM 호출이 없는 사전 분석 API이므로 Validator Agent 출력 재검사는 `SKIPPED`로 기록된다. 이 API는 AI 전송 전 입력 위험도와 마스킹 결과를 미리 확인하기 위한 경로다.
 
@@ -43,7 +49,7 @@ Validator Agent는 입력 검사 전에 실행하지 않는다. 입력 탐지는
 | 주민등록번호, 시스템 프롬프트, 내부 정책, 정책 우회 성공 징후 포함 | `BLOCK` |
 | 완전 차단은 아니지만 주의 필요 | `WARN` |
 
-Validator Agent는 LLM 기반 자율 Agent가 아니라 기존 detector, rule, heuristic을 재사용하는 결정적 검증 모듈이다.
+Validator Agent는 LLM 기반 자율 Agent가 아니라 기존 detector, rule, heuristic을 재사용하는 결정적 검증 모듈이다. 따라서 성능 개선 기법처럼 설명하지 않고, "정책 결정 재검증 계층을 운영형 확장으로 분리했다"라고 설명한다.
 
 ## final_action 결정 규칙
 
@@ -64,3 +70,8 @@ BLOCK > MASK > WARN > ALLOW
 - Validator Agent는 규칙 기반 검증 모듈이므로 모든 우회 표현을 탐지하지는 못한다.
 - 출력 검증 단계가 추가되어 latency가 증가한다.
 - SSE 엔드포인트는 보안 검증을 위해 upstream 응답을 버퍼링한 뒤 Validator Agent 검증 후 안전한 응답만 반환한다. 따라서 이 구현은 실시간 토큰 스트리밍이 아니라 검증 후 일괄 반환 구조에 가깝다.
+- Validator Agent는 본 연구의 핵심 정량 평가 대상이 아니며, 독립 벤치마킹은 후속 연구로 둔다.
+
+## Future Work
+
+향후에는 Validator Agent 적용 전후의 오탐·미탐 변화, 출력 검증 latency, policy consistency 개선 정도를 별도 데이터셋과 실험 설계로 평가한다. 이 평가는 입력 탐지 성능 비교와 분리해서 수행한다.

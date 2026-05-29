@@ -47,7 +47,7 @@ Earlier repository artifacts included partial local Attention Tracker reproducti
 
 If mentioned, use language such as:
 
-> Attention Tracker was reviewed as a structurally different research method requiring model attention access. We cite its paper-reported AUROC values for context, while the baseline selection and execution pipeline uses PIGuard, Meta Prompt Guard 2, and ProtectAI detector on shared text-only inputs.
+> Attention Tracker was reviewed as a structurally different research method requiring model attention access. We cite its paper-reported AUROC values for context, while the executable prompt-injection baseline path uses ProtectAI detector on shared text-only inputs. PIGuard is retained as related work for prompt-injection over-defense and false-positive analysis, not as the main paper-level comparison target.
 
 ## References
 

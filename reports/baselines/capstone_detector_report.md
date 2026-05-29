@@ -12,6 +12,10 @@
 | Full capstone rows | 100 |
 | Matched capstone rows | 75 |
 
+## Scope Boundary
+
+This report is a prompt-injection detector baseline artifact. It is not the main paper-level comparison for the overall capstone objective. The main privacy-preserving LLM comparison is maintained in `reports/baselines/papillon_comparison.md`, and PAPILLON is not added to this prompt-injection metric table because it is not a binary prompt-injection detector.
+
 ## Metrics
 
 | Evaluation scope | Accuracy | Precision | Recall | F1 | AUROC |

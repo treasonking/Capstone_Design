@@ -196,6 +196,37 @@ external-tuned 결과는 외부 공개 데이터셋 일부를 학습에 포함�
 
 세부 결과는 `reports/latency_benchmark_report.md`, `reports/latency_benchmark_results.csv`, `reports/latency_benchmark_results.json`에 보존했습니다.
 
+### Main Comparison Paper: PAPILLON
+
+본 프로젝트의 메인 비교 논문은 PAPILLON으로 설정한다.
+
+PAPILLON은 사용자가 인터넷 기반 또는 proprietary LLM에 개인정보가 포함된 질의를 전달할 때 발생하는 privacy leakage 문제를 다룬다. 외부 LLM은 높은 응답 품질을 제공하지만, 사용자의 민감정보가 외부 서비스로 전달될 수 있다는 위험이 있다. PAPILLON은 로컬 모델과 외부 모델을 조합하여 개인정보 노출을 줄이면서 응답 품질을 유지하는 privacy-preserving LLM pipeline을 제안한다.
+
+본 프로젝트도 공공기관·사내망 환경에서 직원이 민원, 인사, 행정 문서를 LLM에 입력할 때 개인정보가 외부 LLM 또는 내부 LLM으로 그대로 전달되지 않도록 중간 프록시에서 탐지, 마스킹, 차단, 감사 기록을 수행한다. 따라서 PAPILLON은 본 프로젝트의 개인정보 유출 방지 목적과 가장 직접적으로 연결되는 비교 연구로 판단한다.
+
+| 비교 항목 | 본 프로젝트 | PAPILLON |
+|---|---|---|
+| 주요 목표 | 공공기관·사내망 LLM 사용 중 개인정보 유출 및 정책 위반 입력 방지 | 외부/proprietary LLM 사용 시 privacy leakage 감소 |
+| 보호 대상 | 주민등록번호, 전화번호, 이메일, 계좌번호, 민원·인사 문서, Prompt Injection | 개인정보가 포함된 사용자 질의 |
+| 구조 | 사용자와 LLM 사이의 보안 프록시 | 로컬 모델과 외부 LLM을 조합한 privacy-preserving delegation pipeline |
+| 처리 방식 | 입력 탐지, 마스킹, 차단, 출력 재검사, 감사로그 | 민감 질의를 로컬 모델이 가공하고 외부 LLM에 제한적으로 위임 |
+| 외부 LLM 위험 | 원문 개인정보가 외부 LLM으로 전달될 수 있음 | proprietary LLM provider로 개인정보가 노출될 수 있음 |
+| 평가 관점 | PII 탐지 성능, 정책 처리 결과, 평균 응답 시간, 감사 가능성 | privacy leakage와 response quality trade-off |
+| Prompt Injection | 탐지 대상에 포함 | 핵심 초점은 아님 |
+| 감사로그 | 원문 미저장 감사로그 및 무결성 확장 포함 | 핵심 초점 아님 |
+
+비교 범위는 개인정보 유출 방지와 privacy-utility trade-off로 제한한다. PAPILLON은 Prompt Injection 방어 논문이 아니므로, Prompt Injection 탐지 성능 비교는 ProtectAI detector, external prompt-injection datasets, 또는 별도 guardrail 연구와 분리하여 해석한다.
+
+PIGuard는 Prompt Injection guardrail의 over-defense 및 오탐 완화와 관련된 연구로 유지한다. 그러나 본 프로젝트의 핵심 목적은 공공기관·사내망 LLM 사용 과정에서 개인정보 유출을 방지하는 프록시 구조이므로, PIGuard를 메인 비교 논문으로 사용하지 않는다.
+
+ProtectAI detector는 공개 데이터셋에서 실행 가능한 Prompt Injection 모델 baseline으로 유지한다. 다만 이는 개인정보 유출 방지 프록시 또는 privacy-preserving delegation framework가 아니므로, 본 프로젝트의 메인 비교 논문으로 사용하지 않는다.
+
+논문용 문장:
+
+본 연구의 비교 논문으로는 PAPILLON을 선정하였다. PAPILLON은 사용자가 인터넷 기반 또는 proprietary LLM에 민감정보가 포함된 질의를 전달할 때 발생하는 privacy leakage 문제를 다루며, 로컬 모델과 외부 모델을 조합하여 개인정보 노출을 줄이면서 응답 품질을 유지하는 pipeline을 제안한다. 이는 본 연구가 공공기관·사내망 환경에서 직원의 LLM 입력을 프록시가 사전 검사하고 개인정보를 마스킹 또는 차단하는 목적과 직접적으로 연결된다.
+
+다만 PAPILLON은 Prompt Injection 탐지보다는 privacy-preserving delegation에 초점을 두므로, 본 연구와의 정량 비교는 개인정보 유출 방지와 privacy-utility trade-off 관점으로 제한한다. Prompt Injection 탐지 성능은 별도 공개 데이터셋 기반 실험으로 분리하여 평가하였다.
+
 ### 공개 데이터셋 기반 Prompt Injection 본 실험 결과
 
 기준 데이터셋: Hugging Face 공개 Prompt Injection 데이터셋, `Hybrid / Full Pipeline` 모드
@@ -262,25 +293,37 @@ We evaluated the Capstone Hybrid Proxy and the ProtectAI prompt-injection detect
 
 ### Comparison Reference
 
-- ProtectAI, `protectai/deberta-v3-base-prompt-injection-v2`, Hugging Face model card.  
+- PAPILLON: Privacy Preservation from Internet-based and Local Language Model Ensembles.
+  Paper: https://arxiv.org/abs/2410.17127
+  PDF: https://arxiv.org/pdf/2410.17127
+  Code: https://github.com/siyan-sylvia-li/PAPILLON
+
+- ProtectAI, `protectai/deberta-v3-base-prompt-injection-v2`, Hugging Face model card.
   Model: https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2
-- Li et al., "PIGuard: Prompt Injection Guardrail via Mitigating Overdefense for Free," ACL 2025.  
-  Paper: https://aclanthology.org/2025.acl-long.1468/  
-  DOI: https://doi.org/10.18653/v1/2025.acl-long.1468  
+  Note: executable prompt-injection detector baseline.
+
+- Li et al., "PIGuard: Prompt Injection Guardrail via Mitigating Overdefense for Free," ACL 2025.
+  Paper: https://aclanthology.org/2025.acl-long.1468/
+  DOI: https://doi.org/10.18653/v1/2025.acl-long.1468
   Code: https://github.com/leolee99/PIGuard
-- Meta, `meta-llama/Llama-Prompt-Guard-2-22M` and `meta-llama/Llama-Prompt-Guard-2-86M`, Hugging Face model cards, 2025.  
+  Note: retained as related work for prompt-injection over-defense, not as the main comparison paper.
+
+- Meta, `meta-llama/Llama-Prompt-Guard-2-22M` and `meta-llama/Llama-Prompt-Guard-2-86M`, Hugging Face model cards, 2025.
   Models: https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-22M, https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-86M
 - This comparison is based on each source's described architecture, supported detection scope, evaluation setting, and deployment assumptions. It is an interpretive positioning comparison for this project, not a reproduction of an original paper table.
 
-Reference format for the paper body: Li, H., Liu, X., Zhang, N., & Xiao, C. (2025). PIGuard: Prompt Injection Guardrail via Mitigating Overdefense for Free. In *Proceedings of ACL 2025* (pp. 30420-30437). Association for Computational Linguistics. https://doi.org/10.18653/v1/2025.acl-long.1468 Official code: https://github.com/leolee99/PIGuard
+Reference format for the paper body:
+
+- Li, S., Raghuram, V. C., Khattab, O., Hirschberg, J., & Yu, Z. (2024). PAPILLON: Privacy Preservation from Internet-based and Local Language Model Ensembles. arXiv:2410.17127. https://arxiv.org/abs/2410.17127 Official code: https://github.com/siyan-sylvia-li/PAPILLON
+- Li, H., Liu, X., Zhang, N., & Xiao, C. (2025). PIGuard: Prompt Injection Guardrail via Mitigating Overdefense for Free. In *Proceedings of ACL 2025* (pp. 30420-30437). Association for Computational Linguistics. https://doi.org/10.18653/v1/2025.acl-long.1468 Official code: https://github.com/leolee99/PIGuard
 
 Lakera selected subset is attack-only, so its result should be interpreted as an attack-recall stress test rather than balanced binary-classification performance.
 
 These external results are not the primary project benchmark. They are used to analyze generalization on public English prompt-injection datasets. The current Capstone Hybrid Proxy is conservative on external English prompt-injection data, showing low false positives but limited recall. ProtectAI detector improves recall on deepset, but also shows dataset-dependent behavior.
 
-PIGuard is selected as the main paper-level comparison target, and Meta Prompt Guard 2 is retained as a future executable baseline. Their local metrics are not included in this revision. Attention Tracker is kept only as related work because it requires internal LLM attention access.
+PAPILLON is selected as the main paper-level comparison target because it directly addresses privacy leakage when user queries containing sensitive information are delegated to external or proprietary LLMs. PIGuard is retained only as related work for prompt-injection over-defense and false-positive analysis. Meta Prompt Guard 2 is retained as a future executable prompt-injection baseline, and Attention Tracker is kept only as related work because it requires internal LLM attention access.
 
-Detailed artifacts are maintained in `reports/baselines/text_guard_comparison_table.md`, `reports/baselines/readme_text_guard_summary.md`, and `reports/baselines/related_work_attention_tracker.md`.
+Detailed artifacts are maintained in `reports/baselines/papillon_comparison.md`, `reports/baselines/text_guard_comparison_table.md`, `reports/baselines/readme_text_guard_summary.md`, and `reports/baselines/related_work_attention_tracker.md`.
 
 ## 데이터셋 구성 방향
 

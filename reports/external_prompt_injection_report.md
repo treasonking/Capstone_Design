@@ -8,6 +8,10 @@
 | protectai/prompt-injection-validation | 3227 | 0.8251 | 0.1796 | 0.2950 | 0.6297 | 250 | 53 | 1782 | 1142 |
 | Lakera/gandalf_ignore_instructions | 1000 | N/A | 0.4480 | N/A | 0.4480 | 448 | N/A | N/A | 552 |
 
+## Scope Boundary
+
+This report covers Prompt Injection detection on public benchmark datasets only. It is separate from the PAPILLON comparison, which is limited to privacy leakage prevention and privacy-utility trade-off analysis. PAPILLON is not a prompt-injection detector, so it is not included in the deepset, ProtectAI, or Lakera quantitative tables.
+
 ## Interpretation
 
 The external benchmark results show a clear performance gap between the internal regression dataset and public prompt injection datasets.

@@ -25,6 +25,19 @@
 10. Validator Agent는 핵심 탐지 모델이 아니라, 출력 내 PII 잔존, 시스템 프롬프트 또는 내부 정책 노출, 정책 우회 성공 징후, 마스킹 누락을 확인하는 운영형 확장 요소이다.
 11. 최종 응답 이후 audit log에는 `input_action`, `output_action`, `final_action`, Validator Agent 결과가 분리 기록되고, Mock signer 기반 integrity signature가 추가된다.
 
+## Existing Proxy와 Validator Agent의 경계
+
+Validator Agent는 입력 탐지 파이프라인의 일부가 아니라 LLM 응답 이후의 출력 검증 계층이다. 따라서 외부 데이터셋 기반 Prompt Injection 탐지 성능 평가는 입력 탐지 파이프라인을 중심으로 수행하며, Validator Agent 자체의 성능 벤치마킹은 별도 후속 연구로 분리한다.
+
+| 구분 | Existing Proxy | Validator Agent |
+|---|---|---|
+| 위치 | 사용자 입력이 LLM으로 전달되기 전 | LLM 응답 생성 후 사용자에게 반환되기 전 |
+| 주요 역할 | 입력 탐지, 마스킹, 차단, 정책 결정 | 출력 검증, 정책 결정 재검토 |
+| 검사 대상 | 사용자 입력 prompt | LLM 응답 output |
+| 대표 필드 | `input_action`, `reason_code` | `output_action`, `validator` |
+| 최종 조합 | 입력 기준 정책 결정 | `input_action`과 `output_action`을 종합해 `final_action` 결정 |
+| 연구 내 위치 | 핵심 평가 대상 | 운영형 확장 요소 |
+
 ## 구현 메모
 
 현재 코드에는 기존 구현 호환성을 위해 `backend/app/detection/hybrid_detector.py`와 `hybrid_detection` audit 필드명이 남아 있다. 문서상 대표 명칭은 다층형 탐지 파이프라인이며, 본 시스템은 정책·패턴 기반 탐지와 경량 분류를 결합한다는 점에서 넓은 의미의 하이브리드 구조로만 설명한다.

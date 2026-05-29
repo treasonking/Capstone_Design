@@ -16,6 +16,23 @@ Validator Agent는 입력 탐지기, 경량 분류기, 정책 엔진을 대체�
 
 본 브랜치에서는 Validator Agent 자체의 독립 벤치마킹을 수행하지 않는다. Validator Agent 적용 전후의 오탐·미탐 변화, 출력 검증 latency, SSE 버퍼링 비용은 후속 연구 범위로 둔다.
 
+## Existing Proxy와의 차이
+
+기존 Proxy는 사용자 입력을 LLM으로 전달하기 전에 검사한다. 이 단계에서는 개인정보, Prompt Injection, 정책 우회 표현을 탐지하고, 정책 엔진이 `input_action`과 `reason_code`를 산출한다.
+
+Validator Agent는 LLM 응답이 생성된 이후에 실행된다. 이 단계에서는 출력에 개인정보가 다시 나타나는지, 입력에서 마스킹한 정보가 재노출되는지, LLM이 시스템 프롬프트나 내부 정책을 노출하는지, 정책 우회 성공 응답을 생성했는지를 확인한다.
+
+따라서 Validator Agent는 기존 Proxy의 입력 탐지를 대체하지 않는다. Validator Agent는 출력 검증과 정책 결정 재검증을 담당하는 후단 검증 계층이다.
+
+| 항목 | Existing Proxy | Validator Agent |
+|---|---|---|
+| 실행 시점 | LLM 호출 전 | LLM 호출 후 |
+| 탐지 대상 | 입력 prompt | 출력 response |
+| 주요 목적 | 위험 입력 차단 및 마스킹 | 위험 출력 차단 및 정책 재검증 |
+| action 필드 | `input_action` | `output_action` |
+| audit 기록 | input detector summary | validator summary |
+| 연구 평가 | 본 연구의 핵심 정량 평가 대상 | 후속 연구 대상 |
+
 ## 배치 위치
 
 ```text
@@ -74,4 +91,4 @@ BLOCK > MASK > WARN > ALLOW
 
 ## Future Work
 
-향후에는 Validator Agent 적용 전후의 오탐·미탐 변화, 출력 검증 latency, policy consistency 개선 정도를 별도 데이터셋과 실험 설계로 평가한다. 이 평가는 입력 탐지 성능 비교와 분리해서 수행한다.
+향후에는 Validator Agent 적용 전후의 오탐·미탐 변화, 출력 검증 latency, policy consistency 개선 정도를 별도 데이터셋과 실험 설계로 평가한다. 이 평가는 입력 탐지 성능 비교와 분리해서 수행한다. 특히 출력 응답 안에 마스킹 누락, 개인정보 재노출, 시스템 프롬프트 노출, 정책 위반 답변이 포함된 출력 검증 전용 데이터셋이 필요하다.

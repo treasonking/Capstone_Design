@@ -32,6 +32,26 @@ PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 향상시
 
 `logs/audit_log.jsonl`에는 raw prompt, raw response, API key, system prompt, 개인정보 원문을 저장하지 않습니다. 감사 로그에는 `input_action`, `output_action`, `final_action`, Validator Agent 결과, detector 요약, integrity signature만 저장합니다.
 
+### Existing Proxy와 Validator Agent의 차이
+
+기존 Proxy는 사용자 입력이 LLM으로 전달되기 전에 개인정보와 Prompt Injection 위험을 탐지하고, 정책 엔진을 통해 `ALLOW`, `MASK`, `BLOCK`, `WARN` 중 하나의 조치를 결정한다. 이 단계의 핵심 결과는 `input_action`과 `reason_code`이다.
+
+Validator Agent는 기존 Proxy를 대체하는 탐지 모델이 아니라, LLM 응답 생성 이후 최종 사용자 반환 전에 실행되는 후단 검증 계층이다. 출력 내 개인정보 잔존 여부, 정책 위반 응답, 마스킹 누락 여부를 재검사하고, 그 결과를 `output_action`과 `validator` 필드로 분리 기록한다.
+
+최종 정책은 입력 단계의 `input_action`과 출력 단계의 `output_action`을 종합하여 `final_action`으로 결정한다. 예를 들어 입력은 `MASK`였지만 출력에서 추가 위험이 발견되지 않으면 최종 조치는 `MASK`로 유지된다. 반대로 입력은 `ALLOW`였더라도 출력에서 주민등록번호나 시스템 프롬프트 노출이 발견되면 최종 조치는 `BLOCK`으로 상승할 수 있다.
+
+| 구분 | Existing Proxy | Validator Agent |
+|---|---|---|
+| 위치 | LLM 호출 전 | LLM 응답 생성 후 |
+| 검사 대상 | 사용자 입력 | LLM 출력 |
+| 주요 역할 | 입력 위험 탐지 및 정책 결정 | 출력 안전성 재검사 및 정책 결정 재검증 |
+| 대표 결과 | `input_action`, `reason_code` | `output_action`, `validator` |
+| 최종 반영 | 정책 엔진 판단 | `final_action` 산정에 반영 |
+| 연구 내 위치 | 핵심 평가 대상 | 운영형 확장 요소 |
+| 벤치마킹 | 본 연구의 정량 평가 대상 | 후속 연구로 분리 |
+
+본 연구의 정량 성능 평가는 기존 Proxy의 입력 탐지, 정책 처리 결과, 외부 Prompt Injection benchmark, latency를 중심으로 수행한다. Validator Agent는 운영 환경에서 정책 결정의 일관성과 감사 가능성을 높이기 위한 확장 요소로 두며, Validator Agent 적용 전후의 오탐·미탐 변화와 출력 검증 latency는 후속 연구로 둔다.
+
 ### Validator Agent and Audit Integrity Scope
 
 Validator Agent는 본 프로젝트의 핵심 탐지 모델이 아니라, 프록시가 산출한 정책 결정 결과를 재검증하기 위한 운영형 확장 요소이다. 입력 탐지와 출력 검사를 수행한 뒤 생성된 `action`과 `reason_code`가 정책 기준에 부합하는지 확인함으로써, 실제 운영 환경에서 정책 결정의 일관성과 설명 가능성을 높이는 데 목적이 있다.

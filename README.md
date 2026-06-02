@@ -23,24 +23,66 @@ Request
   → Validator Agent
   → Response
   → Audit Log
-  → PQC-based Integrity Signature
+  → Audit Integrity Signature
 ```
 
-Validator Agent는 LLM 응답 생성 이후 최종 사용자 반환 이전 단계에서 출력 재검사를 수행합니다. 출력 내 개인정보 잔존, 정책 위반 응답, 마스킹 누락을 검사하고 `output_action`을 `ALLOW`, `MASK`, `BLOCK`, `WARN`으로 분리 기록합니다.
+Validator Agent는 핵심 탐지 모델이 아니라, LLM 응답 생성 이후 최종 사용자 반환 이전 단계에서 프록시의 정책 결정 결과를 재검증하기 위한 운영형 확장 요소입니다. 출력 내 개인정보 잔존, 정책 위반 응답, 마스킹 누락을 확인하고 `output_action`을 `ALLOW`, `MASK`, `BLOCK`, `WARN`으로 분리 기록합니다.
 
-PQC는 탐지 성능 개선이 아니라 감사 로그 무결성 보호를 위한 확장 기능입니다. 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니며, 현재 구현은 ML-DSA 교체가 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조입니다. 감사 로그의 normalized JSON에서 `integrity.signature` 필드를 제외하고 SHA-256 해시를 만든 뒤, 개발 환경에서는 내부적으로 HMAC-SHA256을 사용하는 `MOCK-ML-DSA` signer로 서명합니다.
+PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 향상시키기 위한 요소가 아니라, 감사로그의 사후 위·변조 가능성을 줄이기 위한 무결성 확장 요소입니다. 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니며, 현재 구현은 ML-DSA 교체가 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조입니다. 감사 로그의 normalized JSON에서 `integrity.signature` 필드를 제외하고 SHA-256 해시를 만든 뒤, 개발 환경에서는 내부적으로 HMAC-SHA256을 사용하는 `MOCK-ML-DSA` signer로 서명합니다.
 
 `logs/audit_log.jsonl`에는 raw prompt, raw response, API key, system prompt, 개인정보 원문을 저장하지 않습니다. 감사 로그에는 `input_action`, `output_action`, `final_action`, Validator Agent 결과, detector 요약, integrity signature만 저장합니다.
 
+### Existing Proxy와 Validator Agent의 차이
+
+기존 Proxy는 사용자 입력이 LLM으로 전달되기 전에 개인정보와 Prompt Injection 위험을 탐지하고, 정책 엔진을 통해 `ALLOW`, `MASK`, `BLOCK`, `WARN` 중 하나의 조치를 결정한다. 이 단계의 핵심 결과는 `input_action`과 `reason_code`이다.
+
+Validator Agent는 기존 Proxy를 대체하는 탐지 모델이 아니라, LLM 응답 생성 이후 최종 사용자 반환 전에 실행되는 후단 검증 계층이다. 출력 내 개인정보 잔존 여부, 정책 위반 응답, 마스킹 누락 여부를 재검사하고, 그 결과를 `output_action`과 `validator` 필드로 분리 기록한다.
+
+최종 정책은 입력 단계의 `input_action`과 출력 단계의 `output_action`을 종합하여 `final_action`으로 결정한다. 예를 들어 입력은 `MASK`였지만 출력에서 추가 위험이 발견되지 않으면 최종 조치는 `MASK`로 유지된다. 반대로 입력은 `ALLOW`였더라도 출력에서 주민등록번호나 시스템 프롬프트 노출이 발견되면 최종 조치는 `BLOCK`으로 상승할 수 있다.
+
+| 구분 | Existing Proxy | Validator Agent |
+|---|---|---|
+| 위치 | LLM 호출 전 | LLM 응답 생성 후 |
+| 검사 대상 | 사용자 입력 | LLM 출력 |
+| 주요 역할 | 입력 위험 탐지 및 정책 결정 | 출력 안전성 재검사 및 정책 결정 재검증 |
+| 대표 결과 | `input_action`, `reason_code` | `output_action`, `validator` |
+| 최종 반영 | 정책 엔진 판단 | `final_action` 산정에 반영 |
+| 연구 내 위치 | 핵심 평가 대상 | 운영형 확장 요소 |
+| 벤치마킹 | 본 연구의 정량 평가 대상 | 후속 연구로 분리 |
+
+본 연구의 정량 성능 평가는 기존 Proxy의 입력 탐지, 정책 처리 결과, 외부 Prompt Injection benchmark, latency를 중심으로 수행한다. Validator Agent는 운영 환경에서 정책 결정의 일관성과 감사 가능성을 높이기 위한 확장 요소로 두며, Validator Agent 적용 전후의 오탐·미탐 변화와 출력 검증 latency는 후속 연구로 둔다.
+
+### Validator Agent and Audit Integrity Scope
+
+Validator Agent는 본 프로젝트의 핵심 탐지 모델이 아니라, 프록시가 산출한 정책 결정 결과를 재검증하기 위한 운영형 확장 요소이다. 입력 탐지와 출력 검사를 수행한 뒤 생성된 `action`과 `reason_code`가 정책 기준에 부합하는지 확인함으로써, 실제 운영 환경에서 정책 결정의 일관성과 설명 가능성을 높이는 데 목적이 있다.
+
+다만 본 브랜치에서는 Validator Agent 자체의 독립적인 성능 벤치마킹을 수행하지 않는다. 따라서 Validator Agent는 정량 성능 비교 대상에서 제외하고, 향후 연구 과제로 분리한다.
+
+PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 향상시키기 위한 요소가 아니라, 감사로그의 사후 위·변조 가능성을 줄이기 위한 무결성 확장 요소이다. 공공기관·사내망 환경에서는 원문 프롬프트를 저장하지 않더라도 어떤 정책 판단이 수행되었는지 추적할 수 있어야 하므로, `action`, `reason_code`, `timestamp`, `request_id` 등 최소 메타데이터에 대한 무결성 검증 구조가 필요하다.
+
+현재 구현은 실제 ML-DSA 완전 적용이 아니라, ML-DSA로 교체 가능한 서명 인터페이스와 Mock signer 기반 검증 구조를 포함한다. 실제 PQC 알고리즘 적용 및 성능 평가는 후속 연구 범위로 둔다.
+
+감사로그의 목적은 원문 프롬프트나 응답을 저장하는 것이 아니라, 어떤 요청이 어떤 정책에 따라 처리되었는지 사후 확인할 수 있도록 최소 메타데이터를 남기는 것이다. 특히 공공기관·사내망 환경에서는 개인정보가 포함된 요청을 원문 그대로 저장하는 것 자체가 추가 위험이 될 수 있으므로, `request_id`, `timestamp`, `action`, `reason_code`, `detector_count`, `upstream_call` 등 최소 항목만 기록한다.
+
+| 항목 | 목적 |
+|---|---|
+| request_id | 요청 단위 추적 |
+| timestamp | 처리 시점 확인 |
+| action | ALLOW/MASK/BLOCK/WARN 정책 결정 확인 |
+| reason_code | 정책 판단 근거 확인 |
+| detector_count | 탐지 근거 수 확인 |
+| upstream_call | 외부 LLM 호출 여부 확인 |
+| signature/mock_signature | 감사로그 무결성 검증 |
+
 발표용 요약:
 
-> Validator Agent는 LLM 응답 생성 이후 최종 사용자 반환 이전 단계에 배치하여, 출력 내 개인정보 잔존 여부와 정책 위반 응답을 재검사하는 출력 검증 계층이다.
+> Validator Agent는 본 연구의 핵심 탐지 모델이 아니라, 프록시 정책 결정 결과의 일관성과 설명 가능성을 재검증하기 위한 운영형 확장 요소이다.
 
-> PQC는 개인정보 탐지나 프롬프트 인젝션 탐지 성능을 향상시키기 위한 기술이 아니라, 탐지 결과와 정책 판정이 기록된 감사 로그의 장기 무결성을 보장하기 위한 보안 확장 요소로 적용한다.
+> PQC는 개인정보 탐지나 프롬프트 인젝션 탐지 성능을 향상시키기 위한 기술이 아니라, 탐지 결과와 정책 판정이 기록된 감사 로그의 무결성 검증을 위한 보안 확장 요소로 적용한다.
 
 > 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니며, 현재 구현은 ML-DSA 교체가 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조이다.
 
-> 본 시스템은 입력 탐지, 정책엔진, 출력 검증, 감사 로그, PQC 기반 무결성 검증으로 구성되며, 이를 통해 LLM 사용 과정에서 발생할 수 있는 개인정보 유출과 정책 위반 응답을 단계적으로 차단한다.
+> Validator Agent와 PQC는 본 연구의 탐지 성능을 높이는 핵심 기법이 아니라, 실제 공공기관·사내망 운영 환경에서 프록시 정책 결정의 신뢰성, 감사 가능성, 로그 무결성을 높이기 위한 확장 요소이다.
 
 ## 프로젝트 배경
 
@@ -73,7 +115,7 @@ User Response
   ↓
 Audit Log
   ↓
-PQC-based Integrity Signature
+Audit Integrity Signature
 ```
 
 ```mermaid
@@ -88,7 +130,7 @@ flowchart TD
     L --> V["Validator Agent<br/>Output Re-check"]
     V --> A["User Response"]
     A --> G["Audit Log"]
-    G --> S["PQC-based Integrity Signature"]
+    G --> S["Audit Integrity Signature<br/>Mock signer"]
 ```
 
 ## 왜 정규식만 사용하지 않는가?
@@ -150,7 +192,7 @@ flowchart TD
 | internal | Model Only | 1.000 | 0.127 | 0.225 | 10 / 0 / 69 | 2.994 |
 | internal | Hybrid | 1.000 | 1.000 | 1.000 | 79 / 0 / 0 | 3.724 |
 
-외부 공개 데이터셋 기준 최신 비교 결과는 다음과 같습니다. 아래 표는 외부 데이터셋을 train 70% / eval 30%로 분리한 held-out eval split 기준이며, eval 샘플은 external-tuned 모델 학습에 사용하지 않았습니다.
+외부 공개 데이터셋 기준 비교 결과는 다음과 같습니다. 아래 표는 외부 데이터셋을 train 70% / eval 30%로 분리한 held-out eval split 기준이며, eval 샘플은 external-tuned 모델 학습에 사용하지 않았습니다. 이 표의 `Hybrid / Full Pipeline` protectai 값은 보정 전 기존 OR 결합 결과로 보존한 값이며, calibrated fusion 적용 후 결과는 아래 별도 표에서 분리해 제시합니다.
 
 | Dataset | Model Version | Mode | Precision | Recall | F1 | Accuracy | TP / FP / FN |
 |---|---|---|---:|---:|---:|---:|---:|
@@ -164,15 +206,81 @@ flowchart TD
 | `Lakera/gandalf_ignore_instructions` | external-tuned | Lightweight Model Only | N/A | 0.9867 | N/A | 0.9867 | 296 / N/A / 4 |
 | `Lakera/gandalf_ignore_instructions` | external-tuned | Hybrid / Full Pipeline | N/A | 0.9867 | N/A | 0.9867 | 296 / N/A / 4 |
 
+`N/A`는 성능이 0이라는 뜻이 아니라, 해당 지표를 계산할 수 없거나 평가 범위에 포함되지 않는다는 의미다. 예를 들어 `Lakera/gandalf_ignore_instructions`는 공격 샘플 중심 데이터셋이므로 정상 샘플 기반 FP/TN을 정의하기 어렵고, Precision/F1보다 Recall 중심의 attack-recall stress test로 해석한다. Prompt Injection 공개 데이터셋은 PII 탐지 성능 평가 대상이 아니므로 PII 지표와도 분리한다.
+
+#### Lakera-balanced 평가셋
+
+`Lakera/gandalf_ignore_instructions` 원본 평가는 공격 중심 데이터셋이므로 Precision/F1을 `N/A`로 유지하고 Recall 중심의 attack-recall stress test로 해석한다.
+
+추가로 정상 업무 문장을 결합한 `Lakera-balanced` 평가셋을 구성하였다. 이 평가셋은 Lakera 공격 샘플과 공공기관·사내망 업무형 정상 문장을 함께 포함하므로 FP/TN을 정의할 수 있고, Precision, Recall, F1을 함께 산출할 수 있다.
+
+| Dataset | Purpose | Precision/F1 |
+|---|---|---|
+| `Lakera/gandalf_ignore_instructions` | Attack-recall stress test | N/A 유지 |
+| `Lakera-balanced` | Balanced binary classification | 산출 가능 |
+
+세부 결과는 `reports/lakera_balanced_report.md`에 보존한다.
+
+protectai/prompt-injection-validation 데이터셋에서는 Lightweight Model Only가 Hybrid보다 높은 F1을 보였다. 세부적으로 Model Only와 Hybrid는 동일한 TP/FN을 기록했으나, Hybrid에서 FP가 2건에서 20건으로 증가하였다. 이는 Rule 계층이 해당 데이터셋에서 추가적인 공격 탐지 이득을 제공하지 못하고, 일부 정상 문장을 위험으로 오탐했기 때문이다. 따라서 본 연구에서는 Hybrid 구조를 단일 모델 대비 항상 우수한 탐지기로 주장하지 않고, 개인정보 탐지, 정책 결정, reason_code 기반 설명 가능성, 감사 가능성을 포함한 운영형 보안 프록시 구조로 해석한다. 세부 분석은 `reports/protectai_hybrid_fp_analysis.md`와 `reports/protectai_hybrid_fix_report.md`에 보존했다.
+
+#### protectai Hybrid Calibrated 결과
+
+`protectai/prompt-injection-validation` 데이터셋에서는 기존 `Hybrid / Full Pipeline` OR 결합 방식이 `Lightweight Model Only`보다 낮은 F1을 보였다. 원인 분석 결과, 기존 Hybrid는 Model Only와 동일한 TP/FN을 기록했지만 FP가 2건에서 20건으로 증가하였다. 이후 calibrated fusion을 적용하여 medium severity rule은 모델 점수의 보조 근거가 있을 때만 최종 positive로 반영하도록 조정하였다.
+
+| Mode | Precision | Recall | F1 | TP / FP / FN | 해석 |
+|---|---:|---:|---:|---|---|
+| Lightweight Model Only | 0.9946 | 0.8876 | 0.9381 | 371 / 2 / 47 | 모델 단독 기준 |
+| Hybrid / Full Pipeline 기존 OR | 0.9488 | 0.8876 | 0.9172 | 371 / 20 / 47 | Rule FP가 추가되어 F1 하락 |
+| Hybrid Calibrated | 0.9946 | 0.8876 | 0.9381 | 371 / 2 / 47 | 불필요한 rule override를 억제하여 Model Only 수준으로 회복 |
+
+이 결과는 Hybrid Calibrated가 Model Only보다 우수하다는 의미가 아니다. 본 결과는 prompt-injection-only benchmark에서 rule 기반 보안 정책을 모델 결과와 결합할 때 severity 분류와 threshold 보정이 필요하다는 점을 보여준다. 본 프로젝트의 Hybrid 구조는 단일 분류 성능 향상만을 목표로 하는 앙상블이 아니라, 개인정보 탐지, 정책 결정, reason_code 기반 설명 가능성, 감사 가능성을 함께 제공하는 운영형 보안 파이프라인으로 해석한다.
+
 internal-only baseline에서는 외부 영어 데이터셋에서 Hybrid / Full Pipeline 결과가 Rule Only와 유사했다. 이는 경량 모델이 로드되지 않았기 때문이 아니라, 기존 모델이 Rule 계층이 놓친 영어 공격 샘플을 거의 추가 탐지하지 못했기 때문이다.
 
-동일 held-out eval split의 overlap 분석 기준 `Model Only Unique TP`는 internal-only에서 `deepset=0`, `protectai=0`, `Lakera=6`이었고, external-tuned 모델에서는 threshold 0.30 기준 `deepset=43`, `protectai=273`, `Lakera=167`로 증가했다. 따라서 이번 개선은 Hybrid가 Rule miss를 실제로 추가 탐지하도록 모델 계층 기여도를 높인 결과다.
+동일 held-out eval split의 overlap 분석 기준 `Model Only Unique TP`는 internal-only에서 `deepset=0`, `protectai=0`, `Lakera=6`이었고, external-tuned 모델에서는 threshold 0.30 기준 `deepset=43`, `protectai=273`, `Lakera=167`로 증가했다. 다만 protectai에서는 Rule 계층이 Model Only의 FN을 추가로 복구하지 못했으므로, Hybrid 평가는 모델 기여도와 rule-driven FP를 함께 해석한다.
 
 Threshold optimizer는 external-tuned 모델에서 `0.30`을 추천했다. 다만 이는 eval split 기준 F1/Recall 후보값이므로 운영 threshold로 즉시 고정하기보다 hard negative와 실제 운영 분포에서 FP를 다시 확인해야 한다.
 
 external-tuned 결과는 외부 공개 데이터셋 일부를 학습에 포함한 in-domain supervised tuning 성능이며, zero-shot 일반화 성능이 아닙니다. 따라서 `deepset/prompt-injections`처럼 Precision 1.0000, FP 0이 관찰되는 결과는 text-hash overlap, near-duplicate, label sanity, official split 보고서와 함께 해석합니다.
 
 추가 검증 결과, custom split의 id overlap은 0이지만 전체 normalized text-hash overlap은 42건입니다. deepset 자체는 exact text overlap 0건, near duplicate 4건이며, deepset official train/test split에서는 Hybrid Recall 0.7667로 custom split 0.6329보다 낮아지지 않았습니다. 따라서 deepset 결과는 label mapping 오류나 명백한 exact leakage로 무효화되지는 않지만, supervised tuning 결과로 제한해 표현합니다.
+
+### Latency Benchmark
+
+2026-05-29 후속 측정에서는 upstream LLM을 stub 응답으로 대체하고 detector/proxy 내부 처리 시간을 분리 측정했습니다. 대표 시나리오 5개를 각 30회 측정한 결과, `detector_only` 평균은 `2.717ms`, p95는 `4.982ms`였고, `proxy_end_to_end` 평균 응답 시간은 `42.092ms`, p95는 `69.408ms`였습니다. action별 proxy 평균은 `ALLOW=52.301ms`, `BLOCK=27.400ms`, `MASK=50.442ms`, `WARN=52.916ms`였습니다. BLOCK은 upstream을 호출하지 않으므로 다른 action보다 낮게 해석합니다.
+
+세부 결과는 `reports/latency_benchmark_report.md`, `reports/latency_benchmark_results.csv`, `reports/latency_benchmark_results.json`에 보존했습니다.
+
+### Main Comparison Paper: PAPILLON
+
+본 프로젝트의 메인 비교 논문은 PAPILLON으로 설정한다.
+
+PAPILLON은 사용자가 인터넷 기반 또는 proprietary LLM에 개인정보가 포함된 질의를 전달할 때 발생하는 privacy leakage 문제를 다룬다. 외부 LLM은 높은 응답 품질을 제공하지만, 사용자의 민감정보가 외부 서비스로 전달될 수 있다는 위험이 있다. PAPILLON은 로컬 모델과 외부 모델을 조합하여 개인정보 노출을 줄이면서 응답 품질을 유지하는 privacy-preserving LLM pipeline을 제안한다.
+
+본 프로젝트도 공공기관·사내망 환경에서 직원이 민원, 인사, 행정 문서를 LLM에 입력할 때 개인정보가 외부 LLM 또는 내부 LLM으로 그대로 전달되지 않도록 중간 프록시에서 탐지, 마스킹, 차단, 감사 기록을 수행한다. 따라서 PAPILLON은 본 프로젝트의 개인정보 유출 방지 목적과 가장 직접적으로 연결되는 비교 연구로 판단한다.
+
+| 비교 항목 | 본 프로젝트 | PAPILLON |
+|---|---|---|
+| 주요 목표 | 공공기관·사내망 LLM 사용 중 개인정보 유출 및 정책 위반 입력 방지 | 외부/proprietary LLM 사용 시 privacy leakage 감소 |
+| 보호 대상 | 주민등록번호, 전화번호, 이메일, 계좌번호, 민원·인사 문서, Prompt Injection | 개인정보가 포함된 사용자 질의 |
+| 구조 | 사용자와 LLM 사이의 보안 프록시 | 로컬 모델과 외부 LLM을 조합한 privacy-preserving delegation pipeline |
+| 처리 방식 | 입력 탐지, 마스킹, 차단, 출력 재검사, 감사로그 | 민감 질의를 로컬 모델이 가공하고 외부 LLM에 제한적으로 위임 |
+| 외부 LLM 위험 | 원문 개인정보가 외부 LLM으로 전달될 수 있음 | proprietary LLM provider로 개인정보가 노출될 수 있음 |
+| 평가 관점 | PII 탐지 성능, 정책 처리 결과, 평균 응답 시간, 감사 가능성 | privacy leakage와 response quality trade-off |
+| Prompt Injection | 탐지 대상에 포함 | 핵심 초점은 아님 |
+| 감사로그 | 원문 미저장 감사로그 및 무결성 확장 포함 | 핵심 초점 아님 |
+
+비교 범위는 개인정보 유출 방지와 privacy-utility trade-off로 제한한다. PAPILLON은 Prompt Injection 방어 논문이 아니므로, Prompt Injection 탐지 성능 비교는 ProtectAI detector, external prompt-injection datasets, 또는 별도 guardrail 연구와 분리하여 해석한다.
+
+PIGuard는 Prompt Injection guardrail의 over-defense 및 오탐 완화와 관련된 연구로 유지한다. 그러나 본 프로젝트의 핵심 목적은 공공기관·사내망 LLM 사용 과정에서 개인정보 유출을 방지하는 프록시 구조이므로, PIGuard를 메인 비교 논문으로 사용하지 않는다.
+
+ProtectAI detector는 공개 데이터셋에서 실행 가능한 Prompt Injection 모델 baseline으로 유지한다. 다만 이는 개인정보 유출 방지 프록시 또는 privacy-preserving delegation framework가 아니므로, 본 프로젝트의 메인 비교 논문으로 사용하지 않는다.
+
+논문용 문장:
+
+본 연구의 비교 논문으로는 PAPILLON을 선정하였다. PAPILLON은 사용자가 인터넷 기반 또는 proprietary LLM에 민감정보가 포함된 질의를 전달할 때 발생하는 privacy leakage 문제를 다루며, 로컬 모델과 외부 모델을 조합하여 개인정보 노출을 줄이면서 응답 품질을 유지하는 pipeline을 제안한다. 이는 본 연구가 공공기관·사내망 환경에서 직원의 LLM 입력을 프록시가 사전 검사하고 개인정보를 마스킹 또는 차단하는 목적과 직접적으로 연결된다.
+
+다만 PAPILLON은 Prompt Injection 탐지보다는 privacy-preserving delegation에 초점을 두므로, 본 연구와의 정량 비교는 개인정보 유출 방지와 privacy-utility trade-off 관점으로 제한한다. Prompt Injection 탐지 성능은 별도 공개 데이터셋 기반 실험으로 분리하여 평가하였다.
 
 ### 공개 데이터셋 기반 Prompt Injection 본 실험 결과
 
@@ -238,13 +346,39 @@ We evaluated the Capstone Hybrid Proxy and the ProtectAI prompt-injection detect
 | Lakera | Capstone Hybrid Proxy | 0.4800 | 1.0000 | 0.4800 | 0.6486 | N/A |
 | Lakera | ProtectAI detector | 0.9900 | 1.0000 | 0.9900 | 0.9950 | N/A |
 
+### Comparison Reference
+
+- PAPILLON: Privacy Preservation from Internet-based and Local Language Model Ensembles.
+  Paper: https://arxiv.org/abs/2410.17127
+  PDF: https://arxiv.org/pdf/2410.17127
+  Code: https://github.com/siyan-sylvia-li/PAPILLON
+
+- ProtectAI, `protectai/deberta-v3-base-prompt-injection-v2`, Hugging Face model card.
+  Model: https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2
+  Note: executable prompt-injection detector baseline.
+
+- Li et al., "PIGuard: Prompt Injection Guardrail via Mitigating Overdefense for Free," ACL 2025.
+  Paper: https://aclanthology.org/2025.acl-long.1468/
+  DOI: https://doi.org/10.18653/v1/2025.acl-long.1468
+  Code: https://github.com/leolee99/PIGuard
+  Note: retained as related work for prompt-injection over-defense, not as the main comparison paper.
+
+- Meta, `meta-llama/Llama-Prompt-Guard-2-22M` and `meta-llama/Llama-Prompt-Guard-2-86M`, Hugging Face model cards, 2025.
+  Models: https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-22M, https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-86M
+- This comparison is based on each source's described architecture, supported detection scope, evaluation setting, and deployment assumptions. It is an interpretive positioning comparison for this project, not a reproduction of an original paper table.
+
+Reference format for the paper body:
+
+- Li, S., Raghuram, V. C., Khattab, O., Hirschberg, J., & Yu, Z. (2024). PAPILLON: Privacy Preservation from Internet-based and Local Language Model Ensembles. arXiv:2410.17127. https://arxiv.org/abs/2410.17127 Official code: https://github.com/siyan-sylvia-li/PAPILLON
+- Li, H., Liu, X., Zhang, N., & Xiao, C. (2025). PIGuard: Prompt Injection Guardrail via Mitigating Overdefense for Free. In *Proceedings of ACL 2025* (pp. 30420-30437). Association for Computational Linguistics. https://doi.org/10.18653/v1/2025.acl-long.1468 Official code: https://github.com/leolee99/PIGuard
+
 Lakera selected subset is attack-only, so its result should be interpreted as an attack-recall stress test rather than balanced binary-classification performance.
 
 These external results are not the primary project benchmark. They are used to analyze generalization on public English prompt-injection datasets. The current Capstone Hybrid Proxy is conservative on external English prompt-injection data, showing low false positives but limited recall. ProtectAI detector improves recall on deepset, but also shows dataset-dependent behavior.
 
-PIGuard is selected as the main paper-level comparison target, and Meta Prompt Guard 2 is retained as a future executable baseline. Their local metrics are not included in this revision. Attention Tracker is kept only as related work because it requires internal LLM attention access.
+PAPILLON is selected as the main paper-level comparison target because it directly addresses privacy leakage when user queries containing sensitive information are delegated to external or proprietary LLMs. PIGuard is retained only as related work for prompt-injection over-defense and false-positive analysis. Meta Prompt Guard 2 is retained as a future executable prompt-injection baseline, and Attention Tracker is kept only as related work because it requires internal LLM attention access.
 
-Detailed artifacts are maintained in `reports/baselines/text_guard_comparison_table.md`, `reports/baselines/readme_text_guard_summary.md`, and `reports/baselines/related_work_attention_tracker.md`.
+Detailed artifacts are maintained in `reports/baselines/papillon_comparison.md`, `reports/baselines/text_guard_comparison_table.md`, `reports/baselines/readme_text_guard_summary.md`, and `reports/baselines/related_work_attention_tracker.md`.
 
 ## 데이터셋 구성 방향
 
@@ -432,7 +566,7 @@ tools/
 10. 출력에 마스킹 가능한 PII가 있으면 `output_action=MASK`로 마스킹 후 반환하고, 시스템 프롬프트 또는 내부 정책 노출은 `output_action=BLOCK`으로 차단합니다.
 11. `input_action`과 `output_action` 중 더 강한 조치를 `final_action`으로 기록합니다.
 12. audit summary에는 입력/출력 탐지 요약, Validator Agent 결과, 기존 호환성 필드인 `hybrid_detection.model_status` 메타데이터를 남깁니다.
-13. 저장된 audit log에는 PQC-compatible integrity signature를 추가합니다.
+13. 저장된 audit log에는 ML-DSA 교체 가능한 인터페이스를 둔 Mock signer 기반 integrity signature를 추가합니다.
    `detector_counts`는 match가 나온 detector 개수이며, `detectors_invoked`는 실제로 실행된 detector 목록입니다.
 
 `/proxy/analyze`는 LLM 호출이 없는 사전 분석 API이므로 Validator Agent 출력 재검사는 `SKIPPED`로 기록됩니다. SSE 엔드포인트는 보안 검증을 위해 upstream 응답을 버퍼링한 뒤 Validator Agent 검증 후 안전한 응답만 반환하므로, 실시간 토큰 스트리밍이 아니라 검증 후 일괄 반환에 가깝습니다.
@@ -587,6 +721,9 @@ python -m evaluation.external_dataset_compare --eval-path datasets/external_spli
 - `reports/external_dataset_compare_report.md`
 - `reports/external_dataset_compare_results.json`
 - `reports/external_dataset_compare_results.csv`
+- `reports/lakera_balanced_report.md`
+- `reports/lakera_balanced_results.json`
+- `reports/lakera_balanced_results.csv`
 - `reports/external_overlap_analysis_report.md`
 - `reports/external_overlap_analysis_results.json`
 - `reports/external_overlap_analysis_results.csv`
@@ -600,6 +737,13 @@ python -m evaluation.external_dataset_compare --eval-path datasets/external_spli
 - `reports/external_model_confidence_results.json`
 
 이 평가는 Hugging Face 공개 데이터셋 `deepset/prompt-injections`, `protectai/prompt-injection-validation`, `Lakera/gandalf_ignore_instructions`를 사용하며, `Rule Only`, `Lightweight Model Only`, `Hybrid / Full Pipeline`을 분리 측정합니다.
+
+원본 Lakera는 positive-only 데이터셋이므로 Precision/F1을 `N/A`로 유지합니다. 정상 업무 문장을 결합한 별도 `Lakera-balanced` 평가셋은 다음 명령으로 생성 및 평가합니다.
+
+```bash
+python -m evaluation.lakera_balanced_dataset --source datasets/external_splits/eval_external_prompt_injection.jsonl --output evaluation/lakera_balanced_eval.jsonl --per-class 300
+python -m evaluation.external_dataset_compare --eval-path evaluation/lakera_balanced_eval.jsonl --model-dir models/lightweight_external_tuned --model-version external-tuned --threshold 0.30 --csv reports/lakera_balanced_results.csv --json reports/lakera_balanced_results.json --report reports/lakera_balanced_report.md
+```
 
 추가 분석 명령:
 
@@ -725,6 +869,9 @@ False Negative cases are the most important review target because they represent
 - `reports/external_dataset_compare_report.md`
 - `reports/external_dataset_compare_results.json`
 - `reports/external_dataset_compare_results.csv`
+- `reports/lakera_balanced_report.md`
+- `reports/lakera_balanced_results.json`
+- `reports/lakera_balanced_results.csv`
 - `reports/external_overlap_analysis_report.md`
 - `reports/external_threshold_sweep_report.md`
 - `reports/external_threshold_optimizer_report.md`
@@ -744,13 +891,15 @@ False Negative cases are the most important review target because they represent
 | `protectai/prompt-injection-validation` | 3,227 | 0.8399 | 0.1997 | 0.3227 | 0.6384 |
 | `Lakera/gandalf_ignore_instructions` | 1,000 | N/A | 0.4680 | N/A | 0.4680 |
 
-held-out eval split 기준 external-tuned 최신 결과(`Hybrid / Full Pipeline`)는 다음과 같습니다.
+held-out eval split 기준 external-tuned 기존 OR 결합 결과(`Hybrid / Full Pipeline`, 보정 전)는 다음과 같이 참고값으로 보존합니다. protectai 보정 전/후 해석은 위 `protectai Hybrid Calibrated 결과`와 `reports/protectai_hybrid_fix_report.md`를 기준으로 합니다.
 
 | Dataset | Eval Size | Precision | Recall | F1 | Accuracy | Model Unique TP |
 |---|---:|---:|---:|---:|---:|---:|
 | `deepset/prompt-injections` | 199 | 1.0000 | 0.6329 | 0.7752 | 0.8543 | 43 |
 | `protectai/prompt-injection-validation` | 969 | 0.9488 | 0.8876 | 0.9172 | 0.9309 | 273 |
 | `Lakera/gandalf_ignore_instructions` | 300 | N/A | 0.9867 | N/A | 0.9867 | 167 |
+
+`Lakera/gandalf_ignore_instructions`는 원본 구조상 attack-recall stress test로 유지한다. 별도 `Lakera-balanced` 평가셋은 Lakera 공격 샘플 300건과 정상 업무 문장 300건을 결합한 600건 binary classification 평가셋이며, Precision/F1과 FP/TN 산출을 위해 추가했다. 이 결과는 원본 Lakera의 N/A를 대체하지 않는다.
 
 실행 명령:
 
@@ -781,6 +930,14 @@ Threshold optimizer는 external-tuned 모델의 held-out eval split에서 `0.30`
 본 프로젝트는 기준 연구의 평가 관점을 참고하되, 실제 공공기관·사내망 환경에서 사용할 수 있는 프록시형 보안 게이트웨이를 구현하는 데 초점을 두었습니다. 따라서 본 프로젝트의 평가는 Precision, Recall, F1-score, Accuracy를 사용하여 현재 탐지기의 일반화 성능을 확인하는 방식으로 수행했습니다.
 
 두 실험은 동일 데이터셋과 동일 방어 방식을 사용하지 않으므로 절대적인 성능 우열 비교는 제한적입니다. 대신 본 프로젝트는 기준 연구에서 제시한 Prompt Injection 방어 평가 필요성을 바탕으로, 공개 데이터셋 기반 정량 평가를 추가하고 현재 탐지기의 한계와 개선 방향을 도출했습니다.
+
+### Reference Study Source
+
+- Liu et al., "Formalizing and Benchmarking Prompt Injection Attacks and Defenses," USENIX Security 2024.  
+  Paper: https://www.usenix.org/conference/usenixsecurity24/presentation/liu-yupei arXiv: https://arxiv.org/abs/2310.12815
+- This project references the study's evaluation perspective and metric framing, but it does not directly compare absolute scores because the datasets, defenses, and deployment assumptions differ.
+
+Reference format for the paper body: Liu, Y., Jia, Y., Geng, R., Jia, J., & Gong, N. Z. (2024). Formalizing and Benchmarking Prompt Injection Attacks and Defenses. In *Proceedings of the 33rd USENIX Security Symposium* (pp. 1831-1847). USENIX Association.
 
 ### Planned Improvements
 
@@ -831,7 +988,15 @@ Invoke-RestMethod `
 - `policy_id`는 `default`와 `strict`만 허용되며, 각각 `policies/policy.yaml`과 `policies/strict.yaml`을 사용합니다.
 - `logs/audit_log.jsonl`에는 원문 prompt/response를 저장하지 않고 메타데이터만 기록합니다.
 - 입력 정책 평가, Validator Agent 출력 검증, `final_action`이 audit summary와 audit log에 분리 기록됩니다.
-- audit log는 `MOCK-ML-DSA` 기반 PQC-compatible signer로 무결성 서명을 남깁니다. 이는 실제 ML-DSA 구현이 아니라 내부적으로 HMAC-SHA256을 사용하는 개발용 mock signer입니다.
+- audit log는 ML-DSA 교체 가능한 인터페이스와 `MOCK-ML-DSA` 개발용 mock signer로 무결성 서명을 남깁니다. 이는 실제 ML-DSA 구현이 아니라 내부적으로 HMAC-SHA256을 사용하는 검증 구조입니다.
+
+## Validator Agent and PQC as Future Work
+
+본 연구에서는 개인정보 유출 방지 프록시의 입력 탐지, 출력 검사, 정책 결정, 감사로그 구조를 중심으로 평가하였다. Validator Agent와 PQC 기반 감사로그 무결성 구조는 실제 운영 환경에서의 신뢰성과 추적성을 높이기 위한 확장 요소로 설계하였다.
+
+Validator Agent는 프록시의 `action`과 `reason_code`가 정책 기준에 부합하는지 재검증하기 위한 구조이며, 탐지 모델 자체를 대체하거나 독립적인 성능 향상을 보장하는 요소는 아니다. 따라서 본 연구에서는 Validator Agent를 정량 성능 비교 대상에서 제외하고, 적용 전후 오탐·미탐 변화와 latency를 평가하는 별도 벤치마킹을 향후 연구로 둔다.
+
+PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 높이는 요소가 아니라, 원문을 저장하지 않는 감사로그의 사후 위·변조 가능성을 줄이기 위한 무결성 확장 요소이다. 현재 구현은 ML-DSA 교체 가능한 인터페이스와 Mock signer 기반 검증 구조를 포함하며, 실제 PQC 알고리즘 적용 및 성능 평가는 후속 연구로 남긴다.
 
 ## 문서
 

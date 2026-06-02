@@ -1,18 +1,18 @@
 # PQC Audit Integrity
 
-PQC is applied only to audit log integrity protection. It signs the normalized audit record hash to detect post-hoc tampering of security decisions.
+PQC-compatible signing is applied only to audit log integrity protection. It signs the normalized audit record hash to detect post-hoc tampering of security decisions.
 
 Important wording: this project does not embed a production ML-DSA library. The current implementation provides an ML-DSA-replaceable audit-log signing interface plus a Mock signer based verification structure.
 
 ## 적용 범위
 
-PQC는 탐지 파이프라인 내부가 아니라 감사 로그 저장 이후의 무결성 보호 계층으로 적용한다.
+PQC 기반 감사로그 서명 구조는 탐지 파이프라인 내부가 아니라 감사 로그 저장 이후의 무결성 검증 계층으로 적용한다.
 
 적용 대상:
 
-- 감사 로그 무결성 보호
-- 정책 판정 결과 위변조 방지
-- Validator Agent 결과 위변조 방지
+- 감사 로그 무결성 검증
+- 정책 판정 결과 위변조 탐지
+- Validator Agent 결과 위변조 탐지
 - 사고 발생 시 책임 추적과 사후 검증
 
 적용하지 않는 대상:
@@ -27,7 +27,7 @@ PQC는 탐지 파이프라인 내부가 아니라 감사 로그 저장 이후의
 
 발표용 문장:
 
-> PQC는 개인정보 탐지나 프롬프트 인젝션 탐지 성능을 향상시키기 위한 기술이 아니라, 탐지 결과와 정책 판정이 기록된 감사 로그의 장기 무결성을 보장하기 위한 보안 확장 요소로 적용한다.
+> PQC는 개인정보 탐지나 프롬프트 인젝션 탐지 성능을 향상시키기 위한 기술이 아니라, 탐지 결과와 정책 판정이 기록된 감사 로그의 사후 위·변조 가능성을 줄이기 위한 무결성 확장 요소로 적용한다.
 
 > 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니며, 현재 구현은 ML-DSA 교체가 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조이다.
 
@@ -38,7 +38,7 @@ PQC는 탐지 파이프라인 내부가 아니라 감사 로그 저장 이후의
   -> integrity.signature 제외
   -> canonical JSON 생성
   -> SHA-256 해시 생성
-  -> PQC-compatible Mock signer로 서명
+  -> ML-DSA 교체 가능한 Mock signer로 서명
   -> integrity.signature 저장
   -> 공개 검증 인터페이스로 검증
 ```
@@ -51,7 +51,7 @@ PQC는 탐지 파이프라인 내부가 아니라 감사 로그 저장 이후의
 
 따라서 발표, 논문, 보고서에서는 "PQC를 직접 구현했다"라고 표현하지 않는다. 정확한 표현은 "ML-DSA로 교체 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조를 구현했다"이다.
 
-운영 환경에서는 같은 인터페이스를 유지하면서 실제 ML-DSA 서명 라이브러리로 교체할 수 있다. ML-KEM은 키 교환용이므로 감사 로그 서명 목적에는 사용하지 않는다.
+운영 환경에서는 같은 인터페이스를 유지하면서 실제 ML-DSA 서명 라이브러리로 교체할 수 있다. 다만 실제 PQC 알고리즘 적용, 키 관리, 서명 크기, 검증 비용, 처리 지연 시간 평가는 후속 연구 범위로 둔다. ML-KEM은 키 교환용이므로 감사 로그 서명 목적에는 사용하지 않는다.
 
 ## 발표 및 보고서 표현 가이드
 
@@ -59,13 +59,16 @@ PQC는 탐지 파이프라인 내부가 아니라 감사 로그 저장 이후의
 
 - ML-DSA 교체 가능한 감사 로그 서명 인터페이스를 구현했다.
 - 현재 프로토타입은 Mock signer로 감사 로그 위변조 검증 흐름을 재현한다.
-- PQC는 탐지 정확도 향상이 아니라 감사 로그의 장기 무결성 보장을 위한 확장 요소다.
+- PQC는 탐지 정확도 향상이 아니라 감사 로그의 무결성 검증을 위한 확장 요소다.
+- 현재 구현은 실제 ML-DSA 완전 적용이 아니라 ML-DSA 교체 가능한 인터페이스와 Mock signer 기반 검증 구조다.
 
 피해야 할 표현:
 
 - 실제 PQC 서명을 구현했다.
 - ML-DSA를 직접 탑재했다.
-- PQC가 PII 또는 Prompt Injection 탐지 성능을 높인다.
+- PQC를 PII 또는 Prompt Injection 탐지 개선 요소로 설명한다.
+- 현재 Mock signer 구조를 실제 PQC 보안 제공으로 설명한다.
+- ML-DSA 실제 적용과 성능 검증이 완료된 것처럼 설명한다.
 
 ## 저장 금지 필드
 
@@ -84,3 +87,7 @@ python tools/verify_audit_log.py --log-file logs/audit_log.jsonl
 ```
 
 검증 도구는 JSONL 각 줄을 읽고 `integrity.signature`를 제외한 canonical hash를 재계산해 서명을 확인한다. `final_action`이나 `reason_codes`가 사후 변경되면 검증이 실패한다.
+
+## Future Work
+
+실제 ML-DSA 라이브러리 적용, 서명·검증 latency 측정, 키 관리 정책, 감사 로그 보존 기간별 검증 비용 평가는 후속 연구로 분리한다. 이 문서의 현재 결과는 Mock signer 기반 구조 검증이며, 실제 PQC 알고리즘 성능을 검증했다는 뜻이 아니다.

@@ -14,20 +14,21 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.app.config import DetectionSettings
-from backend.app.detection.hybrid_detector import detect_hybrid
 from backend.app.detection.injection_detector import detect_injection
 from backend.app.detection.lightweight_classifier import (
     LightweightClassifier,
     LightweightModelStatus,
     LightweightPrediction,
 )
-from backend.app.detection.models import DetectorType
 from evaluation.external_datasets import (
     ExternalSample,
     load_deepset_prompt_injections,
     load_lakera_gandalf_ignore_instructions,
     load_protectai_prompt_injection_validation,
+)
+from evaluation.prompt_injection_fusion import (
+    fuse_prompt_injection_decision,
+    prompt_injection_model_score,
 )
 
 
@@ -42,6 +43,7 @@ BASELINE_COMPARE_JSON_PATH = Path("reports/external_dataset_compare_internal_onl
 BASELINE_OVERLAP_JSON_PATH = Path("reports/external_overlap_analysis_internal_only_results.json")
 CURRENT_OVERLAP_JSON_PATH = Path("reports/external_overlap_analysis_results.json")
 THRESHOLD_OPTIMIZER_JSON_PATH = Path("reports/external_threshold_optimizer_results.json")
+LAKERA_BALANCED_NAME = "Lakera-balanced"
 PROJECT_SCOPE = (
     "본 프로젝트는 범용 Prompt Injection 탐지기가 아니라, 한국어 공공기관·사내망 환경에서 "
     "발생할 수 있는 개인정보 유출 및 정책 우회형 Prompt Injection을 우선 방어 대상으로 "
@@ -91,6 +93,11 @@ class PredictionDecision:
     rule_predicted: bool | None = None
     model_predicted: bool | None = None
     pipeline_predicted: bool | None = None
+    final_action: str = ""
+    rule_reason_codes: tuple[str, ...] = ()
+    high_reason_codes: tuple[str, ...] = ()
+    medium_reason_codes: tuple[str, ...] = ()
+    low_reason_codes: tuple[str, ...] = ()
     model_hit_cancelled_by_safe_guard: bool = False
 
 
@@ -151,10 +158,45 @@ DATASET_SPECS = (
         positive_only=True,
     ),
 )
+LAKERA_BALANCED_SPEC = DatasetSpec(
+    name=LAKERA_BALANCED_NAME,
+    source="evaluation/lakera_balanced_eval.jsonl",
+    role="Lakera 공격 샘플과 공공기관·사내망 정상 업무 문장을 결합한 balanced binary classification 평가셋",
+    loader=lambda split: [],
+    previous=PreviousResult(
+        size=0,
+        precision=None,
+        recall=0.0,
+        f1=None,
+        accuracy=0.0,
+        tp=0,
+        fp=None,
+        tn=None,
+        fn=None,
+    ),
+    positive_only=False,
+)
+ALL_DATASET_SPECS = (*DATASET_SPECS, LAKERA_BALANCED_SPEC)
+DATASET_SPEC_BY_NAME = {spec.name: spec for spec in ALL_DATASET_SPECS}
 
 
 def _safe_div(numerator: float, denominator: float) -> float:
     return numerator / denominator if denominator else 0.0
+
+
+def _na_reason(
+    dataset_status: str,
+    model_status: str,
+    *,
+    positive_only: bool = False,
+) -> str:
+    if dataset_status in {"unavailable", "empty"}:
+        return f"dataset_{dataset_status}"
+    if positive_only:
+        return "positive_only_dataset_precision_f1_not_applicable"
+    if model_status in {"artifact_missing", "dependency_missing", "disabled", "error"}:
+        return f"model_{model_status}"
+    return ""
 
 
 def _is_model_injection_prediction(prediction: LightweightPrediction) -> bool:
@@ -184,41 +226,33 @@ def _model_only(classifier: LightweightClassifier) -> Predictor:
 
 
 def _hybrid_pipeline(classifier: LightweightClassifier, threshold: float) -> Predictor:
-    settings = DetectionSettings(
-        enable_model_detector=True,
-        detection_mode="hybrid",
-        model_detector_threshold=threshold,
-        model_detector_fail_mode="warn",
-    )
-
     def predict(text: str) -> PredictionDecision:
-        rule_predicted = _rule_only(text)
-        result = detect_hybrid(text, classifier=classifier, settings=settings)
-        model_predicted = (
-            _is_model_injection_prediction(result.model_prediction)
-            if result.model_prediction is not None
-            else False
+        rule_hits = detect_injection(text)
+        rule_predicted = bool(rule_hits)
+        model_prediction = classifier.classify(text)
+        model_predicted = _is_model_injection_prediction(model_prediction)
+        model_score = prompt_injection_model_score(
+            classifier,
+            text,
+            model_prediction,
+            model_predicted,
         )
-        pipeline_predicted = any(
-            detection.detector_type == DetectorType.INJECTION
-            for detection in result.detections
-        )
-        model_injection_detection = any(
-            detection.detector_type == DetectorType.INJECTION
-            and detection.detector_name == "llm"
-            for detection in result.detections
-        )
-        model_hit_cancelled_by_safe_guard = (
-            model_predicted
-            and not model_injection_detection
-            and "SAFE_SECURITY_EXPLANATION" in result.reason_codes
+        fusion = fuse_prompt_injection_decision(
+            model_predicted=model_predicted,
+            model_score=model_score,
+            rule_hits=rule_hits,
+            text=text,
         )
         return PredictionDecision(
-            predicted=rule_predicted or model_predicted,
+            predicted=fusion.predicted,
             rule_predicted=rule_predicted,
             model_predicted=model_predicted,
-            pipeline_predicted=pipeline_predicted,
-            model_hit_cancelled_by_safe_guard=model_hit_cancelled_by_safe_guard,
+            pipeline_predicted=fusion.predicted,
+            final_action=fusion.final_action,
+            rule_reason_codes=fusion.rule_reason_codes,
+            high_reason_codes=fusion.high_reason_codes,
+            medium_reason_codes=fusion.medium_reason_codes,
+            low_reason_codes=fusion.low_reason_codes,
         )
 
     return predict
@@ -250,8 +284,16 @@ def _expected_from_external_label(value: Any) -> bool:
     raise ValueError(f"Unsupported external eval label: {value!r}")
 
 
+def _expected_from_eval_row(row: dict[str, Any]) -> bool:
+    if "label" in row:
+        return _expected_from_external_label(row.get("label"))
+    if "expected_injection" in row:
+        return bool(row["expected_injection"])
+    raise ValueError("External eval row requires either 'label' or 'expected_injection'.")
+
+
 def _load_eval_path(path: Path, max_samples: int | None) -> list[DatasetBundle]:
-    grouped: dict[str, list[ExternalSample]] = {spec.name: [] for spec in DATASET_SPECS}
+    grouped: dict[str, list[ExternalSample]] = {spec.name: [] for spec in ALL_DATASET_SPECS}
     if not path.exists():
         raise SystemExit(f"External eval split not found: {path}")
 
@@ -262,7 +304,7 @@ def _load_eval_path(path: Path, max_samples: int | None) -> list[DatasetBundle]:
                 continue
             row = json.loads(stripped)
             dataset_name = str(row.get("dataset", "")).strip()
-            if dataset_name not in grouped:
+            if dataset_name not in DATASET_SPEC_BY_NAME:
                 raise ValueError(f"Unknown dataset at {path}:{line_no}: {dataset_name!r}")
             text = str(row.get("text", "")).strip()
             if not text:
@@ -272,12 +314,20 @@ def _load_eval_path(path: Path, max_samples: int | None) -> list[DatasetBundle]:
                     id=str(row.get("id", f"{dataset_name}:{line_no}")),
                     source=dataset_name,
                     text=text,
-                    expected_injection=_expected_from_external_label(row.get("label")),
+                    expected_injection=_expected_from_eval_row(row),
                 )
             )
 
+    present_names = {name for name, samples in grouped.items() if samples}
+    if LAKERA_BALANCED_NAME in present_names:
+        selected_specs = tuple(
+            spec for spec in ALL_DATASET_SPECS if spec.name in present_names
+        )
+    else:
+        selected_specs = DATASET_SPECS
+
     bundles: list[DatasetBundle] = []
-    for spec in DATASET_SPECS:
+    for spec in selected_specs:
         samples = grouped[spec.name]
         if max_samples is not None:
             samples = samples[:max_samples]
@@ -348,6 +398,11 @@ def _metric_result(
 
     size = len(dataset.samples)
     positive_only = size > 0 and all(sample.expected_injection for sample in dataset.samples)
+    na_reason = (
+        "positive_only_dataset_precision_f1_not_applicable"
+        if positive_only
+        else ""
+    )
     precision = None if positive_only else _safe_div(tp, tp + fp)
     recall = _safe_div(tp, tp + fn)
     f1 = None if precision is None else _safe_div(2 * precision * recall, precision + recall)
@@ -367,6 +422,8 @@ def _metric_result(
         "tn": None if positive_only else tn,
         "fn": fn,
         "positive_only": positive_only,
+        "na_reason": na_reason,
+        "metric_scope": "prompt_injection_binary_classification",
         "latency_ms_avg": round(sum(latencies) / len(latencies), 3) if latencies else 0.0,
         "model_status": model_status,
         "dataset_status": dataset.status,
@@ -374,7 +431,7 @@ def _metric_result(
     }
     if saw_decision_diagnostics:
         row.update(decision_diagnostics)
-        row["hybrid_prediction_formula"] = "rule_predicted OR model_predicted"
+        row["hybrid_prediction_formula"] = "calibrated_prompt_injection_fusion"
     return row
 
 
@@ -398,6 +455,12 @@ def _na_result(
         "tn": None,
         "fn": None,
         "positive_only": dataset.spec.positive_only,
+        "na_reason": _na_reason(
+            dataset.status,
+            model_status,
+            positive_only=dataset.spec.positive_only,
+        ),
+        "metric_scope": "not_available",
         "latency_ms_avg": None,
         "model_status": model_status,
         "dataset_status": dataset.status,
@@ -573,6 +636,79 @@ def _summary_rows_from_overlap(path: Path) -> dict[str, dict[str, Any]]:
     }
 
 
+def _render_lakera_balanced_markdown(
+    *,
+    generated_at: str,
+    split: str,
+    threshold: float,
+    datasets: list[DatasetBundle],
+    rows: list[dict[str, Any]],
+    classifier_status: LightweightModelStatus,
+    runtime_versions: dict[str, str],
+    model_metadata: dict[str, str],
+) -> str:
+    samples = datasets[0].samples if datasets else []
+    attack_count = sum(1 for sample in samples if sample.expected_injection)
+    benign_count = sum(1 for sample in samples if not sample.expected_injection)
+
+    lines = [
+        "# Lakera-Balanced Evaluation Report",
+        "",
+        f"- Generated at: `{generated_at}`",
+        f"- Eval path: `{split}`",
+        f"- Lightweight threshold: `{threshold:.2f}`",
+        f"- Model version: `{model_metadata['model_version']}`",
+        f"- Classifier status: `{classifier_status.status}`",
+        f"- Runtime: datasets `{runtime_versions.get('datasets', 'unknown')}`, sklearn `{runtime_versions.get('sklearn', 'unknown')}`",
+        "",
+        "## Dataset Construction",
+        "",
+        "| Source | Count | Label |",
+        "|---|---:|---|",
+        f"| Lakera attack samples | {attack_count} | injection |",
+        f"| Public-sector benign work prompts | {benign_count} | benign |",
+        f"| Total | {len(samples)} | binary |",
+        "",
+        "## Why this dataset was added",
+        "",
+        "The original `Lakera/gandalf_ignore_instructions` subset is attack-only, so FP/TN and balanced Precision/F1 are not meaningful. We keep the original Lakera result as an attack-recall stress test and add `Lakera-balanced` as a separate binary classification evaluation set.",
+        "",
+        "원본 Lakera는 데이터셋 구조상 Precision/F1 산출이 부적절하므로 N/A로 유지하였다. 대신 정상 업무 문장을 추가한 Lakera-balanced 평가셋을 별도로 구성하여 Precision/F1을 산출하였다.",
+        "",
+        "## Results",
+        "",
+        "| Mode | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN | Avg Latency(ms) |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+
+    for row in rows:
+        lines.append(
+            f"| {row['mode']} "
+            f"| {_fmt(row['precision'])} "
+            f"| {_fmt(row['recall'])} "
+            f"| {_fmt(row['f1'])} "
+            f"| {_fmt(row['accuracy'])} "
+            f"| {_fmt(row['tp'])} "
+            f"| {_fmt(row['fp'])} "
+            f"| {_fmt(row['tn'])} "
+            f"| {_fmt(row['fn'])} "
+            f"| {_fmt(row['latency_ms_avg'], 3)} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Interpretation",
+            "",
+            "`Lakera-balanced` is not a replacement for the original Lakera attack-recall stress test. It is an additional balanced benchmark created to compute FP/TN, Precision, and F1 under a mixed benign/attack setting.",
+            "",
+            "이 결과는 원본 Lakera의 N/A를 0 또는 다른 숫자로 대체한 것이 아니다. 원본 `Lakera/gandalf_ignore_instructions`는 계속 attack-recall stress test로 해석하고, `Lakera-balanced`는 정상 업무 문장이 포함된 별도 binary classification 평가셋으로 해석한다.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def _render_markdown(
     *,
     generated_at: str,
@@ -584,6 +720,18 @@ def _render_markdown(
     runtime_versions: dict[str, str],
     model_metadata: dict[str, str],
 ) -> str:
+    if datasets and all(dataset.spec.name == LAKERA_BALANCED_NAME for dataset in datasets):
+        return _render_lakera_balanced_markdown(
+            generated_at=generated_at,
+            split=split,
+            threshold=threshold,
+            datasets=datasets,
+            rows=rows,
+            classifier_status=classifier_status,
+            runtime_versions=runtime_versions,
+            model_metadata=model_metadata,
+        )
+
     hybrid_by_dataset = {
         row["dataset_name"]: row
         for row in rows
@@ -669,6 +817,8 @@ def _render_markdown(
         [
             "",
             "## Current Mode Comparison",
+            "",
+            "현재 `Hybrid / Full Pipeline` 행은 prompt-injection benchmark용 calibrated fusion 기준이다. protectai 보정 전 기존 OR 결합 결과와 보정 후 비교는 `reports/protectai_hybrid_fix_report.md`에 별도로 보존한다.",
             "",
             "| Dataset | Model Version | Mode | Size | Precision | Recall | F1 | Accuracy | TP | FP | TN | FN | Avg Latency(ms) | Model Status |",
             "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
@@ -800,6 +950,37 @@ def _render_markdown(
             "`deepset/prompt-injections`의 external-tuned 결과는 held-out eval split 기준으로 크게 개선되었다. 다만 이 평가는 all split을 프로젝트 내부에서 70/30으로 다시 나눈 custom split 기준이므로, 원본 official split 또는 text-hash leakage 검사를 함께 해석해야 한다. 특히 Precision 1.0000, FP 0이 관찰되므로 label mapping, text overlap, near-duplicate 여부를 추가 확인한다.",
             "",
             "관련 검증 보고서: `reports/external_split_leakage_report.md`, `reports/external_label_sanity_check.md`, `reports/deepset_official_split_report.md`, `reports/external_model_confidence_report.md`.",
+            "",
+            "## N/A Interpretation",
+            "",
+            "본 보고서에서 `N/A`는 성능이 0이라는 의미가 아니다. 지표를 계산할 수 없거나 해당 평가 범위에 포함되지 않는 경우를 의미한다.",
+            "",
+            "| N/A 유형 | 원인 | 해당 사례 | 해석 |",
+            "|---|---|---|---|",
+            "| Positive-only dataset | 데이터셋이 공격 샘플만 포함하여 FP/TN을 정의할 수 없음 | `Lakera/gandalf_ignore_instructions` | Precision/F1 대신 Recall과 Accuracy를 attack-recall stress test로 해석 |",
+            "| Model unavailable | 경량 모델 artifact 누락, 의존성 누락, 비활성화, 로딩 실패 | Model Only가 N/A인 경우 | 모델 성능이 0이라는 뜻이 아니라 해당 실행 조건에서 모델 평가가 불가능했다는 의미 |",
+            "| Metric not computed | AUROC 등 별도 score 기반 지표를 산출하지 않음 | AUROC N/A | 해당 지표를 측정하지 않았다는 의미 |",
+            "| Dataset unavailable | 데이터셋 로딩 실패 또는 샘플 없음 | dataset_status가 unavailable/empty | 평가 대상 데이터가 없어 결과 산출 불가 |",
+            "| Scope mismatch | Prompt Injection 데이터셋이므로 PII 성능을 평가하지 않음 | deepset/protectai/Lakera의 PII 결과 | PII 탐지 성능과 별도로 해석 |",
+            "",
+            "특히 `Lakera/gandalf_ignore_instructions`는 공격 중심 데이터셋이므로 정상 샘플 기반의 FP/TN을 계산할 수 없다. 따라서 Precision과 F1은 `N/A`로 표시하고, Recall과 Accuracy를 공격 샘플을 얼마나 탐지했는지 보는 stress test 지표로 해석한다.",
+            "",
+            "### Lakera-balanced 추가 평가",
+            "",
+            "원본 `Lakera/gandalf_ignore_instructions`는 데이터셋 구조상 Precision/F1 산출이 부적절하므로 N/A로 유지하였다. 대신 정상 업무 문장을 추가한 `Lakera-balanced` 평가셋을 별도로 구성하여 Precision/F1을 산출하였다.",
+            "",
+            "| Dataset | Interpretation |",
+            "|---|---|",
+            "| Original Lakera | Attack-only recall stress test |",
+            "| Lakera-balanced | Balanced binary classification with benign public-sector work prompts |",
+            "",
+            "세부 결과는 `reports/lakera_balanced_report.md`, `reports/lakera_balanced_results.csv`, `reports/lakera_balanced_results.json`에 보존한다.",
+            "",
+            "## protectai Hybrid Fusion Interpretation",
+            "",
+            "`protectai/prompt-injection-validation` 데이터셋에서 기존 Hybrid OR 결합 방식은 Lightweight Model Only보다 낮은 F1을 보였다. 이는 Rule 계층이 모델이 놓친 공격을 추가로 탐지하지 못하고, 정상 샘플 일부를 prompt injection으로 오탐했기 때문이다.",
+            "",
+            "따라서 protectai 결과는 Hybrid 구조가 항상 단일 모델보다 우수하다는 근거로 사용하지 않는다. 본 프로젝트에서는 해당 결과를 rule severity와 model support threshold가 필요한 사례로 해석한다. 세부 FP 샘플과 reason_code 분석은 `reports/protectai_hybrid_fp_analysis.md`에 기록하고, 보정 전/후 결과는 `reports/protectai_hybrid_fix_report.md`에 기록한다.",
         ]
     )
 
@@ -843,8 +1024,9 @@ def _render_markdown(
             "",
             "- `Rule Only`는 `backend/app/detection/injection_detector.py`의 규칙·휴리스틱 Prompt Injection 탐지만 사용한다.",
             "- `Lightweight Model Only`는 `models/lightweight/vectorizer.joblib`와 `models/lightweight/classifier.joblib`가 실제로 로드된 경우에만 측정한다.",
-            "- `Hybrid / Full Pipeline`은 `rule_predicted OR model_predicted` 기준으로 집계한다. safe explanation guard가 model hit를 취소한 경우에는 JSON 결과의 `model_hit_cancelled_by_safe_guard_count`와 `model_hit_cancelled_by_safe_guard_tp`에 별도로 기록한다.",
+            "- `Hybrid / Full Pipeline`은 prompt-injection benchmark 기준에서 PII rule을 제외하고, 모델 탐지 또는 HIGH severity injection rule, 또는 충분한 모델 support가 있는 MEDIUM severity injection rule만 positive로 집계한다.",
             "- `Lakera/gandalf_ignore_instructions`는 공격 샘플 중심 데이터셋이므로 Precision, F1, FP, TN은 `N/A`로 표시하고 Recall과 Accuracy 중심으로 해석한다.",
+            "- `Lakera-balanced`는 원본 Lakera의 N/A를 대체하지 않고, 정상 업무 문장을 추가해 FP/TN과 Precision/F1을 별도로 산출하기 위한 보완 평가셋이다.",
             "- `model_status`가 `enabled`가 아니면 Hybrid 결과는 경량 분류 계층이 빠진 fallback 성격이므로 완전한 Hybrid 성능으로 과장하지 않는다.",
             "- sklearn artifact 버전 경고가 발생하면 같은 scikit-learn 버전으로 artifact를 재생성한 뒤 결과를 다시 확인한다.",
             "",
@@ -914,6 +1096,8 @@ def _write_csv(rows: list[dict[str, Any]], path: Path) -> None:
         "tn",
         "fn",
         "positive_only",
+        "na_reason",
+        "metric_scope",
         "latency_ms_avg",
         "model_status",
         "dataset_status",

@@ -12,12 +12,23 @@
 | Full capstone rows | 100 |
 | Matched capstone rows | 75 |
 
+## Scope Boundary
+
+This report is a prompt-injection detector baseline artifact. It is not the main paper-level comparison for the overall capstone objective. The main privacy-preserving LLM comparison is maintained in `reports/baselines/papillon_comparison.md`, and PAPILLON is not added to this prompt-injection metric table because it is not a binary prompt-injection detector.
+
 ## Metrics
 
 | Evaluation scope | Accuracy | Precision | Recall | F1 | AUROC |
 |---|---:|---:|---:|---:|---:|
 | Full 100 rows | 0.5800 | 1.0000 | 0.0455 | 0.0870 | N/A |
 | Same successful rows as Attention Tracker | 0.6000 | 1.0000 | 0.0625 | 0.1176 | N/A |
+
+## Comparison Reference
+
+- Kuo-Han Hung, Ching-Yun Ko, Ambrish Rawat, I-Hsin Chung, Winston H. Hsu, and Pin-Yu Chen. "Attention Tracker: Detecting Prompt Injection Attacks in LLMs." Findings of NAACL 2025. Paper: https://aclanthology.org/2025.findings-naacl.123/ arXiv: https://arxiv.org/abs/2411.00348
+- This comparison uses Attention Tracker only as a row-alignment reference for the shared evaluation subset. It is based on the paper's described evaluation setting and required attention-score access, and is not a reproduction of the original paper's table.
+
+Reference format for the paper body: Hung, K.-H., Ko, C.-Y., Rawat, A., Chung, I.-H., Hsu, W. H., & Chen, P.-Y. (2025). Attention Tracker: Detecting Prompt Injection Attacks in LLMs. In *Findings of the Association for Computational Linguistics: NAACL 2025*. Association for Computational Linguistics. https://aclanthology.org/2025.findings-naacl.123/
 
 ## Prediction Mapping
 

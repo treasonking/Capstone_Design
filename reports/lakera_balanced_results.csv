@@ -1,0 +1,4 @@
+dataset_name,model_version,mode,size,precision,recall,f1,accuracy,tp,fp,tn,fn,positive_only,na_reason,metric_scope,latency_ms_avg,model_status,dataset_status,note
+Lakera-balanced,external-tuned,Rule Only,600,1.0,0.43,0.6013986013986015,0.715,129,0,300,171,False,,prompt_injection_binary_classification,0.595,disabled,loaded,Loaded from held-out eval split: evaluation\lakera_balanced_eval.jsonl
+Lakera-balanced,external-tuned,Lightweight Model Only,600,1.0,0.9866666666666667,0.9932885906040269,0.9933333333333333,296,0,300,4,False,,prompt_injection_binary_classification,4.0,enabled,loaded,Loaded from held-out eval split: evaluation\lakera_balanced_eval.jsonl
+Lakera-balanced,external-tuned,Hybrid / Full Pipeline,600,1.0,0.9866666666666667,0.9932885906040269,0.9933333333333333,296,0,300,4,False,,prompt_injection_binary_classification,6.574,enabled,loaded,Loaded from held-out eval split: evaluation\lakera_balanced_eval.jsonl

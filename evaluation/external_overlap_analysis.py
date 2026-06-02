@@ -29,6 +29,10 @@ from evaluation.external_dataset_compare import (
     _optional_limit,
     _runtime_versions,
 )
+from evaluation.prompt_injection_fusion import (
+    fuse_prompt_injection_decision,
+    prompt_injection_model_score,
+)
 
 
 OVERLAP_REPORT_PATH = Path("reports/external_overlap_analysis_report.md")
@@ -77,15 +81,28 @@ def _analyze_dataset(
     sample_rows: list[dict[str, Any]] = []
 
     for sample in samples:
-        rule_predicted = bool(detect_injection(sample.text))
+        rule_hits = detect_injection(sample.text)
+        rule_predicted = bool(rule_hits)
         model_prediction = classifier.classify(sample.text)
         model_predicted = _is_model_injection_prediction(model_prediction)
+        model_score = prompt_injection_model_score(
+            classifier,
+            sample.text,
+            model_prediction,
+            model_predicted,
+        )
+        fusion = fuse_prompt_injection_decision(
+            model_predicted=model_predicted,
+            model_score=model_score,
+            rule_hits=rule_hits,
+            text=sample.text,
+        )
         hybrid_pipeline_predicted, model_hit_cancelled_by_safe_guard = _hybrid_pipeline_prediction(
             sample.text,
             classifier,
             threshold,
         )
-        hybrid_predicted = rule_predicted or model_predicted
+        hybrid_predicted = fusion.predicted
         expected = bool(sample.expected_injection)
         sample_rows.append(
             {
@@ -100,6 +117,8 @@ def _analyze_dataset(
                 "model_hit_cancelled_by_safe_guard": model_hit_cancelled_by_safe_guard,
                 "model_label": model_prediction.label,
                 "model_confidence": model_prediction.confidence,
+                "model_score": model_score,
+                "hybrid_final_action": fusion.final_action,
             }
         )
 
@@ -287,9 +306,9 @@ def _render_report(
             "",
             "Hybrid / Full Pipeline 성능이 Rule Only와 유사하게 나타나는 경우, 주된 이유는 Lightweight Model이 Rule 계층이 놓친 공격 샘플을 거의 추가로 탐지하지 못하기 때문이다.",
             "",
-            "반대로 external-tuned 모델처럼 `Model Only Unique TP`가 증가하면 Hybrid TP도 Rule TP보다 커진다. 따라서 이 표는 Hybrid 개선 여부를 모델 계층의 독립 기여도로 설명하는 핵심 근거다.",
+            "반대로 external-tuned 모델처럼 `Model Only Unique TP`가 증가하면 calibrated Hybrid TP도 Rule TP보다 커진다. 따라서 이 표는 Hybrid 개선 여부를 모델 계층의 독립 기여도로 설명하는 핵심 근거다.",
             "",
-            "`Hybrid TP`와 `Hybrid Extra TP`는 `rule_predicted OR model_predicted` 기준이다. `Pipeline TP`는 safe explanation guard가 적용된 기존 `detect_hybrid()` 실행 결과이며, guard로 취소된 model hit는 별도 열에 기록한다.",
+            "`Hybrid TP`와 `Hybrid Extra TP`는 PII rule을 제외한 calibrated prompt-injection fusion 기준이다. `Pipeline TP`는 운영용 `detect_hybrid()` 실행 결과이며, benchmark fusion과의 차이는 별도로 해석한다.",
             "",
             "샘플 단위의 `expected_injection`, `rule_predicted`, `model_predicted`, `hybrid_predicted` 값은 JSON 결과 파일의 `sample_predictions`에 저장한다.",
             "",

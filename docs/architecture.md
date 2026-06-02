@@ -21,18 +21,31 @@
 6. action이 `MASK`이면 민감정보를 치환한 뒤 upstream LLM으로 전달한다.
 7. action이 `BLOCK`이면 upstream LLM 호출 없이 차단 응답을 반환한다.
 8. action이 `ALLOW`이면 요청을 그대로 upstream LLM으로 전달한다.
-9. LLM 또는 Mock LLM 응답 생성 이후 Validator Agent가 최종 사용자 반환 전에 출력을 재검사한다.
-10. Validator Agent는 출력 내 PII 잔존, 시스템 프롬프트 또는 내부 정책 노출, 정책 우회 성공 징후, 마스킹 누락을 검사한다.
-11. 최종 응답 이후 audit log에는 `input_action`, `output_action`, `final_action`, Validator Agent 결과가 분리 기록되고, PQC-compatible integrity signature가 추가된다.
+9. LLM 또는 Mock LLM 응답 생성 이후 Validator Agent가 최종 사용자 반환 전에 정책 결정 결과와 출력을 재검사한다.
+10. Validator Agent는 핵심 탐지 모델이 아니라, 출력 내 PII 잔존, 시스템 프롬프트 또는 내부 정책 노출, 정책 우회 성공 징후, 마스킹 누락을 확인하는 운영형 확장 요소이다.
+11. 최종 응답 이후 audit log에는 `input_action`, `output_action`, `final_action`, Validator Agent 결과가 분리 기록되고, Mock signer 기반 integrity signature가 추가된다.
+
+## Existing Proxy와 Validator Agent의 경계
+
+Validator Agent는 입력 탐지 파이프라인의 일부가 아니라 LLM 응답 이후의 출력 검증 계층이다. 따라서 외부 데이터셋 기반 Prompt Injection 탐지 성능 평가는 입력 탐지 파이프라인을 중심으로 수행하며, Validator Agent 자체의 성능 벤치마킹은 별도 후속 연구로 분리한다.
+
+| 구분 | Existing Proxy | Validator Agent |
+|---|---|---|
+| 위치 | 사용자 입력이 LLM으로 전달되기 전 | LLM 응답 생성 후 사용자에게 반환되기 전 |
+| 주요 역할 | 입력 탐지, 마스킹, 차단, 정책 결정 | 출력 검증, 정책 결정 재검토 |
+| 검사 대상 | 사용자 입력 prompt | LLM 응답 output |
+| 대표 필드 | `input_action`, `reason_code` | `output_action`, `validator` |
+| 최종 조합 | 입력 기준 정책 결정 | `input_action`과 `output_action`을 종합해 `final_action` 결정 |
+| 연구 내 위치 | 핵심 평가 대상 | 운영형 확장 요소 |
 
 ## 구현 메모
 
 현재 코드에는 기존 구현 호환성을 위해 `backend/app/detection/hybrid_detector.py`와 `hybrid_detection` audit 필드명이 남아 있다. 문서상 대표 명칭은 다층형 탐지 파이프라인이며, 본 시스템은 정책·패턴 기반 탐지와 경량 분류를 결합한다는 점에서 넓은 의미의 하이브리드 구조로만 설명한다.
 
-Validator Agent는 입력 검사 전에 배치하지 않는다. 입력 검사는 detector와 policy engine이 담당하고, Validator Agent는 LLM 출력 생성 이후에만 실행되는 출력 검증 계층이다.
+Validator Agent는 입력 검사 전에 배치하지 않는다. 입력 검사는 detector와 policy engine이 담당하고, Validator Agent는 LLM 출력 생성 이후에만 실행되는 정책 결정 재검증 계층이다. 본 연구의 핵심 정량 평가 대상은 아니며, Validator Agent 자체 벤치마킹은 후속 연구로 둔다.
 
 `/proxy/analyze`는 LLM 호출이 없는 사전 분석 API이므로 Validator Agent 출력 재검사는 `SKIPPED`로 기록된다.
 
 SSE 엔드포인트는 보안 검증을 위해 upstream 응답을 버퍼링한 뒤 Validator Agent 검증 후 안전한 응답만 반환한다. 따라서 실시간 토큰 스트리밍이 아니라 검증 후 일괄 반환 구조에 가깝다.
 
-PQC는 탐지 성능 개선이 아니라 감사 로그 무결성 보호를 위한 확장 기능이다. 현재 개발 구현은 `MOCK-ML-DSA` signer를 사용하며, 운영 환경에서는 실제 ML-DSA signer로 교체할 수 있도록 인터페이스를 분리한다. 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니며, 현재 구현은 ML-DSA 교체가 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조이다.
+PQC 기반 감사로그 서명 구조는 탐지 성능 개선이 아니라 감사 로그 무결성 검증을 위한 확장 기능이다. 현재 개발 구현은 `MOCK-ML-DSA` signer를 사용하며, 운영 환경에서는 실제 ML-DSA signer로 교체할 수 있도록 인터페이스를 분리한다. 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니며, 현재 구현은 ML-DSA 교체가 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조이다. 실제 PQC 알고리즘 적용 및 성능 평가는 후속 연구 범위다.

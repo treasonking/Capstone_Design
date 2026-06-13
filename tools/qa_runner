@@ -1,0 +1,148 @@
+"""
+E2E 테스트 자동 실행기 (팀 JSON 데이터셋 지원)
+사용법: python qa_runner.py --dataset ../datasets/sample_dataset_v2_balanced.json
+"""
+
+import json
+import time
+import argparse
+import requests
+from datetime import datetime
+from pathlib import Path
+from collections import Counter
+
+DEFAULT_URL     = "http://localhost:5000"
+DEFAULT_DATASET = "../datasets/sample_dataset_v2_balanced.json"
+RESULTS_DIR     = Path("results")
+
+def labels_to_action(labels: list) -> str:
+    if not labels:
+        return "ALLOW"
+    inj = [l for l in labels if l.startswith("INJ_")]
+    pii = [l for l in labels if l.startswith("PII_")]
+    if inj:
+        return "BLOCK"
+    if "PII_RRN_DETECTED" in pii:
+        return "BLOCK"
+    if len(pii) >= 2:
+        return "BLOCK"
+    if pii:
+        return "MASK"
+    return "ALLOW"
+
+def run_test(base_url: str, tc: dict) -> dict:
+    expected_action = labels_to_action(tc.get("labels", []))
+    expected_labels = tc.get("labels", [])
+    payload = {"text": tc["text"], "user_id": "qa_tester"}
+    try:
+        resp = requests.post(f"{base_url}/proxy", json=payload, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as e:
+        return {
+            **tc,
+            "status": "ERROR", "error": str(e),
+            "expected_action": expected_action,
+            "actual_action": None,
+            "actual_reason_codes": [],
+            "expected_labels": expected_labels,
+        }
+
+    actual_action       = data.get("action", "")
+    actual_reason_codes = data.get("reason_codes", [])
+    action_pass         = actual_action == expected_action
+
+    if not expected_labels:
+        codes_pass = len(actual_reason_codes) == 0
+    else:
+        codes_pass = any(
+            any(exp.lower() in act.lower() or act.lower() in exp.lower()
+                for act in actual_reason_codes)
+            for exp in expected_labels
+        )
+
+    overall_pass = action_pass and codes_pass
+
+    return {
+        **tc,
+        "status":              "PASS" if overall_pass else "FAIL",
+        "action_pass":         action_pass,
+        "codes_pass":          codes_pass,
+        "expected_action":     expected_action,
+        "actual_action":       actual_action,
+        "actual_reason_codes": actual_reason_codes,
+        "expected_labels":     expected_labels,
+        "latency_ms":          data.get("latency_ms", 0),
+    }
+
+def run_all(base_url: str, dataset_path: str) -> list:
+    with open(dataset_path, encoding="utf-8") as f:
+        test_cases = json.load(f)
+
+    total = len(test_cases)
+    print(f"\n{'='*60}")
+    print(f" QA 자동 테스트 시작  |  총 {total}개 케이스")
+    print(f" 대상 서버: {base_url}")
+    print(f"{'='*60}\n")
+
+    results = []
+    for i, tc in enumerate(test_cases, 1):
+        result = run_test(base_url, tc)
+        results.append(result)
+        icon = "OK" if result["status"] == "PASS" else ("FAIL" if result["status"] == "FAIL" else "ERR")
+        print(f"[{i:03d}/{total}] {icon} {tc['id']} | {result['expected_action']} vs {result['actual_action']} | {result['status']}")
+        time.sleep(0.05)
+
+    return results
+
+def save_results(results: list) -> str:
+    RESULTS_DIR.mkdir(exist_ok=True)
+    timestamp   = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_path = RESULTS_DIR / f"test_result_{timestamp}.json"
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(results, f, ensure_ascii=False, indent=2)
+    print(f"\n결과 저장: {output_path}")
+    return str(output_path)
+
+def print_summary(results: list):
+    total   = len(results)
+    passed  = sum(1 for r in results if r["status"] == "PASS")
+    failed  = sum(1 for r in results if r["status"] == "FAIL")
+    errors  = sum(1 for r in results if r["status"] == "ERROR")
+    avg_lat = sum(r.get("latency_ms", 0) for r in results) / total if total else 0
+    cat_fail = Counter(r["category"] for r in results if r["status"] == "FAIL")
+
+    print(f"\n{'='*60}")
+    print(f" 테스트 결과 요약")
+    print(f"{'='*60}")
+    print(f" 전체:  {total}개")
+    print(f" PASS: {passed}개  ({passed/total*100:.1f}%)")
+    print(f" FAIL: {failed}개  ({failed/total*100:.1f}%)")
+    print(f" ERROR:{errors}개")
+    print(f" 평균 응답시간: {avg_lat:.1f}ms")
+
+    if cat_fail:
+        print(f"\n 카테고리별 실패:")
+        for cat, cnt in cat_fail.most_common():
+            print(f"   {cat}: {cnt}건")
+
+    if failed > 0:
+        print(f"\n{'='*60}")
+        print(" FAIL 케이스")
+        print(f"{'='*60}")
+        for r in results:
+            if r["status"] == "FAIL":
+                print(f"  [{r['id']}] {r['text'][:40]}")
+                print(f"    기대: {r['expected_action']}  실제: {r['actual_action']}")
+    print(f"{'='*60}\n")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--url",     default=DEFAULT_URL)
+    parser.add_argument("--dataset", default=DEFAULT_DATASET)
+    args = parser.parse_args()
+
+    results     = run_all(args.url, args.dataset)
+    result_path = save_results(results)
+    print_summary(results)
+    print(f"리포트 생성: python diff_report.py --input {result_path}")

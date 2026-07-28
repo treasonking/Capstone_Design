@@ -17,7 +17,7 @@
 2. Regex Pattern Layer에서 정형 PII를 우선 탐지한다.
 3. Heuristic Rule Layer에서 프롬프트 인젝션 키워드, 정책 우회 문장, 조합 규칙을 탐지한다.
 4. Lightweight Classification Layer에서 비정형 또는 애매한 문장을 분류한다.
-5. Decision Layer에서 탐지 결과를 종합하여 최종 action을 결정한다.
+5. Decision Layer에서 탐지 결과를 종합하고 `BLOCK > MASK > WARN > ALLOW` 순서로 최종 action을 결정한다. 정책 파일의 숫자 priority는 같은 action 안에서만 우선순위를 정한다.
 6. action이 `MASK`이면 민감정보를 치환한 뒤 upstream LLM으로 전달한다.
 7. action이 `BLOCK`이면 upstream LLM 호출 없이 차단 응답을 반환한다.
 8. action이 `ALLOW`이면 요청을 그대로 upstream LLM으로 전달한다.
@@ -46,6 +46,8 @@ Validator Agent는 입력 검사 전에 배치하지 않는다. 입력 검사는
 
 `/proxy/analyze`는 LLM 호출이 없는 사전 분석 API이므로 Validator Agent 출력 재검사는 `SKIPPED`로 기록된다.
 
-SSE 엔드포인트는 보안 검증을 위해 upstream 응답을 버퍼링한 뒤 Validator Agent 검증 후 안전한 응답만 반환한다. 따라서 실시간 토큰 스트리밍이 아니라 검증 후 일괄 반환 구조에 가깝다.
+SSE 엔드포인트는 보안 검증을 위해 upstream 응답 전체를 버퍼링한 뒤 Validator Agent 검증 후 안전한 응답만 반환한다. 차단된 입력은 upstream을 호출하지 않으며, 출력이 차단되면 원본 token event를 보내지 않는다. 따라서 실시간 토큰 스트리밍이 아니라 검증 후 일괄 반환 구조에 가깝다.
 
-PQC 기반 감사로그 서명 구조는 탐지 성능 개선이 아니라 감사 로그 무결성 검증을 위한 확장 기능이다. 현재 개발 구현은 `MOCK-ML-DSA` signer를 사용하며, 운영 환경에서는 실제 ML-DSA signer로 교체할 수 있도록 인터페이스를 분리한다. 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니며, 현재 구현은 ML-DSA 교체가 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조이다. 실제 PQC 알고리즘 적용 및 성능 평가는 후속 연구 범위다.
+PQC 기반 감사로그 서명 구조는 탐지 성능 개선이 아니라 감사 로그 무결성 검증을 위한 확장 기능이다. 현재 개발 구현은 `HMAC-SHA256-MOCK` signer이며 `MOCK_ONLY`로 명시한다. 실제 ML-DSA 라이브러리를 탑재한 것이 아니라, ML-DSA 교체 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조이다. 실제 PQC 알고리즘 적용 및 성능 평가는 후속 연구 범위다.
+
+Docker Compose의 호스트 바인딩은 Proxy `127.0.0.1:8000`, Mock LLM `127.0.0.1:8001`이다. 컨테이너 사이 통신은 Compose 서비스 이름을 사용한다.

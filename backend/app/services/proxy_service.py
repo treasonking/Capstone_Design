@@ -89,12 +89,24 @@ def _audit_from_detections(
     detector_results: list[dict[str, Any]] = []
     detector_counts: dict[str, int] = {}
     total_detections = len(detections)
-    pii_detected = any(item.detector_type == DetectorType.PII for item in detections)
-    injection_detected = any(item.detector_type == DetectorType.INJECTION for item in detections)
+    pii_detection_count = sum(
+        item.detector_type == DetectorType.PII for item in detections
+    )
+    injection_detection_count = sum(
+        item.detector_type == DetectorType.INJECTION for item in detections
+    )
+    pii_detected = pii_detection_count > 0
+    injection_detected = injection_detection_count > 0
 
     if hybrid_result is not None:
         detector_counts = dict(hybrid_result.detector_counts)
         total_detections = len(detections)
+        pii_detection_count = sum(
+            item.detector_type == DetectorType.PII for item in detections
+        )
+        injection_detection_count = sum(
+            item.detector_type == DetectorType.INJECTION for item in detections
+        )
         pii_detected = hybrid_result.pii_detected
         injection_detected = hybrid_result.injection_detected
         detector_results = []
@@ -122,6 +134,8 @@ def _audit_from_detections(
         "reasons": reasons,
         "pii_detected": pii_detected,
         "injection_detected": injection_detected,
+        "pii_detection_count": pii_detection_count,
+        "injection_detection_count": injection_detection_count,
         "total_detections": total_detections,
         "detector_counts": detector_counts,
         "detector_count_basis": "matched_detectors",
@@ -162,6 +176,8 @@ def _skipped_output_summary() -> dict[str, Any]:
         "reasons": ["UPSTREAM_NOT_CALLED"],
         "pii_detected": False,
         "injection_detected": False,
+        "pii_detection_count": 0,
+        "injection_detection_count": 0,
     }
 
 
@@ -256,6 +272,10 @@ def _build_audit_summary(
             validator_summary or _skipped_validator_summary(output_action or "SKIPPED")
         ),
     }
+    if final_action == PolicyAction.BLOCK.value:
+        audit_summary["block_type"] = _resolve_reason_code(reason_codes)
+    elif final_action == "ERROR":
+        audit_summary["error_type"] = _resolve_reason_code(reason_codes)
     hybrid_detection = _top_level_hybrid_detection(input_summary, output_summary)
     if hybrid_detection is not None:
         audit_summary["hybrid_detection"] = hybrid_detection

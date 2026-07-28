@@ -111,7 +111,7 @@ def _injection_audit(eligible: list[tuple[DetectionResult, PolicyRule]]) -> dict
         )
     winning_detection, winning_rule = max(
         injection_items,
-        key=lambda item: (item[1].priority, _ACTION_WEIGHT[item[1].action]),
+        key=lambda item: (_ACTION_WEIGHT[item[1].action], item[1].priority),
     )
 
     return {
@@ -149,7 +149,7 @@ def evaluate_policy(
 
     winner_detection, winner_rule = max(
         eligible,
-        key=lambda item: (item[1].priority, _ACTION_WEIGHT[item[1].action]),
+        key=lambda item: (_ACTION_WEIGHT[item[1].action], item[1].priority),
     )
     reasons = ordered_reason_codes([item[0].reason_code for item in eligible])
 

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import hmac
+import os
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -25,6 +28,7 @@ _DENIED_LOG_KEYS = {
     "system_prompt",
     "token",
 }
+_DEVELOPMENT_USER_ID_SALT = "public-development-only-audit-user-id-salt"
 
 
 def _sanitize_for_log(value: Any) -> Any:
@@ -40,6 +44,16 @@ def _sanitize_for_log(value: Any) -> Any:
     return value
 
 
+def _pseudonymize_user_id(user_id: str) -> str:
+    salt = os.getenv("AUDIT_USER_ID_SALT", _DEVELOPMENT_USER_ID_SALT)
+    digest = hmac.new(
+        salt.encode("utf-8"),
+        user_id.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return f"hmac-sha256:{digest[:24]}"
+
+
 def _build_log_entry(
     request_id: str,
     user_id: str,
@@ -53,7 +67,7 @@ def _build_log_entry(
     # 감사와 관리자 통계에 필요한 메타데이터만 저장합니다.
     entry = {
         "request_id": request_id,
-        "user_id": user_id,
+        "user_id": _pseudonymize_user_id(user_id),
         "timestamp": audit_summary.get("timestamp_utc"),
         "timestamp_utc": audit_summary.get("timestamp_utc"),
         "action": final_action,
@@ -65,6 +79,12 @@ def _build_log_entry(
         "upstream_call": bool(audit_summary.get("upstream_call")),
         "input_action": audit_summary.get("input_action"),
         "output_action": audit_summary.get("output_action"),
+        "pii_detection_count": int(input_summary.get("pii_detection_count", 0))
+        + int(output_summary.get("pii_detection_count", 0)),
+        "injection_detection_count": int(
+            input_summary.get("injection_detection_count", 0)
+        )
+        + int(output_summary.get("injection_detection_count", 0)),
         "input": input_summary,
         "output": output_summary,
         "validator": validator_summary,
@@ -73,9 +93,13 @@ def _build_log_entry(
             "output": output_summary.get("detector_counts", {}),
         },
     }
+    if audit_summary.get("block_type"):
+        entry["block_type"] = audit_summary["block_type"]
+    if audit_summary.get("error_type"):
+        entry["error_type"] = audit_summary["error_type"]
     hybrid_detection = audit_summary.get("hybrid_detection")
     if hybrid_detection is not None:
-        entry["hybrid_detection"] = hybrid_detection
+        entry["hybrid_detection"] = _sanitize_for_log(hybrid_detection)
     return entry
 
 

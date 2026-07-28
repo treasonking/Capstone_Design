@@ -30,6 +30,7 @@ def test_stream_proxy_blocks_input_before_upstream(monkeypatch) -> None:
 
     assert "event: policy" in result
     assert "event: done" in result
+    assert "event: token" not in result
     assert '"action": "BLOCK"' in result
     assert '"upstream_call": false' in result
 
@@ -63,3 +64,4 @@ def test_stream_proxy_blocks_injection_in_output(monkeypatch) -> None:
     assert "event: done" in result
     assert '"action": "BLOCK"' in result
     assert '"output_action": "BLOCK"' in result
+    assert "event: token" not in result

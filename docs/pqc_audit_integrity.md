@@ -47,11 +47,13 @@ PQC 기반 감사로그 서명 구조는 탐지 파이프라인 내부가 아니
 
 ## 현재 구현
 
-현재 구현은 `backend/app/integrity/pqc_signer.py`의 `MockMLDSASigner`를 사용한다. 이는 개발 및 테스트용 MOCK-ML-DSA signer이며 실제 ML-DSA 구현이 아니다. 내부 서명 구현은 HMAC-SHA256이다.
+현재 구현은 `backend/app/integrity/pqc_signer.py`의 `MockAuditSigner`를 사용한다. `MockMLDSASigner` 이름은 기존 import 호환용 별칭으로만 남아 있다. 실제 알고리즘 메타데이터는 `signature_alg=HMAC-SHA256-MOCK`, `implementation_status=MOCK_ONLY`, `replacement_target=ML-DSA`로 기록한다. 이는 실제 ML-DSA 구현이 아니다.
 
 따라서 발표, 논문, 보고서에서는 "PQC를 직접 구현했다"라고 표현하지 않는다. 정확한 표현은 "ML-DSA로 교체 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조를 구현했다"이다.
 
 운영 환경에서는 같은 인터페이스를 유지하면서 실제 ML-DSA 서명 라이브러리로 교체할 수 있다. 다만 실제 PQC 알고리즘 적용, 키 관리, 서명 크기, 검증 비용, 처리 지연 시간 평가는 후속 연구 범위로 둔다. ML-KEM은 키 교환용이므로 감사 로그 서명 목적에는 사용하지 않는다.
+
+HMAC 키는 `AUDIT_LOG_HMAC_KEY` 환경변수에서 읽는다. 값이 없으면 테스트와 로컬 데모만을 위한 공개 개발 키를 사용하므로 이 fallback은 운영 환경의 위변조 방지 보장을 제공하지 않는다. 운영 배포에서는 키를 코드·이미지·로그에 넣지 말고 별도 secret 관리 체계로 주입하고 회전 정책을 적용해야 한다.
 
 ## 발표 및 보고서 표현 가이드
 
@@ -87,6 +89,8 @@ python tools/verify_audit_log.py --log-file logs/audit_log.jsonl
 ```
 
 검증 도구는 JSONL 각 줄을 읽고 `integrity.signature`를 제외한 canonical hash를 재계산해 서명을 확인한다. `final_action`이나 `reason_codes`가 사후 변경되면 검증이 실패한다.
+
+서명 도입 전 레코드나 이전 Mock 메타데이터로 작성된 레코드는 현재 키·스키마로 검증되지 않을 수 있다. 검증 결과는 레코드 생성 당시의 `public_key_id`, 알고리즘, 키 보존 상태와 함께 해석한다.
 
 ## Future Work
 

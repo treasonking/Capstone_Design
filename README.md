@@ -28,9 +28,9 @@ Request
 
 Validator Agent는 핵심 탐지 모델이 아니라, LLM 응답 생성 이후 최종 사용자 반환 이전 단계에서 프록시의 정책 결정 결과를 재검증하기 위한 운영형 확장 요소입니다. 출력 내 개인정보 잔존, 정책 위반 응답, 마스킹 누락을 확인하고 `output_action`을 `ALLOW`, `MASK`, `BLOCK`, `WARN`으로 분리 기록합니다.
 
-PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 향상시키기 위한 요소가 아니라, 감사로그의 사후 위·변조 가능성을 줄이기 위한 무결성 확장 요소입니다. 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니며, 현재 구현은 ML-DSA 교체가 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조입니다. 감사 로그의 normalized JSON에서 `integrity.signature` 필드를 제외하고 SHA-256 해시를 만든 뒤, 개발 환경에서는 내부적으로 HMAC-SHA256을 사용하는 `MOCK-ML-DSA` signer로 서명합니다.
+PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 향상시키기 위한 요소가 아니라, 감사로그의 사후 위·변조 가능성을 줄이기 위한 무결성 확장 요소입니다. 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니며, 현재 구현은 ML-DSA 교체 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조입니다. 감사 로그의 normalized JSON에서 `integrity.signature` 필드를 제외하고 SHA-256 해시를 만든 뒤, 개발 환경에서는 `HMAC-SHA256-MOCK` signer로 서명하며 `implementation_status=MOCK_ONLY`, `replacement_target=ML-DSA`를 기록합니다.
 
-`logs/audit_log.jsonl`에는 raw prompt, raw response, API key, system prompt, 개인정보 원문을 저장하지 않습니다. 감사 로그에는 `input_action`, `output_action`, `final_action`, Validator Agent 결과, detector 요약, integrity signature만 저장합니다.
+`logs/audit_log.jsonl`에는 raw prompt, raw response, API key, system prompt, 개인정보 원문을 저장하지 않습니다. 감사 로그에는 `input_action`, `output_action`, `final_action`, Validator Agent 결과, PII·Injection 탐지 건수, 차단·오류 유형, HMAC 가명화된 `user_id`, integrity signature만 저장합니다.
 
 ### Existing Proxy와 Validator Agent의 차이
 
@@ -62,7 +62,7 @@ PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 향상시
 
 현재 구현은 실제 ML-DSA 완전 적용이 아니라, ML-DSA로 교체 가능한 서명 인터페이스와 Mock signer 기반 검증 구조를 포함한다. 실제 PQC 알고리즘 적용 및 성능 평가는 후속 연구 범위로 둔다.
 
-감사로그의 목적은 원문 프롬프트나 응답을 저장하는 것이 아니라, 어떤 요청이 어떤 정책에 따라 처리되었는지 사후 확인할 수 있도록 최소 메타데이터를 남기는 것이다. 특히 공공기관·사내망 환경에서는 개인정보가 포함된 요청을 원문 그대로 저장하는 것 자체가 추가 위험이 될 수 있으므로, `request_id`, `timestamp`, `action`, `reason_code`, `detector_count`, `upstream_call` 등 최소 항목만 기록한다.
+감사로그의 목적은 원문 프롬프트나 응답을 저장하는 것이 아니라, 어떤 요청이 어떤 정책에 따라 처리되었는지 사후 확인할 수 있도록 최소 메타데이터를 남기는 것이다. 특히 공공기관·사내망 환경에서는 개인정보가 포함된 요청을 원문 그대로 저장하는 것 자체가 추가 위험이 될 수 있으므로, `request_id`, `timestamp`, `action`, `reason_code`, `pii_detection_count`, `injection_detection_count`, `upstream_call` 등 최소 항목만 기록한다.
 
 | 항목 | 목적 |
 |---|---|
@@ -70,9 +70,9 @@ PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 향상시
 | timestamp | 처리 시점 확인 |
 | action | ALLOW/MASK/BLOCK/WARN 정책 결정 확인 |
 | reason_code | 정책 판단 근거 확인 |
-| detector_count | 탐지 근거 수 확인 |
+| pii_detection_count / injection_detection_count | 위험 유형별 탐지 건수 확인 |
 | upstream_call | 외부 LLM 호출 여부 확인 |
-| signature/mock_signature | 감사로그 무결성 검증 |
+| integrity.signature | 감사로그 무결성 검증 |
 
 발표용 요약:
 
@@ -160,6 +160,23 @@ flowchart TD
 
 ## 성능 요약
 
+### 2026-07-28 현행 검증
+
+현재 환경에서 전체 테스트는 `160 passed, 8 warnings`로 통과했다. 아래 재실행 결과와 과거 보고서는 생성 시점과 프로토콜이 다르므로 합쳐서 하나의 성능 수치로 주장하지 않는다.
+
+| 데이터셋 | 범위 | Precision | Recall | F1 |
+|---|---|---:|---:|---:|
+| 내부 113건 | PII reason code | 0.879 | 1.000 | 0.935 |
+| 내부 113건 | Injection reason code | 0.852 | 1.000 | 0.920 |
+| 외부 스타일 예비 24건 | PII reason code | 0.875 | 1.000 | 0.933 |
+| 외부 스타일 예비 24건 | Injection reason code | 0.767 | 1.000 | 0.868 |
+| 확장 회귀 152건 | PII label | 0.979 | 1.000 | 0.989 |
+| 확장 회귀 152건 | Injection label | 0.902 | 1.000 | 0.948 |
+
+내부 110건 이진 비교에서 Rule Only/Hybrid F1은 1.000, Model Only F1은 0.225로 재현되었다. 외부 held-out split 재실행도 완료했지만 external-tuned artifact가 scikit-learn 1.8.0에서 저장되고 현재 runtime은 1.7.2라 호환성 경고가 발생했고, train/eval text-hash overlap 42건이 남아 있다. 세부 혼동행렬, latency, 과거 수치 대조는 `reports/current_verification_report.md`를 기준으로 확인한다.
+
+기준 DOCX의 Holdout Accuracy 0.833, Injection F1 0.923, PII F1 0.783, SAFE F1 0.783은 현재 저장소 산출물에서 동일 프로토콜의 근거를 찾지 못했으므로 **과거 측정 결과이며 현재 실행에서는 미재현**으로만 취급한다.
+
 ### 내부 회귀 테스트 결과
 
 기준 데이터셋: `evaluation/sample_dataset.json` 113건
@@ -169,7 +186,7 @@ flowchart TD
 | PII Detection | 0.879 | 1.000 | 0.935 | 29 / 4 / 0 |
 | Prompt Injection Detection | 0.852 | 1.000 | 0.920 | 104 / 18 / 0 |
 
-2026-05-18 재평가 기준이며, 경량 분류 artifact가 활성화된 환경에서 reason_code 단위로 집계한 결과입니다. 입력 탐지 성능표에는 Validator Agent와 PQC 무결성 서명이 탐지 성능 향상 요소로 포함되지 않습니다.
+2026-07-28 재평가 기준이며, 경량 분류 artifact가 활성화된 환경에서 reason_code 단위로 집계한 결과입니다. 입력 탐지 성능표에는 Validator Agent와 Mock 무결성 서명이 탐지 성능 향상 요소로 포함되지 않습니다.
 
 ### 외부 스타일 예비 검증 결과
 
@@ -184,7 +201,7 @@ flowchart TD
 
 ### Rule Only / Model Only / Hybrid 비교
 
-2026-05-18 재평가에서는 내부 baseline과 별도로 Hugging Face 공개 Prompt Injection 데이터셋 3종을 `Rule Only`, `Lightweight Model Only`, `Hybrid / Full Pipeline`으로 분리 측정했습니다. 경량 분류 artifact는 `models/lightweight/vectorizer.joblib`, `models/lightweight/classifier.joblib` 모두 로드된 `enabled` 상태였습니다.
+아래 상세 표는 2026-05-18 과거 평가 산출물이며, 내부 baseline과 별도로 Hugging Face 공개 Prompt Injection 데이터셋 3종을 `Rule Only`, `Lightweight Model Only`, `Hybrid / Full Pipeline`으로 분리 측정했습니다. 2026-07-28 현재 재현 결과는 위 현행 검증 요약과 `reports/current_verification_report.md`를 우선합니다.
 
 | Dataset | Mode | Precision | Recall | F1 | TP / FP / FN | Avg Latency(ms) |
 |---|---|---:|---:|---:|---:|---:|
@@ -247,7 +264,7 @@ external-tuned 결과는 외부 공개 데이터셋 일부를 학습에 포함�
 
 ### Latency Benchmark
 
-2026-05-29 후속 측정에서는 upstream LLM을 stub 응답으로 대체하고 detector/proxy 내부 처리 시간을 분리 측정했습니다. 대표 시나리오 5개를 각 30회 측정한 결과, `detector_only` 평균은 `2.717ms`, p95는 `4.982ms`였고, `proxy_end_to_end` 평균 응답 시간은 `42.092ms`, p95는 `69.408ms`였습니다. action별 proxy 평균은 `ALLOW=52.301ms`, `BLOCK=27.400ms`, `MASK=50.442ms`, `WARN=52.916ms`였습니다. BLOCK은 upstream을 호출하지 않으므로 다른 action보다 낮게 해석합니다.
+2026-07-28 현재 재실행에서는 upstream LLM을 local async stub으로 대체하고 대표 시나리오 5개를 각 5회 warmup 후 30회 측정했다. `detector_only` 전체 평균은 `4.380ms`, p95는 `9.923ms`였고, `proxy_end_to_end` 전체 평균은 `84.581ms`, p95는 `137.325ms`였다. 실제 네트워크와 LLM 생성 시간은 포함하지 않았고, BLOCK은 upstream을 호출하지 않으므로 다른 action보다 낮게 해석한다.
 
 세부 결과는 `reports/latency_benchmark_report.md`, `reports/latency_benchmark_results.csv`, `reports/latency_benchmark_results.json`에 보존했습니다.
 
@@ -633,23 +650,26 @@ curl -X POST "http://127.0.0.1:8000/proxy/chat" \
 
 ## 실행 방법
 
-1. 개발 의존성 설치
+1. 개발·평가 의존성 설치
 
-```bash
-python -m pip install ".[dev]"
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install ".[dev,perf,eval]"
 ```
 
-2. 경량 분류 계층 의존성 및 artifact 생성
+2. 기존 경량 분류 artifact 확인
 
-```bash
-python -m pip install ".[perf]"
+```powershell
+Test-Path .\models\lightweight\vectorizer.joblib
+Test-Path .\models\lightweight\classifier.joblib
+```
+
+저장소에는 기본 artifact가 포함되어 있다. 학습 데이터나 모델을 의도적으로 갱신하는 작업이 아니라면 다음 재학습 명령을 실행해 기존 artifact를 덮어쓰지 않는다.
+
+```powershell
 python tools/train_lightweight_classifier.py
 ```
-
-생성되는 파일:
-
-- `models/lightweight/vectorizer.joblib`
-- `models/lightweight/classifier.joblib`
 
 권장 탐지 설정은 다음과 같습니다.
 
@@ -662,52 +682,39 @@ MODEL_DETECTOR_FAIL_MODE=warn
 
 `DETECTION_MODE=hybrid`는 기존 설정값과의 호환성을 위한 이름이며, 문서상 대표 탐지 구조는 Multi-layered Detection Pipeline입니다.
 
-3. artifact 생성 확인
+3. 테스트 실행
 
 ```powershell
-Test-Path .\models\lightweight\vectorizer.joblib
-Test-Path .\models\lightweight\classifier.joblib
-```
-
-4. 테스트 실행
-
-```bash
 python -m pytest -q
 ```
 
-5. 내부 회귀 테스트 보고서 생성
+4. 내부 회귀 테스트 보고서 생성
 
-```bash
-python -m evaluation.evaluate \
-  --dataset evaluation/sample_dataset.json \
-  --report reports/evaluation_report.md
+```powershell
+python -m evaluation.evaluate --dataset evaluation/sample_dataset.json --report reports/evaluation_report.md
 ```
 
 Windows에서는 다음 형식으로도 실행할 수 있습니다.
 
-```bash
+```powershell
 py -m evaluation.evaluate --dataset evaluation/sample_dataset.json --report reports/evaluation_report.md
 ```
 
-6. 외부 스타일 검증 보고서 생성
+5. 외부 스타일 검증 보고서 생성
 
-```bash
-python -m evaluation.evaluate \
-  --dataset evaluation/external_validation_sample.json \
-  --report reports/external_validation_report.md
+```powershell
+python -m evaluation.evaluate --dataset evaluation/external_validation_sample.json --report reports/external_validation_report.md
 ```
 
-7. Baseline 비교 보고서 생성
+6. Baseline 비교 보고서 생성
 
-```bash
-python -m evaluation.baseline_compare \
-  --report reports/baseline_compare_report.md \
-  --results reports/baseline_compare_results.json
+```powershell
+python -m evaluation.baseline_compare --report reports/baseline_compare_report.md --results reports/baseline_compare_results.json
 ```
 
 현재 `baseline_compare.py`는 Prompt Injection 기준으로 `Rule Only`, `Model Only`, `Hybrid`를 분리 측정합니다. `Model Only`는 lightweight artifact가 로드된 경우에만 측정하고, artifact가 없으면 `N/A`로 표시합니다. `Hybrid`가 rule fallback 상태이면 `Hybrid(fallback)` 또는 `model_status=artifact_missing`으로 표시합니다.
 
-8. 외부 공개 데이터셋 3종 Rule/Model/Hybrid 비교 보고서 생성
+7. 외부 공개 데이터셋 3종 Rule/Model/Hybrid 비교 보고서 생성
 
 ```bash
 python -m evaluation.external_training_data
@@ -755,7 +762,7 @@ python -m evaluation.external_label_sanity_check
 python -m evaluation.deepset_official_split_compare
 ```
 
-9. Docker 이미지 재빌드 및 컨테이너 검증
+8. Docker 이미지 재빌드 및 컨테이너 검증
 
 ```powershell
 docker compose build --no-cache
@@ -988,7 +995,7 @@ Invoke-RestMethod `
 - `policy_id`는 `default`와 `strict`만 허용되며, 각각 `policies/policy.yaml`과 `policies/strict.yaml`을 사용합니다.
 - `logs/audit_log.jsonl`에는 원문 prompt/response를 저장하지 않고 메타데이터만 기록합니다.
 - 입력 정책 평가, Validator Agent 출력 검증, `final_action`이 audit summary와 audit log에 분리 기록됩니다.
-- audit log는 ML-DSA 교체 가능한 인터페이스와 `MOCK-ML-DSA` 개발용 mock signer로 무결성 서명을 남깁니다. 이는 실제 ML-DSA 구현이 아니라 내부적으로 HMAC-SHA256을 사용하는 검증 구조입니다.
+- audit log는 ML-DSA 교체 가능한 인터페이스와 `HMAC-SHA256-MOCK` 개발용 signer로 무결성 서명을 남기며 `MOCK_ONLY`로 표시합니다. 이는 실제 PQC 또는 ML-DSA 구현이 아닙니다.
 
 ## Validator Agent and PQC as Future Work
 
@@ -1012,11 +1019,13 @@ PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 높이는
 - `docs/evaluation_method.md`
 - `docs/evaluation_limitations.md`
 - `docs/security_limitations.md`
+- `docs/demo_runbook.md`
 - `docs/external_benchmark_discussion.md`
 - `docs/presentation_qna.md`
 - `docs/team_roles.md`
 - `reports/evaluation_report.md`
 - `reports/external_validation_report.md`
+- `reports/current_verification_report.md`
 - `reports/baseline_compare_report.md`
 - `reports/baseline_compare_results.json`
 - `reports/validator_agent_expected_effect.md`

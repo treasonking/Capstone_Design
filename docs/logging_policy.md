@@ -8,7 +8,7 @@
 
 - `logs/audit_log.jsonl`에는 아래 메타데이터와 요약 정보만 저장한다.
 - `request_id`
-- `user_id` (비식별 식별자 권장)
+- `user_id` (저장 전 `hmac-sha256:<digest>` 형태로 가명화)
 - `timestamp_utc`
 - `action`
 - `reasons`
@@ -19,6 +19,8 @@
 - `validator.reason_codes`
 - `pii_detected` / `injection_detected`
 - `latency_ms`
+- `pii_detection_count`, `injection_detection_count`
+- 차단 시 `block_type`, 오류 시 `error_type`
 - `detector_counts`, `matched_detector_count`, `detectors_invoked` 같은 detector 요약 통계
 - 기존 호환성 필드인 `hybrid_detection.model_status`, `fallback_used`, `fallback_reason` 같은 경량 분류 계층 상태 메타데이터
 - `integrity.hash_alg`, `integrity.signature_alg`, `integrity.public_key_id`, `integrity.signature`
@@ -40,19 +42,20 @@
 | timestamp | 처리 시점 확인 |
 | action | ALLOW/MASK/BLOCK/WARN 정책 결정 확인 |
 | reason_code | 정책 판단 근거 확인 |
-| detector_count | 탐지 근거 수 확인 |
+| pii_detection_count / injection_detection_count | 위험 유형별 탐지 건수 확인 |
 | upstream_call | 외부 LLM 호출 여부 확인 |
-| signature/mock_signature | 감사로그 무결성 검증 |
+| integrity.signature | 감사로그 무결성 검증 |
 
-감사 로그의 `integrity.signature`는 signature 필드 자기 자신을 제외한 canonical JSON에 대해 생성한다. 현재 개발 구현은 `MOCK-ML-DSA` signer이며 실제 PQC 서명 구현이라고 과장하지 않는다. 운영 환경에서는 동일 인터페이스를 실제 ML-DSA signer로 교체할 수 있지만, 실제 PQC 알고리즘 적용 및 성능 평가는 후속 연구 범위로 둔다.
+감사 로그의 `integrity.signature`는 signature 필드 자기 자신을 제외한 canonical JSON에 대해 생성한다. 현재 개발 구현은 `HMAC-SHA256-MOCK` signer이며 `MOCK_ONLY`로 표시한다. 실제 PQC 서명 구현이라고 과장하지 않는다. 정확한 현재 표현은 "ML-DSA 교체 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조"이다.
 
 `detector_counts`는 "이유 코드를 하나 이상 남긴 detector 종류 수"를 요약한 필드다. 예를 들어 정규식 패턴 계층과 경량 분류 계층이 모두 위험 신호를 남기면 `{"regex": 1, "llm": 1}`처럼 기록된다. 반면 `detectors_invoked`는 실제로 실행된 detector 목록이므로, match가 없더라도 실행 사실은 여기에서 확인한다.
 
 ## user_id 권장값
 
 - `user_id`에는 실제 이름, 학번, 주민등록번호를 넣지 않는다.
-- `anonymous`, `role_id`, `session_hash` 같은 비식별 값을 권장한다.
-- 운영 환경에서도 원문 신원값 대신 내부 식별자나 해시 기반 세션 식별자를 사용한다.
+- 서비스는 입력된 값을 `AUDIT_USER_ID_SALT` 기반 HMAC-SHA256 가명값으로 바꿔 저장한다.
+- `anonymous`, `role_id`, `session_hash` 같은 비식별 값을 입력값으로도 권장한다.
+- 기본 salt는 개발용 공개값이다. 운영 환경에서는 별도 secret을 주입하고 접근·회전 정책을 적용한다.
 
 ## 점검 절차
 

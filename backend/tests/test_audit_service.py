@@ -75,7 +75,8 @@ def test_build_log_entry_keeps_metadata_only() -> None:
     entry = audit_service._build_log_entry("req-1", "user-1", audit_summary)
 
     assert entry["request_id"] == "req-1"
-    assert entry["user_id"] == "user-1"
+    assert entry["user_id"].startswith("hmac-sha256:")
+    assert entry["user_id"] != "user-1"
     assert entry["action"] == "MASK"
     assert entry["reason_codes"] == ["PII_PHONE_DETECTED"]
     assert entry["pii_detected"] is True
@@ -83,6 +84,55 @@ def test_build_log_entry_keeps_metadata_only() -> None:
     assert entry["hybrid_detection"]["input"]["model_status"] == "artifact_missing"
     assert "raw_prompt" not in entry
     assert "raw_response" not in entry
+
+
+def test_build_log_entry_records_counts_and_sanitizes_nested_secrets(monkeypatch) -> None:
+    monkeypatch.setenv("AUDIT_USER_ID_SALT", "test-only-salt")
+    raw_prompt = "주민등록번호 900101-1234567"
+    raw_response = "담당자 test@example.com"
+    api_key = "test-api-key-value"
+    audit_summary = {
+        "timestamp_utc": "2026-07-28T00:00:00Z",
+        "final_action": "BLOCK",
+        "reason_codes": ["PII_RRN_DETECTED"],
+        "block_type": "PII_RRN_DETECTED",
+        "input": {
+            "pii_detected": True,
+            "injection_detected": False,
+            "pii_detection_count": 1,
+            "injection_detection_count": 0,
+            "message": raw_prompt,
+            "authorization": api_key,
+        },
+        "output": {
+            "pii_detected": True,
+            "injection_detected": False,
+            "pii_detection_count": 1,
+            "injection_detection_count": 0,
+            "response": raw_response,
+        },
+        "hybrid_detection": {
+            "input": {
+                "model_status": "enabled",
+                "api_key": api_key,
+            }
+        },
+    }
+
+    entry = audit_service._build_log_entry(
+        "req-security",
+        "employee@example.com",
+        audit_summary,
+    )
+    serialized = json.dumps(entry, ensure_ascii=False)
+
+    assert entry["pii_detection_count"] == 2
+    assert entry["injection_detection_count"] == 0
+    assert entry["block_type"] == "PII_RRN_DETECTED"
+    assert "employee@example.com" not in serialized
+    assert raw_prompt not in serialized
+    assert raw_response not in serialized
+    assert api_key not in serialized
 
 
 def test_save_audit_log_writes_jsonl_without_raw_fields(tmp_path) -> None:

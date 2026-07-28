@@ -7,10 +7,10 @@
 - 따라서 이 결과는 "탐지기 회귀 테스트와 시연 재현성"에는 유용하지만, 운영 환경 일반화 성능을 대표한다고 보기는 어렵다.
 - 본 프로젝트는 범용 Prompt Injection 탐지기가 아니라, 한국어 공공기관·사내망 환경에서 발생할 수 있는 개인정보 유출 및 정책 우회형 Prompt Injection을 우선 방어 대상으로 설계한 LLM 보안 프록시이다.
 
-## 2. F1 1.0 결과의 해석 주의점
+## 2. 내부 고득점 결과의 해석 주의점
 
-- 현재 내부 평가에서는 PII와 Prompt Injection 모두 Precision/Recall/F1이 1.000이다.
-- 이 수치는 내부 데이터셋에 대한 일관성 검증 결과로 해석해야 하며, 외부 분포에서 동일한 성능을 보장하지 않는다.
+- 2026-07-28 현재 `evaluation/sample_dataset.json` 재실행은 PII F1 0.935, Prompt Injection F1 0.920이다. 확장 회귀셋 `datasets/sample_dataset_v2.json`은 각각 F1 0.989, 0.948이고, 내부 Injection 이진 baseline의 Rule Only와 Hybrid는 F1 1.000이다.
+- 과거 또는 일부 내부 회귀표의 F1 1.000은 데이터셋에 대한 일관성 검증 결과로 해석해야 하며, 외부 분포에서 동일한 성능을 보장하지 않는다.
 - 발표 시에는 "탐지기가 완벽하다"가 아니라 "현재 규칙 변경이 기존 기대 동작을 깨지 않았는지 확인하는 회귀 지표"라고 설명하는 것이 안전하다.
 
 ## 3. 외부 검증 필요성
@@ -31,7 +31,7 @@
 
 ## 5. 외부 공개 데이터셋 모드 분리 결과
 
-2026-05-18 재평가에서는 Hugging Face 공개 Prompt Injection 데이터셋 3종을 `Rule Only`, `Lightweight Model Only`, `Hybrid / Full Pipeline`으로 분리 측정했다. 결과 파일은 다음과 같다.
+2026-05-18 과거 재평가에서는 Hugging Face 공개 Prompt Injection 데이터셋 3종을 `Rule Only`, `Lightweight Model Only`, `Hybrid / Full Pipeline`으로 분리 측정했다. 결과 파일은 다음과 같다. 2026-07-28 현행 재실행은 `reports/current_verification_report.md`에 별도로 기록하며, 두 시점의 값을 같은 실험으로 합치지 않는다.
 
 - `reports/external_dataset_compare_report.md`
 - `reports/external_dataset_compare_results.json`
@@ -42,6 +42,8 @@
 - `reports/external_model_confidence_report.md`
 
 internal-only baseline에서는 `deepset/prompt-injections`의 Rule Only와 Hybrid Recall이 모두 0.0760으로 같았고, `protectai/prompt-injection-validation`에서도 둘 다 Recall 0.1997, F1 0.3227이었다. `Lakera/gandalf_ignore_instructions`에서는 Hybrid Recall이 0.4680으로 Rule Only 0.4400보다 소폭 높았다.
+
+ProtectAI 과거 수치는 생성 경로에 따라 README F1 0.3227과 `reports/external_prompt_injection_report.md` F1 0.2950이 다르다. 기준 파일이 다른 결과를 임의로 통일하지 않고 각 보고서의 생성 시점·프로토콜과 함께 인용한다.
 
 이를 보완하기 위해 외부 공개 데이터셋을 random seed 42로 train 70% / eval 30%로 분리하고, eval 샘플이 학습에 들어가지 않도록 id overlap을 검사했다. 현재 split 기준 train/eval overlap은 0이며, external-tuned 모델은 내부 한국어 시나리오와 외부 영어 train split만 사용해 학습했다.
 
@@ -63,7 +65,7 @@ Threshold optimizer는 external-tuned 모델의 held-out eval split에서 `0.30`
 
 ## 7. 발표 시 설명 문장
 
-- "현재 1.0 점수는 내부 검증셋 기준이며, 운영 성능을 보장하는 수치로 주장하지 않습니다."
+- "일부 내부 이진 회귀 비교의 1.0 점수는 내부 검증셋 기준이며, 운영 성능을 보장하는 수치로 주장하지 않습니다."
 - "이번 MVP에서는 정책 회귀와 시연 재현성을 우선했고, 외부 영어 데이터셋은 train/eval split을 분리해 재학습 개선 가능성을 별도로 검증했습니다."
 - "외부 공개 데이터셋 3종에 대해서는 `reports/external_dataset_compare_report.md`에서 Rule Only, Lightweight Model Only, Hybrid / Full Pipeline을 분리해 확인합니다."
 - "internal-only baseline에서 Rule Only와 Hybrid가 비슷했던 이유는 overlap 분석에서 Model Only Unique TP가 거의 없다는 점으로 확인했습니다."

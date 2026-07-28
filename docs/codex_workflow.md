@@ -22,7 +22,7 @@ rg --files -uu
 | PII 탐지 | 주민등록번호, 전화번호, 이메일, 주소, 계좌번호, 민원정보 등 개인정보 탐지와 마스킹 | Prompt Injection 성능과 섞지 않는다 |
 | 프롬프트 인젝션 탐지 | 지시 무시, 시스템 프롬프트 탈취, 정책 우회, jailbreak 탐지 | 보안 설명 문장 hard negative를 함께 고려한다 |
 | Validator Agent | LLM 또는 Mock LLM 응답 생성 이후 최종 반환 전 출력 검증 | 실시간 스트리밍 검증인지 버퍼링 후 검증인지 명시한다 |
-| Mock PQC | HMAC-SHA256 기반 MOCK-ML-DSA signer와 ML-DSA 교체 가능 인터페이스 | 실제 ML-DSA 구현으로 쓰지 않는다 |
+| Mock 무결성 | `HMAC-SHA256-MOCK` signer와 ML-DSA 교체 가능 인터페이스 | 실제 PQC 또는 ML-DSA 구현으로 쓰지 않는다 |
 | 감사 로그 | 정책 판정과 integrity metadata를 남기는 추적 계층 | raw prompt, raw response, API key, system prompt, 개인정보 원문 저장을 주장하지 않는다 |
 
 ## 3. 문서와 수치 관리

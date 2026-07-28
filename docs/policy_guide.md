@@ -39,7 +39,7 @@
 ## 정책 우선순위 / Threshold
 
 - 우선순위는 `priority`가 클수록 우선 적용한다.
-- 같은 점수대에서 더 강한 액션(`BLOCK > MASK > WARN > ALLOW`)을 우선한다.
+- 여러 탐지가 동시에 적용되면 점수나 YAML priority와 무관하게 더 강한 액션(`BLOCK > MASK > WARN > ALLOW`)을 우선한다. 숫자 priority는 같은 action 안의 승자 선택에만 사용한다.
 - `threshold`는 탐지 score가 임계치 이상일 때만 룰을 적용한다.
 
 현재 기본 정책 예시:

@@ -18,12 +18,31 @@
 3. Heuristic Rule Layer에서 프롬프트 인젝션 키워드, 정책 우회 문장, 조합 규칙을 탐지한다.
 4. Lightweight Classification Layer에서 비정형 또는 애매한 문장을 분류한다.
 5. Decision Layer에서 탐지 결과를 종합하고 `BLOCK > MASK > WARN > ALLOW` 순서로 최종 action을 결정한다. 정책 파일의 숫자 priority는 같은 action 안에서만 우선순위를 정한다.
-6. action이 `MASK`이면 민감정보를 치환한 뒤 upstream LLM으로 전달한다.
+6. action이 `MASK`이면 민감정보를 치환한 안전 입력만 Provider 계층으로 전달한다.
 7. action이 `BLOCK`이면 upstream LLM 호출 없이 차단 응답을 반환한다.
-8. action이 `ALLOW`이면 요청을 그대로 upstream LLM으로 전달한다.
-9. LLM 또는 Mock LLM 응답 생성 이후 Validator Agent가 최종 사용자 반환 전에 정책 결정 결과와 출력을 재검사한다.
-10. Validator Agent는 핵심 탐지 모델이 아니라, 출력 내 PII 잔존, 시스템 프롬프트 또는 내부 정책 노출, 정책 우회 성공 징후, 마스킹 누락을 확인하는 운영형 확장 요소이다.
-11. 최종 응답 이후 audit log에는 `input_action`, `output_action`, `final_action`, Validator Agent 결과가 분리 기록되고, Mock signer 기반 integrity signature가 추가된다.
+8. action이 `ALLOW`이면 요청을 Provider 계층으로 전달한다.
+9. 고정 allowlist Registry가 서버 환경변수 `LLM_PROVIDER`에 따라 `mock` 또는 `openai` 어댑터를 선택한다.
+10. Provider가 전체 응답을 반환한 뒤 Validator Agent가 최종 사용자 반환 전에 정책 결정 결과와 출력을 재검사한다.
+11. Validator Agent는 핵심 탐지 모델이 아니라, 출력 내 PII 잔존, 시스템 프롬프트 또는 내부 정책 노출, 정책 우회 성공 징후, 마스킹 누락을 확인하는 운영형 확장 요소이다.
+12. 최종 응답 이후 audit log에는 정책과 Provider 메타데이터가 분리 기록되고, Mock signer 기반 integrity signature가 추가된다.
+
+## Provider 계층
+
+`backend/app/providers/`는 정책·API 라우터와 특정 SDK의 결합을 끊는다.
+
+| 파일 | 역할 |
+|---|---|
+| `base.py` | `LLMProvider`, `ProviderRequest`, `ProviderResponse` 공통 계약 |
+| `mock_provider.py` | 기존 로컬 Mock LLM HTTP 호출과 공통 응답 변환 |
+| `openai_provider.py` | 공식 OpenAI SDK의 Responses API 어댑터 |
+| `registry.py` | `mock`, `openai`만 허용하는 고정 Registry |
+| `errors.py` | 인증, Rate Limit, timeout, upstream, invalid response 오류 표준화 |
+
+Provider는 요청 본문이 아니라 서버 환경변수 `LLM_PROVIDER`로 선택한다. 요청의 `model` 값은 기존 API 스키마 호환을 위해 수신하지만 Provider 선택이나 OpenAI 모델 변경에 사용하지 않는다. OpenAI 모델은 `OPENAI_MODEL`에서만 읽고, 사용자가 URL이나 외부 endpoint를 지정하는 경로는 없다. 자동 Provider 라우팅과 다른 사업자로의 자동 폴백은 구현하지 않았다.
+
+Provider 직전 egress guard는 정책의 `MASK` 결과뿐 아니라 위치가 확인된 모든 PII 탐지 span을 다시 마스킹한다. `PII_ACCOUNT_DETECTED=WARN`처럼 정책이 경고인 경우에도 외부 Provider에는 마스킹된 값만 전달한다. 모델 단독 PII 신호처럼 치환 위치를 확정할 수 없으면 `PII_UNMASKABLE_DETECTED`로 fail-closed 차단하고 Provider를 호출하지 않는다.
+
+OpenAI 어댑터는 `AsyncOpenAI.responses.create`에 정책 처리된 입력, 시스템 지시, `store=False`, `max_output_tokens`, 요청별 timeout을 전달한다. SDK 자동 재시도는 0회로 제한한다. 응답 텍스트, Provider, 실제 응답 모델, 지연 시간, 종료 상태, 토큰 사용량, 비민감 응답 ID를 공통 응답으로 변환하지만 원문과 응답 ID는 감사 로그에 저장하지 않는다.
 
 ## Existing Proxy와 Validator Agent의 경계
 
@@ -47,6 +66,8 @@ Validator Agent는 입력 검사 전에 배치하지 않는다. 입력 검사는
 `/proxy/analyze`는 LLM 호출이 없는 사전 분석 API이므로 Validator Agent 출력 재검사는 `SKIPPED`로 기록된다.
 
 SSE 엔드포인트는 보안 검증을 위해 upstream 응답 전체를 버퍼링한 뒤 Validator Agent 검증 후 안전한 응답만 반환한다. 차단된 입력은 upstream을 호출하지 않으며, 출력이 차단되면 원본 token event를 보내지 않는다. 따라서 실시간 토큰 스트리밍이 아니라 검증 후 일괄 반환 구조에 가깝다.
+
+감사 로그에는 `provider`, `model`, `upstream_called`, `upstream_status`, `upstream_latency_ms`, `input_decision`, `output_decision`, `reason_codes`, `error_type` 등 메타데이터만 기록한다. API key, Authorization header, 원본·마스킹 전 입력, 원본 Provider 응답, system instructions, SDK 오류 객체는 기록하지 않는다.
 
 PQC 기반 감사로그 서명 구조는 탐지 성능 개선이 아니라 감사 로그 무결성 검증을 위한 확장 기능이다. 현재 개발 구현은 `HMAC-SHA256-MOCK` signer이며 `MOCK_ONLY`로 명시한다. 실제 ML-DSA 라이브러리를 탑재한 것이 아니라, ML-DSA 교체 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조이다. 실제 PQC 알고리즘 적용 및 성능 평가는 후속 연구 범위다.
 

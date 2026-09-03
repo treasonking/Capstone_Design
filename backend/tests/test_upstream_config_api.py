@@ -3,45 +3,32 @@ from __future__ import annotations
 import asyncio
 
 from backend.app.api.proxy import admin_upstream_config
-from backend.app.services import llm_service
 
 
-def test_upstream_config_reports_provider_defaults(monkeypatch) -> None:
-    # 관리자 설정 API는 현재 실행 기본값을 반영해야 합니다.
+def test_upstream_config_reports_mock_defaults(monkeypatch) -> None:
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
     monkeypatch.delenv("UPSTREAM_LLM_PROVIDER", raising=False)
     monkeypatch.delenv("UPSTREAM_TIMEOUT_SECONDS", raising=False)
-    monkeypatch.delenv("UPSTREAM_RETRY_COUNT", raising=False)
-    monkeypatch.delenv("OLLAMA_MODEL", raising=False)
-    monkeypatch.delenv("OLLAMA_CHAT_URL", raising=False)
-    monkeypatch.setattr(llm_service, "DEFAULT_PROVIDER", "ollama")
-    monkeypatch.setattr(llm_service, "DEFAULT_TIMEOUT_SECONDS", 15.0)
-    monkeypatch.setattr(llm_service, "DEFAULT_RETRY_COUNT", 2)
-    monkeypatch.setattr(llm_service, "DEFAULT_OLLAMA_MODEL", "llama3.1")
-    monkeypatch.setattr(
-        llm_service,
-        "_PROVIDER_URLS",
-        {
-            **llm_service._PROVIDER_URLS,
-            "ollama": "http://localhost:11434/api/chat",
-        },
-    )
 
     result = asyncio.run(admin_upstream_config())
 
-    assert result.default_provider == "ollama"
-    assert result.default_timeout_seconds == 15.0
-    assert result.default_retry_count == 2
-    assert result.providers["ollama"].enabled is True
-    assert result.providers["ollama"].default_model == "llama3.1"
+    assert result.default_provider == "mock"
+    assert result.default_timeout_seconds == 10.0
+    assert result.default_retry_count == 0
+    assert result.automatic_fallback is False
+    assert result.allowed_providers == ["mock", "openai"]
+    assert result.providers["mock"].enabled is True
+    assert "azure" not in result.providers
+    assert "ollama" not in result.providers
 
 
 def test_upstream_config_hides_api_keys_and_marks_openai_enabled(monkeypatch) -> None:
-    # OpenAI 사용 가능 여부는 보여주되, API 키 자체는 절대 노출하면 안 됩니다.
     monkeypatch.setenv("OPENAI_API_KEY", "super-secret-key")
-    monkeypatch.setattr(llm_service, "DEFAULT_OPENAI_MODEL", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_MODEL", "configured-test-model")
 
     result = asyncio.run(admin_upstream_config())
 
     assert result.providers["openai"].enabled is True
-    assert result.providers["openai"].default_model == "gpt-4o-mini"
+    assert result.providers["openai"].default_model == "configured-test-model"
+    assert result.providers["openai"].url.endswith("/v1/responses")
     assert "secret" not in str(result.model_dump())

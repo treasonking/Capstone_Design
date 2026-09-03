@@ -18,10 +18,15 @@ from backend.app.detection.hybrid_detector import (
 )
 from backend.app.detection.models import DetectionResult, DetectorType, PolicyAction
 from backend.app.detection.reason_codes import ReasonCode, ordered_reason_codes, select_primary_reason
+from backend.app.engine.masking import apply_masking
 from backend.app.engine.policy_engine import evaluate_policy
+from backend.app.providers import ProviderError
 from backend.app.schemas.proxy import DetectionPreviewItem, ProxyAnalyzeResponse, ProxyRequest, ProxyResponse
 from backend.app.services.audit_service import save_audit_log
-from backend.app.services.llm_service import UpstreamRequestError, UpstreamTimeoutError, call_upstream_llm, stream_upstream_llm
+from backend.app.services.llm_service import (
+    generate_upstream_response,
+    not_called_provider_metadata,
+)
 from backend.app.validator import ValidatorAgent, resolve_final_action
 from backend.app.validator.output_validator import SAFE_OUTPUT
 
@@ -228,6 +233,30 @@ def _output_summary_from_validator(
     return output_summary
 
 
+def _safe_provider_input(
+    message: str,
+    detections: list[DetectionResult],
+    *,
+    pii_detected: bool,
+    policy_masked_text: str | None,
+) -> str | None:
+    """Return PII-safe outbound text, or None when detected PII cannot be masked."""
+    if not pii_detected:
+        return message
+    if policy_masked_text is not None and policy_masked_text != message:
+        return policy_masked_text
+
+    pii_detections = [
+        item
+        for item in detections
+        if item.detector_type == DetectorType.PII and item.end > item.start
+    ]
+    masked_text = apply_masking(message, pii_detections)
+    if masked_text != message:
+        return masked_text
+    return None
+
+
 def _top_level_hybrid_detection(
     input_summary: dict[str, Any],
     output_summary: dict[str, Any] | None,
@@ -254,9 +283,12 @@ def _build_audit_summary(
     output_summary: dict[str, Any] | None,
     upstream_call: bool,
     validator_summary: dict[str, Any] | None = None,
+    provider_metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     # 감사 요약에는 보안 판단에 필요한 메타데이터만 남깁니다.
     # 원문 프롬프트와 원문 응답은 로그 저장 전에 의도적으로 제외합니다.
+    upstream_metadata = provider_metadata or not_called_provider_metadata()
+    upstream_called = bool(upstream_metadata.get("upstream_called", upstream_call))
     audit_summary = {
         "timestamp_utc": timestamp_utc,
         "latency_ms": round((time.perf_counter() - started) * 1000, 2),
@@ -265,12 +297,15 @@ def _build_audit_summary(
         "reason_codes": reason_codes,
         "input_action": input_action,
         "output_action": output_action,
-        "upstream_call": upstream_call,
+        "input_decision": input_action,
+        "output_decision": output_action,
+        "upstream_call": upstream_called,
         "input": input_summary,
         "output": output_summary,
         "validator": _validator_audit_summary(
             validator_summary or _skipped_validator_summary(output_action or "SKIPPED")
         ),
+        **upstream_metadata,
     }
     if final_action == PolicyAction.BLOCK.value:
         audit_summary["block_type"] = _resolve_reason_code(reason_codes)
@@ -372,28 +407,53 @@ async def process_proxy_analyze(req: ProxyRequest) -> ProxyAnalyzeResponse:
         hybrid_result=input_hybrid,
     )
     input_summary = {**input_decision.audit_summary, **input_audit}
+    pii_detected = bool(input_summary.get("pii_detected", False))
+    injection_detected = bool(input_summary.get("injection_detected", False))
+    reasons = list(input_decision.reasons)
+    masked_text = input_decision.masked_text
+
+    if input_action != PolicyAction.BLOCK.value:
+        provider_input = _safe_provider_input(
+            req.message,
+            input_detections,
+            pii_detected=pii_detected,
+            policy_masked_text=input_decision.masked_text,
+        )
+        if provider_input is None:
+            input_action = PolicyAction.BLOCK.value
+            reasons = _combine_reason_codes(
+                reasons,
+                [ReasonCode.PII_UNMASKABLE_DETECTED.value],
+            )
+            input_summary = {
+                **input_summary,
+                "action": input_action,
+                "reasons": reasons,
+                "egress_guard_action": input_action,
+            }
+        elif provider_input != req.message:
+            masked_text = provider_input
+            input_summary["provider_input_masked"] = True
+
     audit_summary = _build_audit_summary(
         timestamp_utc,
         started,
         final_action=input_action,
-        reason_codes=input_decision.reasons,
+        reason_codes=reasons,
         input_action=input_action,
         output_action="SKIPPED",
         input_summary=input_summary,
         output_summary=_skipped_output_summary(),
         upstream_call=False,
     )
-    pii_detected = bool(input_summary.get("pii_detected", False))
-    injection_detected = bool(input_summary.get("injection_detected", False))
-
     return ProxyAnalyzeResponse(
         request_id=request_id,
         action=input_action,
-        reason_code=_resolve_reason_code(input_decision.reasons),
-        reasons=input_decision.reasons,
+        reason_code=_resolve_reason_code(reasons),
+        reasons=reasons,
         pii_detected=pii_detected,
         injection_detected=injection_detected,
-        masked_text=input_decision.masked_text,
+        masked_text=masked_text,
         should_call_llm=input_action != PolicyAction.BLOCK.value,
         upstream_call=False,
         recommendation=_recommendation(
@@ -448,27 +508,57 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
             audit_summary,
         )
 
-    # 정책이 마스킹을 요구하면 원문 대신 마스킹된 프롬프트만 전달합니다.
-    processed_message = input_decision.masked_text or req.message
+    # 정책 MASK뿐 아니라 span이 있는 모든 PII 탐지 결과를 Provider 직전에 다시 마스킹합니다.
+    processed_message = _safe_provider_input(
+        req.message,
+        input_detections,
+        pii_detected=bool(input_summary.get("pii_detected")),
+        policy_masked_text=input_decision.masked_text,
+    )
+    if processed_message is None:
+        blocked_reasons = _combine_reason_codes(
+            input_decision.reasons,
+            [ReasonCode.PII_UNMASKABLE_DETECTED.value],
+        )
+        input_summary = {
+            **input_summary,
+            "action": PolicyAction.BLOCK.value,
+            "reasons": blocked_reasons,
+            "egress_guard_action": PolicyAction.BLOCK.value,
+        }
+        audit_summary = _build_audit_summary(
+            timestamp_utc,
+            started,
+            final_action=PolicyAction.BLOCK.value,
+            reason_codes=blocked_reasons,
+            input_action=PolicyAction.BLOCK.value,
+            output_action=PolicyAction.BLOCK.value,
+            input_summary=input_summary,
+            output_summary=_skipped_output_summary(),
+            upstream_call=False,
+        )
+        return _response(
+            req,
+            request_id,
+            PolicyAction.BLOCK.value,
+            blocked_reasons,
+            PolicyAction.BLOCK.value,
+            PolicyAction.BLOCK.value,
+            None,
+            audit_summary,
+        )
+    input_summary["provider_input_masked"] = processed_message != req.message
 
     try:
-        llm_content = await call_upstream_llm(processed_message, model=req.model)
-    except UpstreamTimeoutError:
-        reasons = ["TIMEOUT"]
-        audit_summary = _build_audit_summary(
-            timestamp_utc,
-            started,
-            final_action="ERROR",
-            reason_codes=reasons,
-            input_action=input_action,
-            output_action=None,
-            input_summary=input_summary,
-            output_summary=None,
-            upstream_call=True,
+        provider_response = await generate_upstream_response(
+            processed_message,
+            request_id=request_id,
+            requested_model=req.model,
         )
-        return _response(req, request_id, "ERROR", reasons, input_action, None, None, audit_summary)
-    except UpstreamRequestError as exc:
-        reasons = [exc.reason_code]
+        llm_content = provider_response.text
+        provider_metadata = provider_response.audit_metadata()
+    except ProviderError as exc:
+        reasons = [exc.code]
         audit_summary = _build_audit_summary(
             timestamp_utc,
             started,
@@ -478,7 +568,8 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
             output_action=None,
             input_summary=input_summary,
             output_summary=None,
-            upstream_call=True,
+            upstream_call=exc.upstream_called,
+            provider_metadata=exc.audit_metadata(),
         )
         return _response(req, request_id, "ERROR", reasons, input_action, None, None, audit_summary)
 
@@ -526,6 +617,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
             output_summary=output_summary,
             upstream_call=True,
             validator_summary=validator_result,
+            provider_metadata=provider_metadata,
         )
         return _response(
             req,
@@ -553,6 +645,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
         output_summary=output_summary,
         upstream_call=True,
         validator_summary=validator_result,
+        provider_metadata=provider_metadata,
     )
 
     return _response(
@@ -619,30 +712,57 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
         yield _sse_event("done", response.model_dump())
         return
 
-    processed_message = input_decision.masked_text or req.message
-    output_chunks: list[str] = []
-
+    processed_message = _safe_provider_input(
+        req.message,
+        input_detections,
+        pii_detected=bool(input_summary.get("pii_detected")),
+        policy_masked_text=input_decision.masked_text,
+    )
+    if processed_message is None:
+        blocked_reasons = _combine_reason_codes(
+            input_decision.reasons,
+            [ReasonCode.PII_UNMASKABLE_DETECTED.value],
+        )
+        input_summary = {
+            **input_summary,
+            "action": PolicyAction.BLOCK.value,
+            "reasons": blocked_reasons,
+            "egress_guard_action": PolicyAction.BLOCK.value,
+        }
+        audit_summary = _build_audit_summary(
+            timestamp_utc,
+            started,
+            final_action=PolicyAction.BLOCK.value,
+            reason_codes=blocked_reasons,
+            input_action=PolicyAction.BLOCK.value,
+            output_action=PolicyAction.BLOCK.value,
+            input_summary=input_summary,
+            output_summary=_skipped_output_summary(),
+            upstream_call=False,
+        )
+        response = _response(
+            req,
+            request_id,
+            PolicyAction.BLOCK.value,
+            blocked_reasons,
+            PolicyAction.BLOCK.value,
+            PolicyAction.BLOCK.value,
+            None,
+            audit_summary,
+        )
+        yield _sse_event("done", response.model_dump())
+        return
+    input_summary["provider_input_masked"] = processed_message != req.message
     try:
-        async for chunk in stream_upstream_llm(processed_message, model=req.model):
-            output_chunks.append(chunk)
-    except UpstreamTimeoutError:
-        reasons = ["TIMEOUT"]
-        audit_summary = _build_audit_summary(
-            timestamp_utc,
-            started,
-            final_action="ERROR",
-            reason_codes=reasons,
-            input_action=input_action,
-            output_action=None,
-            input_summary=input_summary,
-            output_summary=None,
-            upstream_call=True,
+        provider_response = await generate_upstream_response(
+            processed_message,
+            request_id=request_id,
+            requested_model=req.model,
         )
-        response = _response(req, request_id, "ERROR", reasons, input_action, None, None, audit_summary)
-        yield _sse_event("error", response.model_dump())
-        return
-    except UpstreamRequestError as exc:
-        reasons = [exc.reason_code]
+        llm_content = provider_response.text
+        provider_metadata = provider_response.audit_metadata()
+    except ProviderError as exc:
+        reasons = [exc.code]
         audit_summary = _build_audit_summary(
             timestamp_utc,
             started,
@@ -652,13 +772,13 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
             output_action=None,
             input_summary=input_summary,
             output_summary=None,
-            upstream_call=True,
+            upstream_call=exc.upstream_called,
+            provider_metadata=exc.audit_metadata(),
         )
         response = _response(req, request_id, "ERROR", reasons, input_action, None, None, audit_summary)
         yield _sse_event("error", response.model_dump())
         return
 
-    llm_content = "".join(output_chunks)
     output_hybrid = _detect_text(llm_content)
     output_detections = output_hybrid.detections
     output_decision = evaluate_policy(llm_content, output_detections, policy_path)
@@ -702,6 +822,7 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
             output_summary=output_summary,
             upstream_call=True,
             validator_summary=validator_result,
+            provider_metadata=provider_metadata,
         )
         response = _response(
             req,
@@ -729,6 +850,7 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
         output_summary=output_summary,
         upstream_call=True,
         validator_summary=validator_result,
+        provider_metadata=provider_metadata,
     )
     safe_content = validator_result.get("masked_text") or llm_content
     yield _sse_event("token", {"request_id": request_id, "content": safe_content})

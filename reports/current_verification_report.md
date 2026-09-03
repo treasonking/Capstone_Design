@@ -1,9 +1,9 @@
 # Current Verification Report
 
-- 점검일: 2026-07-28 (Asia/Seoul)
+- 점검일: 2026-09-03 (Asia/Seoul)
 - 브랜치: `codex-validator-pqc-audit-integrity`
-- 점검 기준 커밋: `a268f130e8bf2b19ccbef0bf04e3a15869826066`
-- 실행 환경: Windows, Python 3.12.13, scikit-learn 1.7.2
+- 변경 시작 기준 커밋: `fd09902` (`master`보다 36커밋 앞섬, 뒤처짐 0)
+- 실행 환경: Windows, Python 3.12.13, scikit-learn 1.7.2, openai 2.54.0
 - 기준 문서: 로컬에서 발견된 `LLM_보안_프록시_기술문서_서영동.docx`
 - 기준 문서 SHA-256: `A6134A75C54F2D658B0F856AAF3D65ADF639CB7A4C05F92DC3849069C7050A83`
 
@@ -11,7 +11,7 @@
 
 ## 1. 초기 상태
 
-실제 Proxy 진입점은 `backend.app.api.proxy:app`, Mock LLM 진입점은 `tools.mock_llm:app`이다. 주요 API는 `POST /proxy/analyze`, `POST /proxy/chat`, `POST /proxy/chat/stream`, `POST /v1/chat/completions`와 관리자 조회 API다. PII 탐지는 `backend/app/detection/pii_detector.py`, Injection 탐지는 `backend/app/detection/injection_detector.py`, 결합은 `hybrid_detector.py`와 `lightweight_classifier.py`, 정책은 `backend/app/engine/policy_engine.py`, 출력 검증은 `backend/app/validator.py`와 `proxy_service.py`에 있다.
+실제 Proxy 진입점은 `backend.app.api.proxy:app`, Mock LLM 진입점은 `tools.mock_llm:app`이다. 주요 API는 `POST /proxy/analyze`, `POST /proxy/chat`, `POST /proxy/chat/stream`, `POST /v1/chat/completions`와 관리자 조회 API다. PII 탐지는 `backend/app/detection/pii_detector.py`, Injection 탐지는 `backend/app/detection/injection_detector.py`, 결합은 `hybrid_detector.py`와 `lightweight_classifier.py`, 정책은 `backend/app/engine/policy_engine.py`, 출력 검증은 `backend/app/validator/`와 `proxy_service.py`에 있다. Provider 공통 계약과 Registry는 `backend/app/providers/`에 있으며 실제 구현 Provider는 Mock과 OpenAI뿐이다.
 
 기본 경량 분류기는 `models/lightweight/vectorizer.joblib`, `models/lightweight/classifier.joblib`을 joblib으로 로드한다. artifact 누락·비활성·의존성 오류 시 실행을 중단하지 않고 rule/fallback 경로로 내려가며, 이 상태는 완전한 Hybrid 성능으로 해석하면 안 된다.
 
@@ -51,6 +51,21 @@
 | Docker Compose | 호스트 바인딩을 127.0.0.1로 제한 | 개발 서비스의 외부 노출 축소 |
 | 의존성 | 기본 artifact 생성 버전에 맞춰 scikit-learn 1.7.2 고정 | 기본 runtime 재현성 향상 |
 | 테스트 | action 우선순위, no-upstream BLOCK, SSE no-token BLOCK, audit 원문 미저장, HMAC 검증 강화 | 핵심 보안 불변식 회귀 방지 |
+| Provider 추상화 | 공통 request/response, 고정 Registry, 표준 오류 코드 | 정책·라우터와 특정 SDK 분리, 요청값 기반 URL 선택 차단 |
+| OpenAI 어댑터 | 공식 SDK Responses API, `store=False`, timeout, 출력 토큰 상한, 재시도 0회 | 안전 입력만 전송하고 완성 응답을 Validator 전단에 연결 |
+| Provider egress guard | WARN 포함 모든 위치 기반 PII 재마스킹, 위치 불명 PII fail-closed | 마스킹 전 개인정보의 외부 전송 방지 |
+| Provider 감사 메타데이터 | provider/model/call/status/latency/결정/error 기록 | 정책 BLOCK과 외부 Provider 장애 분리 |
+
+### Provider 지원 상태
+
+| Provider | 구현 | 자동 테스트 | 실제 API 테스트 | 비고 |
+|---|---|---|---|---|
+| Mock | 구현 | 통과 | N/A | 기존 로컬 Mock LLM 유지 |
+| OpenAI | Responses API 어댑터 구현 | SDK Stub 통과 | Not verified | 실행 조건 세 가지가 모두 충족되지 않아 비용 호출 미실행 |
+| Claude | 미구현 | 미실행 | 미실행 | 향후 어댑터 확장 |
+| Gemini | 미구현 | 미실행 | 미실행 | 향후 어댑터 확장 |
+
+다중 Provider 자동 라우팅과 자동 폴백은 구현하지 않았다. 서버 환경변수 `LLM_PROVIDER`가 `mock` 또는 `openai`일 때만 Registry가 선택하며, 요청 본문의 `model`은 Provider나 OpenAI 모델을 바꾸지 못한다.
 
 ## 4. 기능 재현
 
@@ -68,12 +83,18 @@
 
 | 명령 | 결과 | 해석 |
 |---|---|---|
-| `python -m pytest -q` | 160 passed, 8 warnings, 22.76s | 최종 전체 회귀 통과 |
-| focused policy/proxy/SSE/audit/integrity tests | 36 passed | 이번 변경 영역 통과 |
+| 변경 전 `python -m pytest -q` | 160 passed, 8 warnings, 33.53s | 작업 전 기준선 통과 |
+| 변경 후 `python -m pytest -q` | 174 passed, 1 skipped, 8 warnings, 8.61s | 전체 회귀 통과; live OpenAI 1건 skip |
+| Provider/proxy/SSE/audit focused tests | 46 passed, 1 skipped, 7 warnings, 6.45s | Stub 기반 보안·오류·Validator 흐름 통과 |
+| 로컬 Mock Provider smoke | `action=ALLOW`, `provider=mock`, `upstream_status=success`, `validator=PASS` | 로컬 Mock 서버를 통한 실제 HTTP 경로 통과, 외부 API 미사용 |
+| `python -m compileall -q backend` | 성공 | backend 문법/바이트코드 컴파일 통과 |
+| `python -m pip check` | 성공 | 설치 의존성 충돌 없음 |
+| `docker compose config` | 성공, Docker config 접근 경고 2건 | 기본 Mock 설정과 127.0.0.1 바인딩 확인 |
+| 실제 OpenAI API smoke | Not verified | `RUN_LIVE_OPENAI_TESTS` 비활성, `OPENAI_MODEL` 미설정으로 비용 호출 미실행 |
 | `docker compose config` | 성공 | 127.0.0.1:8000/8001 확인; Docker config 접근 경고 1건 |
 | `python tools/verify_audit_log.py --log-file logs/audit_log.jsonl` | checked 81, valid 32, invalid 49 | 로컬 파일에 과거·다른 테스트 키·구형 포맷 레코드 혼재; 현행 단위 테스트의 신규 서명·변조 검사는 통과 |
 
-8개 warning은 FastAPI/Starlette 수명주기·템플릿 API deprecation 3건과 joblib/numpy artifact loading 관련 warning 5건이다. 테스트 실패로 숨기지 않으며, 향후 lifespan API 전환과 artifact 재학습으로 제거해야 한다.
+8개 warning은 FastAPI/Starlette 수명주기·TestClient deprecation 3건과 joblib/numpy artifact loading 관련 warning 5건이다. 테스트 실패로 숨기지 않으며, 향후 lifespan API 전환, httpx2 전환, artifact 재학습으로 제거해야 한다.
 
 ## 6. 현재 재현 평가
 
@@ -126,7 +147,7 @@ external-tuned classifier는 scikit-learn 1.8.0에서 저장되었고 현재 런
 
 | 기준 문서 수치 | 저장소 근거 | 2026-07-28 상태 |
 |---|---|---|
-| 143 passed, 2 warnings | 과거 문서 서술 | 미재현; 현재 160 passed, 8 warnings |
+| 143 passed, 2 warnings | 과거 문서 서술 | 미재현; 현재 174 passed, 1 skipped, 8 warnings |
 | Holdout Accuracy 0.833 | 동일 프로토콜 원시 산출물 미발견 | 과거 측정 결과, 현재 미재현 |
 | Injection F1 0.923 | 동일 프로토콜 원시 산출물 미발견 | 과거 측정 결과, 현재 미재현 |
 | PII F1 0.783 | 동일 프로토콜 원시 산출물 미발견 | 과거 측정 결과, 현재 미재현 |
@@ -136,7 +157,7 @@ external-tuned classifier는 scikit-learn 1.8.0에서 저장되었고 현재 런
 
 ## 8. 감사 로그 보안 경계
 
-현행 신규 레코드는 timestamp, request ID, final decision, reason codes, PII·Injection 건수, latency, block/error type, 가명 user ID, 무결성 메타데이터를 기록한다. raw prompt, raw response, API key, system prompt, 개인정보 원문은 저장하지 않으며 중첩 summary도 재귀 검사한다.
+현행 신규 레코드는 timestamp, request ID, final decision, reason codes, PII·Injection 건수, latency, block/error type, Provider·model·호출 상태·Provider 지연, 가명 user ID, 무결성 메타데이터를 기록한다. raw prompt, raw response, API key, Authorization header, system prompt, 개인정보 원문, SDK 오류 객체는 저장하지 않으며 중첩 summary도 재귀 검사한다. 저장소 및 `logs/`에서 현재 환경의 API key 문자열을 검색한 결과 일치 항목은 없었다.
 
 현재 HMAC-SHA256은 PQC가 아니다. 정확한 표현은 **ML-DSA 교체 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조**다. 실제 ML-DSA, PQC 키 관리, 서명 성능 평가는 미구현이다.
 
@@ -148,3 +169,6 @@ external-tuned classifier는 scikit-learn 1.8.0에서 저장되었고 현재 런
 4. SSE 전체 버퍼링은 원본 토큰 노출을 막지만 first-byte latency와 메모리 사용을 늘린다. 응답 크기 제한과 timeout 정책을 보강해야 한다.
 5. 실제 ML-DSA, KMS/HSM 기반 키 관리, 간접 인젝션/RAG 문서 공격, Validator 전용 출력 데이터셋 평가는 아직 구현되지 않았다.
 6. 내부 회귀셋의 높은 점수를 운영 일반화 성능으로 주장하면 안 된다.
+7. OpenAI 어댑터는 Stub 자동 테스트만 통과했다. 실제 계정의 모델 접근 권한, 비용, 지연, Rate Limit, 데이터 보존 설정은 아직 검증하지 않았다.
+8. `store=False`는 Responses application state 저장을 끄지만 조직의 abuse monitoring 및 데이터 제어 조건을 대체하지 않는다.
+9. 기본 Docker Compose는 API key를 자동 전달하지 않는다. 컨테이너 운영에는 별도 secret store 또는 Docker secret 통합이 필요하다.

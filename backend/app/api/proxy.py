@@ -43,6 +43,7 @@ from backend.app.services.auth_service import (
     token_ttl_seconds,
 )
 from backend.app.services.llm_service import get_upstream_config_summary
+from backend.app.services.llm_service import not_called_provider_metadata
 from backend.app.services.proxy_service import (
     POLICY_PATH,
     _detect_text,
@@ -318,6 +319,8 @@ async def chat_completions(req: ChatCompletionRequest) -> dict:
         "reason_codes": final_reasons,
         "input_action": action,
         "output_action": output_action,
+        "input_decision": action,
+        "output_decision": output_action,
         "upstream_call": False,
         "input": {
             **decision.audit_summary,
@@ -325,6 +328,7 @@ async def chat_completions(req: ChatCompletionRequest) -> dict:
         },
         "output": output_summary,
         "validator": _validator_audit_summary(validator_summary),
+        **not_called_provider_metadata("mock"),
     }
     if "hybrid_detection" in audit:
         audit_summary["hybrid_detection"] = {

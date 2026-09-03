@@ -51,8 +51,15 @@ def test_build_log_entry_keeps_metadata_only() -> None:
         "reason_codes": ["PII_PHONE_DETECTED"],
         "latency_ms": 12.3,
         "upstream_call": True,
+        "upstream_called": True,
+        "upstream_status": "success",
+        "upstream_latency_ms": 8.25,
+        "provider": "openai",
+        "model": "configured-model",
         "input_action": "MASK",
         "output_action": "ALLOW",
+        "input_decision": "MASK",
+        "output_decision": "ALLOW",
         "hybrid_detection": {
             "input": {
                 "model_enabled": False,
@@ -81,6 +88,10 @@ def test_build_log_entry_keeps_metadata_only() -> None:
     assert entry["reason_codes"] == ["PII_PHONE_DETECTED"]
     assert entry["pii_detected"] is True
     assert entry["injection_detected"] is False
+    assert entry["provider"] == "openai"
+    assert entry["model"] == "configured-model"
+    assert entry["upstream_status"] == "success"
+    assert entry["upstream_latency_ms"] == 8.25
     assert entry["hybrid_detection"]["input"]["model_status"] == "artifact_missing"
     assert "raw_prompt" not in entry
     assert "raw_response" not in entry
@@ -117,6 +128,13 @@ def test_build_log_entry_records_counts_and_sanitizes_nested_secrets(monkeypatch
                 "api_key": api_key,
             }
         },
+        "provider": "openai",
+        "model": "configured-model",
+        "upstream_called": True,
+        "upstream_status": "success",
+        "headers": {"Authorization": api_key},
+        "safe_input": raw_prompt,
+        "response_body": raw_response,
     }
 
     entry = audit_service._build_log_entry(

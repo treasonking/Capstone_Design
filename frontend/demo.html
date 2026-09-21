@@ -271,6 +271,230 @@
       margin-top: 18px;
     }
 
+    [hidden] {
+      display: none !important;
+    }
+
+    .auth-shell {
+      min-height: calc(100vh - 68px);
+      display: grid;
+      place-items: center;
+      padding: 28px 0 44px;
+    }
+
+    .auth-layout {
+      width: min(100%, 1040px);
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .auth-intro {
+      display: grid;
+      align-content: space-between;
+      gap: 28px;
+      min-height: 570px;
+      background: linear-gradient(145deg, #0f766e 0%, #115e59 65%, #134e4a 100%);
+      color: #fff;
+      border: 0;
+    }
+
+    .auth-intro p,
+    .auth-intro .meta {
+      color: rgba(255, 255, 255, 0.78);
+    }
+
+    .brand-mark {
+      display: inline-grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 28px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.16);
+      font-size: 1.4rem;
+      font-weight: 800;
+    }
+
+    .auth-intro h1 {
+      max-width: 390px;
+      margin: 0 0 14px;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.08;
+      letter-spacing: -0.05em;
+    }
+
+    .trust-list {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .trust-list li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      color: rgba(255, 255, 255, 0.9);
+      line-height: 1.45;
+    }
+
+    .trust-list li::before {
+      content: "✓";
+      display: inline-grid;
+      flex: 0 0 22px;
+      place-items: center;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.16);
+      font-weight: 700;
+    }
+
+    .auth-card {
+      min-height: 570px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .auth-card h2 {
+      margin-bottom: 8px;
+      font-size: 1.65rem;
+      letter-spacing: -0.03em;
+    }
+
+    .auth-card > p {
+      margin-bottom: 24px;
+    }
+
+    .auth-tabs {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px;
+      margin-bottom: 24px;
+      padding: 4px;
+      border-radius: 14px;
+      background: #efe6d8;
+    }
+
+    .auth-tab {
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .auth-tab:hover {
+      transform: none;
+    }
+
+    .auth-tab.active {
+      background: var(--panel-strong);
+      color: var(--text);
+      box-shadow: 0 2px 8px rgba(31, 41, 55, 0.08);
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .field-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+    }
+
+    .field-error {
+      min-height: 18px;
+      margin: 6px 2px 0;
+      color: var(--block);
+      font-size: 0.82rem;
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    .input-wrap input {
+      padding-right: 82px;
+    }
+
+    .toggle-password {
+      position: absolute;
+      top: 50%;
+      right: 8px;
+      padding: 7px 9px;
+      color: var(--muted);
+      background: transparent;
+      transform: translateY(-50%);
+      font-size: 0.82rem;
+    }
+
+    .toggle-password:hover {
+      transform: translateY(-50%);
+      color: var(--text);
+    }
+
+    input[aria-invalid="true"] {
+      border-color: var(--block);
+      box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.1);
+    }
+
+    .auth-submit {
+      width: 100%;
+      margin-top: 4px;
+      padding: 13px 16px;
+      font-weight: 700;
+    }
+
+    .auth-submit.is-loading {
+      pointer-events: none;
+    }
+
+    .auth-message {
+      min-height: 22px;
+      margin: 14px 0 0;
+      font-size: 0.9rem;
+    }
+
+    .auth-message.error {
+      color: var(--block);
+    }
+
+    .auth-message.success {
+      color: var(--allow);
+    }
+
+    .auth-note {
+      margin-top: 18px !important;
+      font-size: 0.82rem;
+      text-align: center;
+    }
+
+    .auth-note button {
+      padding: 0;
+      color: var(--accent);
+      background: transparent;
+      font-weight: 700;
+    }
+
+    .session-bar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-bottom: 18px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .session-bar button {
+      padding: 8px 12px;
+    }
+
     @media (max-width: 920px) {
       .grid {
         grid-template-columns: 1fr;
@@ -280,11 +504,110 @@
       .row {
         grid-template-columns: 1fr;
       }
+
+      .auth-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .auth-intro {
+        min-height: auto;
+      }
+
+      .auth-card {
+        min-height: auto;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .shell {
+        padding: 16px 14px 28px;
+      }
+
+      .auth-shell {
+        padding: 14px 0 28px;
+      }
+
+      .auth-intro,
+      .auth-card {
+        padding: 18px;
+      }
+
+      .auth-intro h1 {
+        font-size: 2rem;
+      }
     }
   </style>
 </head>
 <body>
   <div class="shell">
+    <section class="auth-shell" id="authView">
+      <div class="auth-layout">
+        <article class="panel auth-intro">
+          <div>
+            <div class="brand-mark" aria-hidden="true">SP</div>
+            <div class="meta">SECURE PROXY CONSOLE</div>
+            <h1>안전한 AI 사용을 위한 첫 화면</h1>
+            <p>개인정보와 프롬프트 인젝션 위험을 사전에 확인하는 LLM 보안 프록시 데모입니다.</p>
+          </div>
+          <ul class="trust-list">
+            <li>입력 전 개인정보·정책 위험을 점검합니다.</li>
+            <li>마스킹과 차단 결과를 한눈에 확인합니다.</li>
+            <li>로그인 정보는 이 UI 데모에서 서버로 전송되지 않습니다.</li>
+          </ul>
+        </article>
+
+        <article class="panel auth-card">
+          <div class="auth-tabs" role="tablist" aria-label="인증 메뉴">
+            <button class="auth-tab active" id="loginTab" type="button" role="tab" aria-selected="true">로그인</button>
+            <button class="auth-tab" id="signupTab" type="button" role="tab" aria-selected="false">회원가입</button>
+          </div>
+          <h2 id="authTitle">다시 오신 것을 환영합니다</h2>
+          <p id="authDescription">계정으로 로그인하고 보안 프록시 콘솔을 시작하세요.</p>
+
+          <form id="authForm" novalidate>
+            <div class="field">
+              <div class="field-label">
+                <label for="authEmail">이메일</label>
+              </div>
+              <input id="authEmail" name="email" type="email" autocomplete="email" placeholder="name@company.com" required>
+              <div class="field-error" id="emailError" aria-live="polite"></div>
+            </div>
+
+            <div class="field">
+              <div class="field-label">
+                <label for="authPassword">비밀번호</label>
+              </div>
+              <div class="input-wrap">
+                <input id="authPassword" name="password" type="password" autocomplete="current-password" placeholder="8자 이상 입력" minlength="8" required>
+                <button class="toggle-password" id="togglePassword" type="button" aria-label="비밀번호 표시">표시</button>
+              </div>
+              <div class="field-error" id="passwordError" aria-live="polite"></div>
+            </div>
+
+            <div class="field" id="confirmField" hidden>
+              <div class="field-label">
+                <label for="confirmPassword">비밀번호 확인</label>
+              </div>
+              <div class="input-wrap">
+                <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" placeholder="비밀번호를 다시 입력">
+                <button class="toggle-password" type="button" data-target="confirmPassword" aria-label="비밀번호 확인 표시">표시</button>
+              </div>
+              <div class="field-error" id="confirmError" aria-live="polite"></div>
+            </div>
+
+            <button class="primary auth-submit" id="authSubmit" type="submit">로그인</button>
+            <div class="auth-message" id="authMessage" role="status" aria-live="polite"></div>
+          </form>
+          <p class="auth-note" id="authNote">계정이 없으신가요? <button type="button" data-switch="signup">회원가입</button></p>
+        </article>
+      </div>
+    </section>
+
+    <div id="appView" hidden>
+      <div class="session-bar">
+        <span id="sessionUser"></span>
+        <button class="secondary" id="logoutBtn" type="button">로그아웃</button>
+      </div>
     <section class="hero">
       <h1>LLM Security Proxy Demo</h1>
       <p>백엔드 보안 프록시의 사용자 입력 흐름과 관리자 요약을 한 화면에서 보여주는 발표용 정적 데모 페이지입니다. FastAPI 프록시가 <code>http://127.0.0.1:8000</code>에서 실행 중일 때 사용할 수 있으며, API 호출까지 함께 확인하려면 <code>http://127.0.0.1:5500/demo.html</code>로 서빙하는 구성을 권장합니다.</p>
@@ -428,9 +751,146 @@
       <h2>사용 주의</h2>
       <p>본 페이지는 캡스톤 발표 및 로컬 검증용 정적 데모 페이지이며, 운영용 관리자 콘솔이 아니다. API Key, Authorization 헤더, 원문 로그 저장 기능은 포함하지 않으며, 관리자 토큰은 브라우저 저장소에 저장하지 않습니다.</p>
     </footer>
+    </div>
   </div>
 
   <script>
+    const authView = document.getElementById("authView");
+    const appView = document.getElementById("appView");
+    const authForm = document.getElementById("authForm");
+    const authTitle = document.getElementById("authTitle");
+    const authDescription = document.getElementById("authDescription");
+    const authSubmit = document.getElementById("authSubmit");
+    const authMessage = document.getElementById("authMessage");
+    const authNote = document.getElementById("authNote");
+    const confirmField = document.getElementById("confirmField");
+    const authEmail = document.getElementById("authEmail");
+    const authPassword = document.getElementById("authPassword");
+    const confirmPassword = document.getElementById("confirmPassword");
+    const emailError = document.getElementById("emailError");
+    const passwordError = document.getElementById("passwordError");
+    const confirmError = document.getElementById("confirmError");
+    const sessionUser = document.getElementById("sessionUser");
+    let authMode = "login";
+
+    function setFieldError(input, errorElement, message) {
+      input.setAttribute("aria-invalid", message ? "true" : "false");
+      errorElement.textContent = message;
+    }
+
+    function clearAuthFeedback() {
+      setFieldError(authEmail, emailError, "");
+      setFieldError(authPassword, passwordError, "");
+      setFieldError(confirmPassword, confirmError, "");
+      authMessage.textContent = "";
+      authMessage.className = "auth-message";
+    }
+
+    function setAuthMode(mode) {
+      authMode = mode;
+      const isSignup = mode === "signup";
+      document.getElementById("loginTab").classList.toggle("active", !isSignup);
+      document.getElementById("signupTab").classList.toggle("active", isSignup);
+      document.getElementById("loginTab").setAttribute("aria-selected", String(!isSignup));
+      document.getElementById("signupTab").setAttribute("aria-selected", String(isSignup));
+      authTitle.textContent = isSignup ? "새 계정을 만들어보세요" : "다시 오신 것을 환영합니다";
+      authDescription.textContent = isSignup
+        ? "보안 프록시 콘솔에서 안전한 AI 사용을 시작하세요."
+        : "계정으로 로그인하고 보안 프록시 콘솔을 시작하세요.";
+      authSubmit.textContent = isSignup ? "회원가입" : "로그인";
+      authNote.innerHTML = isSignup
+        ? '이미 계정이 있으신가요? <button type="button" data-switch="login">로그인</button>'
+        : '계정이 없으신가요? <button type="button" data-switch="signup">회원가입</button>';
+      confirmField.hidden = !isSignup;
+      confirmPassword.required = isSignup;
+      authPassword.autocomplete = isSignup ? "new-password" : "current-password";
+      clearAuthFeedback();
+    }
+
+    function showApp(email) {
+      authView.hidden = true;
+      appView.hidden = false;
+      sessionUser.textContent = `${email}로 데모에 로그인됨`;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function showAuth() {
+      appView.hidden = true;
+      authView.hidden = false;
+      authForm.reset();
+      setAuthMode("login");
+      authEmail.focus();
+    }
+
+    function validateAuthForm() {
+      clearAuthFeedback();
+      const email = authEmail.value.trim();
+      const password = authPassword.value;
+      let isValid = true;
+
+      if (!email) {
+        setFieldError(authEmail, emailError, "이메일을 입력해 주세요.");
+        isValid = false;
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setFieldError(authEmail, emailError, "올바른 이메일 형식을 입력해 주세요.");
+        isValid = false;
+      }
+
+      if (!password) {
+        setFieldError(authPassword, passwordError, "비밀번호를 입력해 주세요.");
+        isValid = false;
+      } else if (password.length < 8) {
+        setFieldError(authPassword, passwordError, "비밀번호는 8자 이상이어야 합니다.");
+        isValid = false;
+      }
+
+      if (authMode === "signup" && password !== confirmPassword.value) {
+        setFieldError(confirmPassword, confirmError, "비밀번호가 일치하지 않습니다.");
+        isValid = false;
+      }
+      return isValid;
+    }
+
+    document.getElementById("loginTab").addEventListener("click", () => setAuthMode("login"));
+    document.getElementById("signupTab").addEventListener("click", () => setAuthMode("signup"));
+    authNote.addEventListener("click", (event) => {
+      const switchButton = event.target.closest("[data-switch]");
+      if (switchButton) setAuthMode(switchButton.dataset.switch);
+    });
+    document.querySelectorAll(".toggle-password").forEach((button) => {
+      button.addEventListener("click", () => {
+        const input = document.getElementById(button.dataset.target || "authPassword");
+        const isVisible = input.type === "text";
+        input.type = isVisible ? "password" : "text";
+        button.textContent = isVisible ? "표시" : "숨김";
+        button.setAttribute("aria-label", isVisible ? "비밀번호 표시" : "비밀번호 숨기기");
+      });
+    });
+    authForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!validateAuthForm()) {
+        authMessage.textContent = "입력 내용을 확인해 주세요.";
+        authMessage.className = "auth-message error";
+        return;
+      }
+
+      authSubmit.disabled = true;
+      authSubmit.classList.add("is-loading");
+      authSubmit.textContent = authMode === "signup" ? "가입 처리 중..." : "로그인 중...";
+      authMessage.textContent = "";
+      window.setTimeout(() => {
+        authSubmit.disabled = false;
+        authSubmit.classList.remove("is-loading");
+        authSubmit.textContent = authMode === "signup" ? "회원가입" : "로그인";
+        authMessage.textContent = authMode === "signup"
+          ? "가입이 완료되었습니다. 콘솔로 이동합니다."
+          : "로그인되었습니다. 콘솔로 이동합니다.";
+        authMessage.className = "auth-message success";
+        window.setTimeout(() => showApp(authEmail.value.trim()), 350);
+      }, 500);
+    });
+    document.getElementById("logoutBtn").addEventListener("click", showAuth);
+
     const apiBase = document.getElementById("apiBase");
     const policyId = document.getElementById("policyId");
     const message = document.getElementById("message");

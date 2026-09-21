@@ -6,14 +6,14 @@
   <title>LLM Security Proxy Demo</title>
   <style>
     :root {
-      --bg: #f4efe6;
-      --panel: #fffaf2;
+      --bg: #f5f5f5;
+      --panel: #ffffff;
       --panel-strong: #fff;
-      --text: #1f2937;
-      --muted: #5b6472;
-      --line: #d8cfc0;
-      --accent: #0f766e;
-      --accent-soft: #d7f3ee;
+      --text: #111111;
+      --muted: #666666;
+      --line: #e1e1e1;
+      --accent: #111111;
+      --accent-soft: #eeeeee;
       --warn: #a16207;
       --warn-soft: #fff4ce;
       --block: #b42318;
@@ -22,7 +22,7 @@
       --mask-soft: #e7efff;
       --allow: #166534;
       --allow-soft: #e5f6ea;
-      --shadow: 0 18px 40px rgba(31, 41, 55, 0.08);
+      --shadow: 0 18px 40px rgba(17, 17, 17, 0.08);
     }
 
     * {
@@ -33,10 +33,7 @@
       margin: 0;
       font-family: "Segoe UI", "Noto Sans KR", sans-serif;
       color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(15, 118, 110, 0.14), transparent 28%),
-        radial-gradient(circle at top right, rgba(180, 35, 24, 0.12), transparent 26%),
-        linear-gradient(180deg, #f8f4ec 0%, var(--bg) 100%);
+      background: linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
       min-height: 100vh;
     }
 
@@ -74,7 +71,7 @@
     }
 
     .panel {
-      background: rgba(255, 250, 242, 0.92);
+      background: rgba(255, 255, 255, 0.94);
       border: 1px solid var(--line);
       border-radius: 24px;
       padding: 20px;
@@ -111,7 +108,7 @@
     select,
     textarea {
       width: 100%;
-      border: 1px solid #cabfae;
+      border: 1px solid #cfcfcf;
       border-radius: 16px;
       padding: 12px 14px;
       background: var(--panel-strong);
@@ -159,13 +156,21 @@
       transform: translateY(-1px);
     }
 
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: 3px solid #8a8a8a;
+      outline-offset: 2px;
+    }
+
     .primary {
       background: var(--accent);
       color: #fff;
     }
 
     .secondary {
-      background: #efe6d8;
+      background: #f0f0f0;
       color: var(--text);
     }
 
@@ -228,7 +233,7 @@
       padding: 14px;
       border-radius: 18px;
       overflow: auto;
-      background: #171717;
+      background: #111111;
       color: #f7f7f7;
       font-size: 0.88rem;
       line-height: 1.45;
@@ -295,7 +300,7 @@
       align-content: space-between;
       gap: 28px;
       min-height: 570px;
-      background: linear-gradient(145deg, #0f766e 0%, #115e59 65%, #134e4a 100%);
+      background: linear-gradient(145deg, #111111 0%, #202020 65%, #000000 100%);
       color: #fff;
       border: 0;
     }
@@ -544,7 +549,7 @@
       <div class="auth-layout">
         <article class="panel auth-intro">
           <div>
-            <div class="brand-mark" aria-hidden="true">SP</div>
+            <div class="brand-mark" aria-hidden="true">ORCA</div>
             <div class="meta">SECURE PROXY CONSOLE</div>
             <h1>안전한 AI 사용을 위한 첫 화면</h1>
             <p>개인정보와 프롬프트 인젝션 위험을 사전에 확인하는 LLM 보안 프록시 데모입니다.</p>

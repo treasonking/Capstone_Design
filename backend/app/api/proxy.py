@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import logging
 import os
+import re
 import time
 import uuid
 from datetime import datetime, timezone
@@ -18,6 +19,7 @@ from backend.app.schemas.admin import (
     ReasonCodeStatItem,
     RecentBlockItem,
 )
+from backend.app.schemas.auth import AuthCredentials, AuthTokenResponse, AuthUserResponse
 from backend.app.schemas.proxy import (
     ChatCompletionRequest,
     ProxyAnalyzeResponse,
@@ -30,6 +32,14 @@ from backend.app.services.audit_service import (
     get_reason_code_stats,
     get_recent_block_history,
     save_audit_log,
+)
+from backend.app.services.auth_service import (
+    authenticate_user,
+    create_user,
+    issue_token,
+    resolve_token,
+    revoke_token,
+    token_ttl_seconds,
 )
 from backend.app.services.llm_service import get_upstream_config_summary
 from backend.app.services.proxy_service import (
@@ -64,6 +74,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+
 
 @app.on_event("startup")
 async def log_detection_configuration() -> None:
@@ -82,6 +94,59 @@ def _require_admin_token(
         return
     if x_admin_token != _admin_api_token():
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+def _normalized_email(credentials: AuthCredentials) -> str:
+    email = credentials.email.strip().lower()
+    if not _EMAIL_PATTERN.fullmatch(email):
+        raise HTTPException(status_code=422, detail="올바른 이메일 형식을 입력해 주세요.")
+    return email
+
+
+def _bearer_token(authorization: str | None) -> str | None:
+    if not authorization:
+        return None
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        return None
+    return token
+
+
+@app.post("/auth/signup", response_model=AuthUserResponse, status_code=201)
+async def auth_signup(credentials: AuthCredentials) -> AuthUserResponse:
+    email = _normalized_email(credentials)
+    if not create_user(email, credentials.password):
+        raise HTTPException(status_code=409, detail="이미 가입된 이메일입니다.")
+    return AuthUserResponse(email=email)
+
+
+@app.post("/auth/login", response_model=AuthTokenResponse)
+async def auth_login(credentials: AuthCredentials) -> AuthTokenResponse:
+    email = _normalized_email(credentials)
+    if not authenticate_user(email, credentials.password):
+        raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다.")
+    return AuthTokenResponse(
+        access_token=issue_token(email),
+        expires_in=token_ttl_seconds(),
+        email=email,
+    )
+
+
+@app.post("/auth/logout", status_code=204)
+async def auth_logout(
+    authorization: str | None = Header(default=None),
+) -> None:
+    revoke_token(_bearer_token(authorization))
+
+
+@app.get("/auth/me", response_model=AuthUserResponse)
+async def auth_me(
+    authorization: str | None = Header(default=None),
+) -> AuthUserResponse:
+    email = resolve_token(_bearer_token(authorization))
+    if not email:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+    return AuthUserResponse(email=email)
 
 
 @app.post("/proxy/chat")

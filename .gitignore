@@ -7,6 +7,6 @@ venv/
 *.egg-info/
 build/
 logs/
+backend/data/
 evaluation/results/*.csv
 datasets/external_splits/*.jsonl
-

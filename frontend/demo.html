@@ -1047,6 +1047,7 @@
     const confirmError = document.getElementById("confirmError");
     const sessionUser = document.getElementById("sessionUser");
     let authMode = "login";
+    let authToken = sessionStorage.getItem("orca_auth_token");
 
     function setFieldError(input, errorElement, message) {
       input.setAttribute("aria-invalid", message ? "true" : "false");
@@ -1085,7 +1086,7 @@
     function showApp(email) {
       authView.hidden = true;
       appView.hidden = false;
-      sessionUser.textContent = `${email}로 데모에 로그인됨`;
+      sessionUser.textContent = `${email}로 로그인됨`;
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
@@ -1095,6 +1096,24 @@
       authForm.reset();
       setAuthMode("login");
       authEmail.focus();
+    }
+
+    async function submitAuth() {
+      const apiOrigin = document.getElementById("apiBase").value.replace(/\/$/, "");
+      const endpoint = authMode === "signup" ? "/auth/signup" : "/auth/login";
+      const response = await fetch(`${apiOrigin}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: authEmail.value.trim(),
+          password: authPassword.value
+        })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.detail || "인증 요청에 실패했습니다.");
+      }
+      return payload;
     }
 
     function validateAuthForm() {
@@ -1141,7 +1160,7 @@
         button.setAttribute("aria-label", isVisible ? "비밀번호 표시" : "비밀번호 숨기기");
       });
     });
-    authForm.addEventListener("submit", (event) => {
+    authForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!validateAuthForm()) {
         authMessage.textContent = "입력 내용을 확인해 주세요.";
@@ -1153,18 +1172,43 @@
       authSubmit.classList.add("is-loading");
       authSubmit.textContent = authMode === "signup" ? "가입 처리 중..." : "로그인 중...";
       authMessage.textContent = "";
-      window.setTimeout(() => {
+      try {
+        const payload = await submitAuth();
+        if (authMode === "signup") {
+          setAuthMode("login");
+          authEmail.value = payload.email;
+          authPassword.value = "";
+          authMessage.textContent = "가입이 완료되었습니다. 로그인해 주세요.";
+          authMessage.className = "auth-message success";
+        } else {
+          authToken = payload.access_token;
+          sessionStorage.setItem("orca_auth_token", authToken);
+          authMessage.textContent = "로그인되었습니다. 콘솔로 이동합니다.";
+          authMessage.className = "auth-message success";
+          window.setTimeout(() => showApp(payload.email), 350);
+        }
+      } catch (error) {
+        authMessage.textContent = error.message;
+        authMessage.className = "auth-message error";
+      } finally {
         authSubmit.disabled = false;
         authSubmit.classList.remove("is-loading");
         authSubmit.textContent = authMode === "signup" ? "회원가입" : "로그인";
-        authMessage.textContent = authMode === "signup"
-          ? "가입이 완료되었습니다. 콘솔로 이동합니다."
-          : "로그인되었습니다. 콘솔로 이동합니다.";
-        authMessage.className = "auth-message success";
-        window.setTimeout(() => showApp(authEmail.value.trim()), 350);
-      }, 500);
+      }
     });
-    document.getElementById("logoutBtn").addEventListener("click", showAuth);
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      const apiOrigin = document.getElementById("apiBase").value.replace(/\/$/, "");
+      try {
+        await fetch(`${apiOrigin}/auth/logout`, {
+          method: "POST",
+          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+        });
+      } finally {
+        authToken = null;
+        sessionStorage.removeItem("orca_auth_token");
+        showAuth();
+      }
+    });
 
     const apiBase = document.getElementById("apiBase");
     const policyId = document.getElementById("policyId");
@@ -1329,6 +1373,12 @@
       sendBtn.disabled = false;
     }
 
+    function authenticatedHeaders() {
+      return authToken
+        ? { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` }
+        : { "Content-Type": "application/json" };
+    }
+
     function showRequestError(messageText, reason, error = null) {
       resetPreflightControls();
       renderChips("ERROR");
@@ -1361,7 +1411,7 @@
       try {
         const response = await fetch(`${apiBase.value}/proxy/analyze`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authenticatedHeaders(),
           body: JSON.stringify({
             message: message.value,
             policy_id: policyId.value
@@ -1388,7 +1438,7 @@
       try {
         const response = await fetch(`${apiBase.value}/proxy/chat`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authenticatedHeaders(),
           body: JSON.stringify({
             message: message.value,
             policy_id: policyId.value

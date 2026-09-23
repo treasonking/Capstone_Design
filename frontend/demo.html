@@ -228,6 +228,81 @@
       background: var(--block-soft);
     }
 
+    .status-banner {
+      display: grid;
+      gap: 6px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--accent);
+      border-radius: 16px;
+      background: #fafafa;
+    }
+
+    .status-banner strong {
+      font-size: 1.05rem;
+    }
+
+    .status-banner.ALLOW {
+      border-left-color: var(--allow);
+    }
+
+    .status-banner.MASK {
+      border-left-color: var(--mask);
+    }
+
+    .status-banner.WARN {
+      border-left-color: var(--warn);
+    }
+
+    .status-banner.BLOCK,
+    .status-banner.ERROR {
+      border-left-color: var(--block);
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .detail-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .detail-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fafafa;
+      font-size: 0.88rem;
+    }
+
+    .detail-list li span:last-child {
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .result-section {
+      display: grid;
+      gap: 8px;
+    }
+
+    .result-section h3 {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    .result-section .meta {
+      line-height: 1.45;
+    }
+
     pre {
       margin: 0;
       padding: 14px;
@@ -521,6 +596,10 @@
       .auth-card {
         min-height: auto;
       }
+
+      .result-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (max-width: 560px) {
@@ -661,6 +740,10 @@
             <span class="chip READY">READY</span>
           </div>
           <div class="meta" id="resultMeta">아직 요청이 실행되지 않았습니다.</div>
+          <div class="status-banner" id="resultBanner">
+            <strong id="resultBannerTitle">검사 결과가 여기에 표시됩니다.</strong>
+            <span class="meta" id="resultBannerDescription">프롬프트를 입력한 뒤 전송 전 검사를 실행하세요.</span>
+          </div>
           <div class="cards">
             <div class="card">
               <div class="meta">action</div>
@@ -679,8 +762,27 @@
               <strong id="resultOutputAction">-</strong>
             </div>
           </div>
+          <div class="result-grid">
+            <div class="result-section">
+              <h3>탐지 요약</h3>
+              <ul class="detail-list" id="detectionSummary">
+                <li><span>PII</span><span>대기 중</span></li>
+                <li><span>Prompt Injection</span><span>대기 중</span></li>
+              </ul>
+            </div>
+            <div class="result-section">
+              <h3>Validator Agent</h3>
+              <ul class="detail-list" id="validatorSummary">
+                <li><span>출력 검증</span><span>대기 중</span></li>
+              </ul>
+            </div>
+          </div>
+          <div class="result-section" id="maskedResultSection" hidden>
+            <h3>마스킹된 입력</h3>
+            <pre id="maskedResult">null</pre>
+          </div>
           <div>
-            <label for="resultContent">content</label>
+            <label for="resultContent">최종 응답</label>
             <pre id="resultContent">null</pre>
           </div>
           <div>
@@ -908,6 +1010,13 @@
     const resultOutputAction = document.getElementById("resultOutputAction");
     const resultContent = document.getElementById("resultContent");
     const auditSummaryJson = document.getElementById("auditSummaryJson");
+    const resultBanner = document.getElementById("resultBanner");
+    const resultBannerTitle = document.getElementById("resultBannerTitle");
+    const resultBannerDescription = document.getElementById("resultBannerDescription");
+    const detectionSummary = document.getElementById("detectionSummary");
+    const validatorSummary = document.getElementById("validatorSummary");
+    const maskedResultSection = document.getElementById("maskedResultSection");
+    const maskedResult = document.getElementById("maskedResult");
     const totalRequests = document.getElementById("totalRequests");
     const blockedRequests = document.getElementById("blockedRequests");
     const maskedRequests = document.getElementById("maskedRequests");
@@ -916,9 +1025,54 @@
     const errorRequests = document.getElementById("errorRequests");
     const reasonList = document.getElementById("reasonList");
     const recentBlocks = document.getElementById("recentBlocks");
+    const analyzeBtn = document.getElementById("analyzeBtn");
     const sendBtn = document.getElementById("sendBtn");
     const applyMaskBtn = document.getElementById("applyMaskBtn");
     let latestMaskedText = null;
+
+    const actionCopy = {
+      ALLOW: ["안전하게 처리할 수 있습니다.", "탐지된 정책 위험이 없어 다음 단계로 진행할 수 있습니다."],
+      MASK: ["개인정보 마스킹이 필요합니다.", "민감정보를 마스킹한 뒤 요청을 진행하세요."],
+      WARN: ["주의가 필요한 입력입니다.", "탐지 결과를 확인한 뒤 요청을 계속할지 결정하세요."],
+      BLOCK: ["요청이 차단되었습니다.", "정책 우회 또는 위험한 정보 노출 가능성이 감지되어 진행할 수 없습니다."],
+      ERROR: ["요청을 처리하지 못했습니다.", "서버 연결 또는 API 응답을 확인하세요."]
+    };
+
+    function renderDetailList(element, items) {
+      element.innerHTML = items.map(([label, value]) =>
+        `<li><span>${label}</span><span>${value}</span></li>`
+      ).join("");
+    }
+
+    function renderDetectionSummary(payload) {
+      const pii = payload.pii_detected ?? payload.audit_summary?.pii_detected;
+      const injection = payload.injection_detected ?? payload.audit_summary?.injection_detected;
+      const detectorResults = payload.detector_results || [];
+      renderDetailList(detectionSummary, [
+        ["PII 탐지", pii === true ? "감지됨" : pii === false ? "없음" : "-"],
+        ["Prompt Injection", injection === true ? "감지됨" : injection === false ? "없음" : "-"],
+        ["탐지 근거", detectorResults.length ? `${detectorResults.length}건` : "없음"]
+      ]);
+    }
+
+    function renderValidatorSummary(payload) {
+      const summary = payload.audit_summary?.validator || payload.audit_summary?.validator_summary;
+      const outputAction = payload.output_action ?? payload.audit_summary?.output_action;
+      const status = summary?.status || (outputAction ? "EXECUTED" : "SKIPPED");
+      renderDetailList(validatorSummary, [
+        ["검증 상태", status],
+        ["출력 조치", outputAction || "SKIPPED"],
+        ["최종 조치", payload.action || "-"]
+      ]);
+    }
+
+    function updateResultBanner(action, recommendation) {
+      const normalizedAction = action || "ERROR";
+      const copy = actionCopy[normalizedAction] || actionCopy.ERROR;
+      resultBanner.className = `status-banner ${normalizedAction}`;
+      resultBannerTitle.textContent = copy[0];
+      resultBannerDescription.textContent = recommendation || copy[1];
+    }
 
     function renderChips(...values) {
       resultChips.innerHTML = values
@@ -930,6 +1084,7 @@
     function setResult(payload, status, mode = "응답") {
       renderChips(payload.action || "ERROR", payload.input_action, payload.output_action);
       resultMeta.textContent = `${mode} · HTTP ${status} · reason_code=${payload.reason_code ?? "null"}`;
+      updateResultBanner(payload.action, payload.recommendation);
       resultAction.textContent = payload.action ?? "ERROR";
       resultReason.textContent = payload.reason_code ?? "null";
       resultInputAction.textContent = payload.input_action ?? "-";
@@ -938,6 +1093,11 @@
         ? payload.content
         : JSON.stringify(payload.content ?? null, null, 2);
       auditSummaryJson.textContent = JSON.stringify(payload.audit_summary ?? {}, null, 2);
+      renderDetectionSummary(payload);
+      renderValidatorSummary(payload);
+      const maskedText = payload.masked_text || payload.audit_summary?.masked_text;
+      maskedResultSection.hidden = !maskedText;
+      maskedResult.textContent = maskedText || "null";
     }
 
     function updatePreflightControls(payload) {
@@ -952,9 +1112,33 @@
       sendBtn.disabled = false;
     }
 
+    function showRequestError(messageText, reason, error = null) {
+      resetPreflightControls();
+      renderChips("ERROR");
+      resultMeta.textContent = "오류";
+      updateResultBanner("ERROR", messageText);
+      resultAction.textContent = "ERROR";
+      resultReason.textContent = reason;
+      resultInputAction.textContent = "-";
+      resultOutputAction.textContent = "-";
+      resultContent.textContent = "응답을 표시할 수 없습니다.";
+      renderDetectionSummary({});
+      renderValidatorSummary({});
+      maskedResultSection.hidden = true;
+      auditSummaryJson.textContent = JSON.stringify({
+        error: messageText,
+        detail: error ? String(error) : null
+      }, null, 2);
+    }
+
     async function analyzeProxyRequest() {
+      if (!message.value.trim()) {
+        showRequestError("입력 내용을 작성한 뒤 사전 검사를 실행하세요.", "empty_message");
+        return;
+      }
       resultMeta.textContent = "사전 검사 중...";
       renderChips("READY");
+      analyzeBtn.disabled = true;
       try {
         const response = await fetch(`${apiBase.value}/proxy/analyze`, {
           method: "POST",
@@ -968,21 +1152,20 @@
         setResult(payload, response.status, "사전 검사");
         updatePreflightControls(payload);
       } catch (error) {
-        resetPreflightControls();
-        renderChips("ERROR");
-        resultMeta.textContent = "사전 검사 실패";
-        resultAction.textContent = "ERROR";
-        resultReason.textContent = "analyze_failed";
-        resultInputAction.textContent = "-";
-        resultOutputAction.textContent = "-";
-        resultContent.textContent = "null";
-        auditSummaryJson.textContent = JSON.stringify({ error: String(error) }, null, 2);
+        showRequestError("사전 검사 서버에 연결할 수 없습니다.", "analyze_failed", error);
+      } finally {
+        analyzeBtn.disabled = false;
       }
     }
 
     async function sendProxyRequest() {
+      if (!message.value.trim()) {
+        showRequestError("입력 내용을 작성한 뒤 프록시 요청을 실행하세요.", "empty_message");
+        return;
+      }
       resultMeta.textContent = "요청 중...";
       renderChips("READY");
+      sendBtn.disabled = true;
       try {
         const response = await fetch(`${apiBase.value}/proxy/chat`, {
           method: "POST",
@@ -995,14 +1178,9 @@
         const payload = await response.json();
         setResult(payload, response.status, "프록시 응답");
       } catch (error) {
-        renderChips("ERROR");
-        resultMeta.textContent = "요청 실패";
-        resultAction.textContent = "ERROR";
-        resultReason.textContent = "request_failed";
-        resultInputAction.textContent = "-";
-        resultOutputAction.textContent = "-";
-        resultContent.textContent = "null";
-        auditSummaryJson.textContent = JSON.stringify({ error: String(error) }, null, 2);
+        showRequestError("프록시 서버에 연결할 수 없습니다.", "request_failed", error);
+      } finally {
+        sendBtn.disabled = false;
       }
     }
 

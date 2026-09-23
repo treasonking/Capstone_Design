@@ -1098,6 +1098,16 @@
       authEmail.focus();
     }
 
+    function clearStoredAuth(message = "") {
+      authToken = null;
+      sessionStorage.removeItem("orca_auth_token");
+      showAuth();
+      if (message) {
+        authMessage.textContent = message;
+        authMessage.className = "auth-message error";
+      }
+    }
+
     async function submitAuth() {
       const apiOrigin = document.getElementById("apiBase").value.replace(/\/$/, "");
       const endpoint = authMode === "signup" ? "/auth/signup" : "/auth/login";
@@ -1249,6 +1259,23 @@
     let latestMaskedText = null;
     let latestAdminBlocks = [];
 
+    async function restoreSession() {
+      if (!authToken) return;
+      try {
+        const response = await fetch(`${apiBase.value}/auth/me`, {
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (!response.ok) {
+          clearStoredAuth();
+          return;
+        }
+        const payload = await response.json();
+        showApp(payload.email);
+      } catch {
+        clearStoredAuth();
+      }
+    }
+
     const reasonLabels = {
       SAFE_INPUT: "위험 신호 없음",
       PII_PHONE_DETECTED: "전화번호 감지",
@@ -1379,6 +1406,22 @@
         : { "Content-Type": "application/json" };
     }
 
+    async function authenticatedFetch(url, options = {}) {
+      if (!authToken) {
+        clearStoredAuth("로그인 후 프록시 콘솔을 이용할 수 있습니다.");
+        throw new Error("인증이 필요합니다.");
+      }
+      const response = await fetch(url, {
+        ...options,
+        headers: { ...authenticatedHeaders(), ...(options.headers || {}) }
+      });
+      if (response.status === 401) {
+        clearStoredAuth("세션이 만료되었거나 로그아웃되었습니다. 다시 로그인해 주세요.");
+        throw new Error("인증 세션이 만료되었습니다.");
+      }
+      return response;
+    }
+
     function showRequestError(messageText, reason, error = null) {
       resetPreflightControls();
       renderChips("ERROR");
@@ -1409,9 +1452,8 @@
       renderChips("READY");
       analyzeBtn.disabled = true;
       try {
-        const response = await fetch(`${apiBase.value}/proxy/analyze`, {
+        const response = await authenticatedFetch(`${apiBase.value}/proxy/analyze`, {
           method: "POST",
-          headers: authenticatedHeaders(),
           body: JSON.stringify({
             message: message.value,
             policy_id: policyId.value
@@ -1436,9 +1478,8 @@
       renderChips("READY");
       sendBtn.disabled = true;
       try {
-        const response = await fetch(`${apiBase.value}/proxy/chat`, {
+        const response = await authenticatedFetch(`${apiBase.value}/proxy/chat`, {
           method: "POST",
-          headers: authenticatedHeaders(),
           body: JSON.stringify({
             message: message.value,
             policy_id: policyId.value
@@ -1569,6 +1610,7 @@
       resetPreflightControls();
     });
     updateMessageCount();
+    restoreSession();
   </script>
 </body>
 </html>

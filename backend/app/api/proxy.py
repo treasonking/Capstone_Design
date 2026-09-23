@@ -8,7 +8,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import StreamingResponse
 
 from backend.app.config import get_detection_settings
@@ -112,6 +112,15 @@ def _bearer_token(authorization: str | None) -> str | None:
     return token
 
 
+def _require_authenticated_user(
+    authorization: str | None = Header(default=None),
+) -> str:
+    email = resolve_token(_bearer_token(authorization))
+    if not email:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+    return email
+
+
 @app.post("/auth/signup", response_model=AuthUserResponse, status_code=201)
 async def auth_signup(credentials: AuthCredentials) -> AuthUserResponse:
     email = _normalized_email(credentials)
@@ -150,17 +159,26 @@ async def auth_me(
 
 
 @app.post("/proxy/chat")
-async def proxy_chat(req: ProxyRequest) -> ProxyResponse:
+async def proxy_chat(
+    req: ProxyRequest,
+    _email: str = Depends(_require_authenticated_user),
+) -> ProxyResponse:
     return await process_proxy_chat(req)
 
 
 @app.post("/proxy/analyze")
-async def proxy_analyze(req: ProxyRequest) -> ProxyAnalyzeResponse:
+async def proxy_analyze(
+    req: ProxyRequest,
+    _email: str = Depends(_require_authenticated_user),
+) -> ProxyAnalyzeResponse:
     return await process_proxy_analyze(req)
 
 
 @app.post("/proxy/chat/stream")
-async def proxy_chat_stream(req: ProxyRequest) -> StreamingResponse:
+async def proxy_chat_stream(
+    req: ProxyRequest,
+    _email: str = Depends(_require_authenticated_user),
+) -> StreamingResponse:
     return StreamingResponse(
         process_proxy_chat_stream(req),
         media_type="text/event-stream",

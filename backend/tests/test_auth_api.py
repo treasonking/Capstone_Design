@@ -53,3 +53,10 @@ def test_auth_rejects_invalid_email_and_short_password(monkeypatch, tmp_path):
         json={"email": "not-an-email", "password": "short"},
     )
     assert response.status_code == 422
+
+
+def test_auth_rejects_invalid_or_expired_session() -> None:
+    assert client.get(
+        "/auth/me",
+        headers={"Authorization": "Bearer expired-or-invalid-token"},
+    ).status_code == 401

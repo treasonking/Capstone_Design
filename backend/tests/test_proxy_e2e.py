@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.api.proxy import app
+from backend.app.services.auth_service import issue_token
 
 
 @pytest.fixture(autouse=True)
@@ -12,11 +13,13 @@ def _rule_only_e2e(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 client = TestClient(app)
+AUTH_HEADERS = {"Authorization": f"Bearer {issue_token('test@example.com')}"}
 
 
 def _chat(text: str) -> dict:
     response = client.post(
         "/v1/chat/completions",
+        headers=AUTH_HEADERS,
         json={"messages": [{"role": "user", "content": text}]},
     )
     assert response.status_code == 200

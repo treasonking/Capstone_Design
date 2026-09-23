@@ -404,10 +404,13 @@ def detect_model(
             if not classifier_status.enabled
             else None
         )
-        reasons = list(signal_reasons)
-        if fallback_reason is not None:
-            reasons = ordered_reason_codes([*reasons, fallback_reason])
-        reasons = ordered_reason_codes(reasons)
+        # Model availability is an operational status, not a user-content
+        # finding. Keep it in the detector summary for auditability without
+        # turning otherwise safe input into WARN or affecting policy action.
+        reasons = ordered_reason_codes(signal_reasons)
+        summary_reasons = ordered_reason_codes(
+            [*signal_reasons, fallback_reason] if fallback_reason else signal_reasons
+        )
         confidence = _fallback_confidence(signal_reasons, prediction)
         action = action_for_reasons(reasons) if reasons else "ALLOW"
         status = "enabled" if classifier_status.enabled else classifier_status.status
@@ -422,7 +425,7 @@ def detect_model(
         summary = DetectorRunSummary(
             detector="llm",
             action=summary_action,
-            reasons=reasons,
+            reasons=summary_reasons,
             pii_detected=any(_detection_type(reason) == DetectorType.PII for reason in reasons),
             injection_detected=any(_detection_type(reason) == DetectorType.INJECTION for reason in reasons),
             confidence=(

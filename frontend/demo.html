@@ -342,6 +342,76 @@
       line-height: 1.45;
     }
 
+    .audit-status {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fafafa;
+    }
+
+    .audit-status strong {
+      font-size: 0.9rem;
+    }
+
+    .audit-status span {
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: right;
+    }
+
+    .admin-toolbar {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .admin-toolbar label {
+      margin-bottom: 6px;
+      font-size: 0.82rem;
+    }
+
+    .metric-track {
+      height: 8px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: #ededed;
+    }
+
+    .metric-track span {
+      display: block;
+      height: 100%;
+      min-width: 2px;
+      border-radius: inherit;
+      background: var(--accent);
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: 92px 1fr 44px;
+      gap: 10px;
+      align-items: center;
+      font-size: 0.84rem;
+    }
+
+    .metric-row strong {
+      text-align: right;
+    }
+
+    .detection-item {
+      display: grid;
+      gap: 3px;
+    }
+
+    .detection-item small {
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+
     pre {
       margin: 0;
       padding: 14px;
@@ -643,6 +713,10 @@
       .flow-steps {
         grid-template-columns: 1fr;
       }
+
+      .admin-toolbar {
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (max-width: 560px) {
@@ -838,6 +912,16 @@
               </ul>
             </div>
           </div>
+          <div class="result-section">
+            <h3>상세 탐지 항목</h3>
+            <div class="list" id="detectionDetails">
+              <div class="list-item">탐지 결과가 없습니다.</div>
+            </div>
+          </div>
+          <div class="audit-status" id="integrityStatus">
+            <strong>감사 로그 무결성</strong>
+            <span>결과 실행 후 상태가 표시됩니다.</span>
+          </div>
           <div class="result-section" id="maskedResultSection" hidden>
             <h3>마스킹된 입력</h3>
             <pre id="maskedResult">null</pre>
@@ -874,6 +958,25 @@
             <div class="card">
               <div class="meta">총 요청</div>
               <strong id="totalRequests">-</strong>
+            </div>
+            <div class="admin-toolbar">
+              <div>
+                <label for="adminActionFilter">상태 필터</label>
+                <select id="adminActionFilter">
+                  <option value="ALL">전체 상태</option>
+                  <option value="BLOCK">차단</option>
+                  <option value="MASK">마스킹</option>
+                  <option value="WARN">경고</option>
+                </select>
+              </div>
+              <div>
+                <label for="adminReasonFilter">reason_code 검색</label>
+                <input id="adminReasonFilter" placeholder="예: PII_PHONE">
+              </div>
+              <button class="secondary" id="clearAdminFilterBtn" type="button">필터 초기화</button>
+            </div>
+            <div class="list" id="adminMetrics">
+              <div class="metric-row"><span>허용</span><div class="metric-track"><span style="width:0%"></span></div><strong>-</strong></div>
             </div>
             <div class="card">
               <div class="meta">차단</div>
@@ -1079,6 +1182,8 @@
     const validatorSummary = document.getElementById("validatorSummary");
     const maskedResultSection = document.getElementById("maskedResultSection");
     const maskedResult = document.getElementById("maskedResult");
+    const detectionDetails = document.getElementById("detectionDetails");
+    const integrityStatus = document.getElementById("integrityStatus");
     const totalRequests = document.getElementById("totalRequests");
     const blockedRequests = document.getElementById("blockedRequests");
     const maskedRequests = document.getElementById("maskedRequests");
@@ -1087,10 +1192,39 @@
     const errorRequests = document.getElementById("errorRequests");
     const reasonList = document.getElementById("reasonList");
     const recentBlocks = document.getElementById("recentBlocks");
+    const adminMetrics = document.getElementById("adminMetrics");
+    const adminActionFilter = document.getElementById("adminActionFilter");
+    const adminReasonFilter = document.getElementById("adminReasonFilter");
     const analyzeBtn = document.getElementById("analyzeBtn");
     const sendBtn = document.getElementById("sendBtn");
     const applyMaskBtn = document.getElementById("applyMaskBtn");
     let latestMaskedText = null;
+    let latestAdminBlocks = [];
+
+    const reasonLabels = {
+      SAFE_INPUT: "위험 신호 없음",
+      PII_PHONE_DETECTED: "전화번호 감지",
+      PII_EMAIL_DETECTED: "이메일 주소 감지",
+      PII_ADDRESS_DETECTED: "주소 정보 감지",
+      PII_RRN_DETECTED: "주민등록번호 감지",
+      INJ_DIRECT_OVERRIDE: "직접 지시 우회 시도",
+      INJ_DIRECT_OVERRIDE_ATTEMPT: "이전 지시 무시 시도",
+      INJ_REVEAL_SYSTEM_PROMPT: "시스템 프롬프트 공개 시도",
+      INJ_SYSTEM_PROMPT_EXTRACTION_ATTEMPT: "내부 프롬프트 추출 시도",
+      MODEL_ARTIFACT_MISSING: "경량 모델 파일 없음",
+      MODEL_UNAVAILABLE_FALLBACK_USED: "경량 모델 fallback 사용",
+      UPSTREAM_NOT_CALLED: "외부 모델 호출 없음"
+    };
+
+    function escapeHTML(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+      }[char]));
+    }
+
+    function reasonLabel(reasonCode) {
+      return reasonLabels[reasonCode] || "정책 탐지 결과";
+    }
 
     function updateMessageCount() {
       messageCount.textContent = `${message.value.length}자`;
@@ -1119,6 +1253,15 @@
         ["Prompt Injection", injection === true ? "감지됨" : injection === false ? "없음" : "-"],
         ["탐지 근거", detectorResults.length ? `${detectorResults.length}건` : "없음"]
       ]);
+      detectionDetails.innerHTML = detectorResults.length
+        ? detectorResults.map((item) => `
+            <div class="list-item detection-item">
+              <strong>${escapeHTML(reasonLabel(item.reason_code))}</strong>
+              <span>${escapeHTML(item.category)} · ${escapeHTML(item.detector_source)}</span>
+              <small>신뢰도 ${Math.round((item.confidence || 0) * 100)}% · ${escapeHTML(item.reason_code)}</small>
+            </div>
+          `).join("")
+        : `<div class="list-item">탐지 결과가 없습니다.</div>`;
     }
 
     function renderValidatorSummary(payload) {
@@ -1164,6 +1307,10 @@
       const maskedText = payload.masked_text || payload.audit_summary?.masked_text;
       maskedResultSection.hidden = !maskedText;
       maskedResult.textContent = maskedText || "null";
+      const integrity = payload.audit_summary?.integrity;
+      integrityStatus.querySelector("span").textContent = integrity
+        ? `${integrity.algorithm || "서명"} · ${integrity.verified === false ? "검증 실패" : "서명 기록됨"}`
+        : "감사 로그 서명 상태가 응답에 포함되지 않았습니다.";
     }
 
     function updatePreflightControls(payload) {
@@ -1190,6 +1337,8 @@
       resultContent.textContent = "응답을 표시할 수 없습니다.";
       renderDetectionSummary({});
       renderValidatorSummary({});
+      detectionDetails.innerHTML = `<div class="list-item">오류로 인해 탐지 상세를 표시할 수 없습니다.</div>`;
+      integrityStatus.querySelector("span").textContent = "오류로 인해 무결성 상태를 확인할 수 없습니다.";
       maskedResultSection.hidden = true;
       auditSummaryJson.textContent = JSON.stringify({
         error: messageText,
@@ -1266,6 +1415,7 @@
         const stats = await statsResp.json();
         const reasons = await reasonsResp.json();
         const blocks = await blocksResp.json();
+        latestAdminBlocks = blocks;
 
         totalRequests.textContent = String(stats.total_requests);
         blockedRequests.textContent = String(stats.blocked_requests);
@@ -1277,21 +1427,26 @@
         reasonList.innerHTML = reasons.length
           ? reasons.slice(0, 5).map((item) => `
               <div class="list-item">
-                <strong>${item.reason_code}</strong>
-                <div class="meta">count: ${item.count}</div>
+                <strong>${escapeHTML(reasonLabel(item.reason_code))}</strong>
+                <div class="meta">${escapeHTML(item.reason_code)} · ${item.count}건</div>
               </div>
             `).join("")
           : `<div class="list-item">reason_code 통계가 없습니다.</div>`;
 
-        recentBlocks.innerHTML = blocks.length
-          ? blocks.map((item) => `
-              <div class="list-item">
-                <strong>${item.request_id}</strong>
-                <div class="meta">timestamp=${item.timestamp ?? "unknown"}</div>
-                <div class="meta">action=${item.action} · reason_codes=${(item.reason_codes || []).join(", ") || "none"}</div>
-              </div>
-            `).join("")
-          : `<div class="list-item">최근 차단 이력이 없습니다.</div>`;
+        renderAdminBlocks();
+        const total = Math.max(stats.total_requests, 1);
+        adminMetrics.innerHTML = [
+          ["허용", stats.allowed_requests],
+          ["마스킹", stats.masked_requests],
+          ["경고", stats.warned_requests],
+          ["차단", stats.blocked_requests]
+        ].map(([label, count]) => `
+          <div class="metric-row">
+            <span>${label}</span>
+            <div class="metric-track"><span style="width:${Math.round((count / total) * 100)}%"></span></div>
+            <strong>${count}</strong>
+          </div>
+        `).join("");
       } catch (error) {
         totalRequests.textContent = "!";
         blockedRequests.textContent = "!";
@@ -1299,9 +1454,30 @@
         warnedRequests.textContent = "!";
         allowedRequests.textContent = "!";
         errorRequests.textContent = "!";
-        reasonList.innerHTML = `<div class="list-item">${String(error)}</div>`;
-        recentBlocks.innerHTML = `<div class="list-item">${String(error)}</div>`;
+        reasonList.innerHTML = `<div class="list-item">관리자 API에 연결할 수 없습니다.</div>`;
+        recentBlocks.innerHTML = `<div class="list-item">${escapeHTML(String(error))}</div>`;
+        adminMetrics.innerHTML = `<div class="list-item">통계를 표시할 수 없습니다.</div>`;
       }
+    }
+
+    function renderAdminBlocks() {
+      const action = adminActionFilter.value;
+      const reasonQuery = adminReasonFilter.value.trim().toLowerCase();
+      const filtered = latestAdminBlocks.filter((item) => {
+        const matchesAction = action === "ALL" || item.action === action;
+        const matchesReason = !reasonQuery
+          || (item.reason_codes || []).some((reason) => reason.toLowerCase().includes(reasonQuery));
+        return matchesAction && matchesReason;
+      });
+      recentBlocks.innerHTML = filtered.length
+        ? filtered.map((item) => `
+            <div class="list-item">
+              <strong>${escapeHTML(item.action)} · ${escapeHTML(item.request_id)}</strong>
+              <div class="meta">${escapeHTML(item.timestamp || "시간 정보 없음")}</div>
+              <div class="meta">${(item.reason_codes || []).map((reason) => `${escapeHTML(reasonLabel(reason))} (${escapeHTML(reason)})`).join(", ") || "탐지 사유 없음"}</div>
+            </div>
+          `).join("")
+        : `<div class="list-item">필터 조건에 맞는 이력이 없습니다.</div>`;
     }
 
     document.getElementById("analyzeBtn").addEventListener("click", analyzeProxyRequest);
@@ -1313,6 +1489,13 @@
       }
     });
     document.getElementById("refreshAdminBtn").addEventListener("click", refreshAdmin);
+    adminActionFilter.addEventListener("change", renderAdminBlocks);
+    adminReasonFilter.addEventListener("input", renderAdminBlocks);
+    document.getElementById("clearAdminFilterBtn").addEventListener("click", () => {
+      adminActionFilter.value = "ALL";
+      adminReasonFilter.value = "";
+      renderAdminBlocks();
+    });
     message.addEventListener("input", resetPreflightControls);
     message.addEventListener("input", updateMessageCount);
     policyId.addEventListener("change", resetPreflightControls);

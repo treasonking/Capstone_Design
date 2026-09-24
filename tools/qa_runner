@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from collections import Counter
 
-DEFAULT_URL     = "http://localhost:5000"
+DEFAULT_URL     = "http://localhost:8000"
 DEFAULT_DATASET = "../datasets/sample_dataset_v2_balanced.json"
 RESULTS_DIR     = Path("results")
 
@@ -33,9 +33,9 @@ def labels_to_action(labels: list) -> str:
 def run_test(base_url: str, tc: dict) -> dict:
     expected_action = labels_to_action(tc.get("labels", []))
     expected_labels = tc.get("labels", [])
-    payload = {"text": tc["text"], "user_id": "qa_tester"}
+    payload = {"message": tc["text"], "user_id": "qa_tester"}
     try:
-        resp = requests.post(f"{base_url}/proxy", json=payload, timeout=10)
+        resp = requests.post(f"{base_url}/proxy/chat", json=payload, timeout=10)
         resp.raise_for_status()
         data = resp.json()
     except Exception as e:
@@ -49,7 +49,7 @@ def run_test(base_url: str, tc: dict) -> dict:
         }
 
     actual_action       = data.get("action", "")
-    actual_reason_codes = data.get("reason_codes", [])
+    actual_reason_codes = data.get("reasons", [])
     action_pass         = actual_action == expected_action
 
     if not expected_labels:
@@ -61,6 +61,11 @@ def run_test(base_url: str, tc: dict) -> dict:
             for exp in expected_labels
         )
 
+    # [수정] 프록시는 정상 입력에도 SAFE_INPUT 코드를 반환하므로, 이를 탐지 코드로 보지 않는다.
+    real_codes = [c for c in actual_reason_codes if not c.startswith("SAFE_")]
+    codes_pass_strict = codes_pass                      # 원본 판정 (비교용 보존)
+    if not expected_labels:
+        codes_pass = len(real_codes) == 0
     overall_pass = action_pass and codes_pass
 
     return {
@@ -68,11 +73,13 @@ def run_test(base_url: str, tc: dict) -> dict:
         "status":              "PASS" if overall_pass else "FAIL",
         "action_pass":         action_pass,
         "codes_pass":          codes_pass,
+        "codes_pass_strict":   codes_pass_strict,
         "expected_action":     expected_action,
         "actual_action":       actual_action,
         "actual_reason_codes": actual_reason_codes,
         "expected_labels":     expected_labels,
-        "latency_ms":          data.get("latency_ms", 0),
+        "expected_codes_list": expected_labels,
+        "latency_ms":          data.get("audit_summary", {}).get("latency_ms", 0),
     }
 
 def run_all(base_url: str, dataset_path: str) -> list:

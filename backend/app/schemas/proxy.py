@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 class ProxyRequest(BaseModel):
     # 클라이언트가 LLM에 직접 보내지 않고 보안 프록시로 보내는 요청 형식입니다.
-    message: str
+    message: str = Field(min_length=1)
     policy_id: str = "default"
     user_id: str = "anonymous"
     model: str = ""

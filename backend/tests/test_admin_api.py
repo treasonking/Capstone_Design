@@ -24,32 +24,48 @@ def _write_logs(tmp_path, entries: list[dict]) -> None:
 
 
 @pytest.mark.parametrize("path", ["/admin/stats", "/admin/recent-blocks", "/admin/reason-codes", "/admin/upstream-config"])
-def test_admin_endpoints_require_token(path: str) -> None:
+def test_admin_endpoints_require_token(path: str, monkeypatch) -> None:
+    monkeypatch.setenv("ADMIN_API_TOKEN", "secret-admin-token")
     response = client.get(path)
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Unauthorized"}
 
 
-def test_admin_endpoints_reject_invalid_token() -> None:
+def test_admin_endpoints_reject_invalid_token(monkeypatch) -> None:
+    monkeypatch.setenv("ADMIN_API_TOKEN", "secret-admin-token")
     response = client.get("/admin/stats", headers={"X-Admin-Token": "wrong-token"})
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Unauthorized"}
 
 
-def test_admin_stats_without_token_denied() -> None:
+def test_admin_stats_without_token_denied(monkeypatch) -> None:
+    monkeypatch.setenv("ADMIN_API_TOKEN", "secret-admin-token")
     response = client.get("/admin/stats")
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Unauthorized"}
 
 
-def test_admin_stats_with_wrong_token_denied() -> None:
+def test_admin_stats_with_wrong_token_denied(monkeypatch) -> None:
+    monkeypatch.setenv("ADMIN_API_TOKEN", "secret-admin-token")
     response = client.get("/admin/stats", headers={"X-Admin-Token": "wrong-token"})
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Unauthorized"}
+
+
+def test_admin_endpoints_fail_closed_when_token_unset(monkeypatch) -> None:
+    monkeypatch.delenv("ADMIN_API_TOKEN", raising=False)
+
+    response = client.get(
+        "/admin/stats",
+        headers={"X-Admin-Token": "dev-admin-token"},
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "관리자 인증이 설정되지 않았습니다."}
 
 
 def test_admin_stats_returns_aggregate_counts(tmp_path, monkeypatch) -> None:

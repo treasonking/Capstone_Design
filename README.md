@@ -767,7 +767,9 @@ docker compose exec proxy ls -al /app/models/lightweight
 
 10. FastAPI 프록시 실행
 
-```bash
+```powershell
+$env:ADMIN_API_TOKEN = "replace-with-a-local-demo-token"
+$env:UI_ALLOWED_ORIGINS = "http://127.0.0.1:5500,http://localhost:5500"
 python -m uvicorn backend.app.api.proxy:app --host 127.0.0.1 --port 8000 --reload
 ```
 
@@ -784,7 +786,7 @@ cd frontend
 python -m http.server 5500
 ```
 
-브라우저에서 `http://127.0.0.1:5500/demo.html`로 접속합니다. `frontend/demo.html`은 발표용 정적 데모 페이지이며 운영용 관리자 콘솔이 아닙니다. 관리자 토큰 기본값 `dev-admin-token`은 로컬 개발 데모용 값이고 브라우저 저장소에 저장하지 않습니다.
+브라우저에서 `http://127.0.0.1:5500/demo.html`로 접속합니다. 로그인 전에 API Base URL을 설정하고 회원가입·로그인을 진행합니다. 사용자 Bearer 토큰은 인증에 성공한 API origin에만 전송됩니다. `frontend/demo.html`은 발표용 정적 데모 페이지이며 운영용 관리자 콘솔이 아닙니다. 공개 기본 관리자 토큰은 없으며, `ADMIN_API_TOKEN`이 미설정이면 관리자 API는 안전하게 접근을 거부합니다. 관리자 토큰은 브라우저 저장소에 저장하지 않습니다. 전체 절차는 `docs/demo_runbook.md`를 참고합니다.
 
 ## External Prompt Injection Evaluation
 
@@ -984,7 +986,8 @@ Invoke-RestMethod `
 
 ## 운영 가드레일 현황
 
-- 관리자 API `/admin/stats`, `/admin/recent-blocks`, `/admin/reason-codes`, `/admin/upstream-config`는 `X-Admin-Token` 헤더와 `ADMIN_API_TOKEN`으로 보호됩니다.
+- 관리자 API `/admin/stats`, `/admin/recent-blocks`, `/admin/reason-codes`, `/admin/upstream-config`는 `X-Admin-Token` 헤더와 `ADMIN_API_TOKEN`으로 보호됩니다. 공개 기본값은 없으며 미설정·빈 값이면 503으로 안전하게 거부합니다. 이 방식은 계정별 RBAC가 아닙니다.
+- 사용자 계정은 SQLite에 저장하지만 Bearer 세션은 서버 프로세스 메모리에만 저장됩니다. 서버 재시작 또는 공유 세션 저장소가 없는 다중 worker 환경에서는 재로그인이 필요합니다.
 - `policy_id`는 `default`와 `strict`만 허용되며, 각각 `policies/policy.yaml`과 `policies/strict.yaml`을 사용합니다.
 - `logs/audit_log.jsonl`에는 원문 prompt/response를 저장하지 않고 메타데이터만 기록합니다.
 - 입력 정책 평가, Validator Agent 출력 검증, `final_action`이 audit summary와 audit log에 분리 기록됩니다.
@@ -1006,6 +1009,8 @@ PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 높이는
 - `docs/presentation_storyline.md`
 - `docs/reason_codes.md`
 - `docs/demo_scenario.md`
+- `docs/demo_runbook.md`
+- `docs/codex_ui_api_integration.md`
 - `docs/logging_policy.md`
 - `docs/validator_agent.md`
 - `docs/pqc_audit_integrity.md`

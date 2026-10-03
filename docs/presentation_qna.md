@@ -25,7 +25,7 @@ A.
 
 A.
 - `/admin/stats`, `/admin/recent-blocks`, `/admin/reason-codes`, `/admin/upstream-config`는 `X-Admin-Token` 헤더 기반 인증을 사용한다.
-- 토큰은 `ADMIN_API_TOKEN` 환경변수에서 읽고, 미설정 시 개발 기본값 `dev-admin-token`을 사용한다.
+- 토큰은 `ADMIN_API_TOKEN` 환경변수에서 읽으며 공개 개발 기본값은 없다. 미설정·빈 값이면 관리자 API가 503으로 안전하게 접근을 거부한다.
 - 사용자 프록시 엔드포인트 `/proxy/chat`, `/v1/chat/completions`에는 이 인증을 적용하지 않는다.
 
 ## Q5. strict policy는 무엇이 다른가요?

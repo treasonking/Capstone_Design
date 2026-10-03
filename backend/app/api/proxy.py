@@ -1,6 +1,7 @@
 from __future__ import annotations
 from fastapi.middleware.cors import CORSMiddleware
 
+import hmac
 import logging
 import os
 import re
@@ -63,12 +64,20 @@ from backend.app.validator import ValidatorAgent, resolve_final_action
 app = FastAPI()
 logger = logging.getLogger(__name__)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+
+def _allowed_ui_origins() -> list[str]:
+    configured = os.getenv("UI_ALLOWED_ORIGINS", "")
+    if configured.strip():
+        return [origin.strip().rstrip("/") for origin in configured.split(",") if origin.strip()]
+    return [
         "http://127.0.0.1:5500",
         "http://localhost:5500",
-    ],
+    ]
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_ui_origins(),
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -83,16 +92,21 @@ async def log_detection_configuration() -> None:
     logger.info("Detection mode: %s", settings.detection_mode)
     logger.info("Model detector enabled: %s", settings.enable_model_detector)
 
-def _admin_api_token() -> str:
-    return os.getenv("ADMIN_API_TOKEN", "dev-admin-token")
+def _admin_api_token() -> str | None:
+    configured = os.getenv("ADMIN_API_TOKEN", "").strip()
+    return configured or None
 
 
 def _require_admin_token(
     x_admin_token: str | None = Header(default=None),
 ) -> None:
-    if x_admin_token is not None and not isinstance(x_admin_token, str):
-        return
-    if x_admin_token != _admin_api_token():
+    configured = _admin_api_token()
+    if configured is None:
+        raise HTTPException(
+            status_code=503,
+            detail="관리자 인증이 설정되지 않았습니다.",
+        )
+    if not x_admin_token or not hmac.compare_digest(x_admin_token, configured):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 

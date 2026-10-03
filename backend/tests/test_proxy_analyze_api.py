@@ -10,6 +10,16 @@ client = TestClient(app)
 AUTH_HEADERS = {"Authorization": f"Bearer {issue_token('test@example.com')}"}
 
 
+def test_proxy_request_rejects_empty_message() -> None:
+    response = client.post(
+        "/proxy/analyze",
+        headers=AUTH_HEADERS,
+        json={"message": ""},
+    )
+
+    assert response.status_code == 422
+
+
 def test_proxy_analyze_requires_authenticated_user() -> None:
     response = client.post(
         "/proxy/analyze",

@@ -70,6 +70,15 @@
       gap: 18px;
     }
 
+    .grid > *,
+    .panel,
+    .stack > *,
+    .row > *,
+    .cards > *,
+    .result-section {
+      min-width: 0;
+    }
+
     .panel {
       background: rgba(255, 255, 255, 0.94);
       border: 1px solid var(--line);
@@ -695,12 +704,12 @@
 
     @media (max-width: 920px) {
       .grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
       }
 
       .cards,
       .row {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
       }
 
       .auth-layout {
@@ -716,15 +725,15 @@
       }
 
       .result-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
       }
 
       .flow-steps {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
       }
 
       .admin-toolbar {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
       }
     }
 
@@ -1056,12 +1065,18 @@
     const passwordError = document.getElementById("passwordError");
     const confirmError = document.getElementById("confirmError");
     const sessionUser = document.getElementById("sessionUser");
+    const loginTab = document.getElementById("loginTab");
+    const signupTab = document.getElementById("signupTab");
     const TOKEN_STORAGE_KEY = "orca_auth_token";
     const ORIGIN_STORAGE_KEY = "orca_auth_origin";
     const REQUEST_TIMEOUT_MS = 15000;
     let authMode = "login";
     let authToken = sessionStorage.getItem(TOKEN_STORAGE_KEY);
     let authOrigin = sessionStorage.getItem(ORIGIN_STORAGE_KEY);
+    let authBusy = false;
+    let authRequestSequence = 0;
+    let activeAuthController = null;
+    let authTransitionTimer = null;
 
     class ApiRequestError extends Error {
       constructor(messageText, { status = 0, kind = "request", payload = null } = {}) {
@@ -1119,10 +1134,32 @@
       delete fetchOptions.controller;
       delete fetchOptions.timeoutMs;
 
-      let response;
       try {
-        response = await fetch(url, fetchOptions);
+        const response = await fetch(url, fetchOptions);
+        const rawBody = await response.text();
+        let payload = null;
+        if (rawBody) {
+          try {
+            payload = JSON.parse(rawBody);
+          } catch {
+            if (response.ok) {
+              throw new ApiRequestError("서버가 JSON이 아닌 응답을 반환했습니다.", {
+                status: response.status,
+                kind: "invalid-response"
+              });
+            }
+          }
+        }
+        if (!response.ok) {
+          throw new ApiRequestError(detailMessage(payload) || `요청이 실패했습니다. (HTTP ${response.status})`, {
+            status: response.status,
+            kind: errorKindForStatus(response.status),
+            payload
+          });
+        }
+        return { payload, status: response.status };
       } catch (error) {
+        if (error instanceof ApiRequestError) throw error;
         if (error?.name === "AbortError") {
           throw new ApiRequestError(
             timedOut ? "요청 시간이 초과되었습니다." : "요청이 취소되었습니다.",
@@ -1133,29 +1170,6 @@
       } finally {
         window.clearTimeout(timeoutId);
       }
-
-      const rawBody = await response.text();
-      let payload = null;
-      if (rawBody) {
-        try {
-          payload = JSON.parse(rawBody);
-        } catch {
-          if (response.ok) {
-            throw new ApiRequestError("서버가 JSON이 아닌 응답을 반환했습니다.", {
-              status: response.status,
-              kind: "invalid-response"
-            });
-          }
-        }
-      }
-      if (!response.ok) {
-        throw new ApiRequestError(detailMessage(payload) || `요청이 실패했습니다. (HTTP ${response.status})`, {
-          status: response.status,
-          kind: errorKindForStatus(response.status),
-          payload
-        });
-      }
-      return { payload, status: response.status };
     }
 
     function requestErrorMessage(error, fallback) {
@@ -1182,13 +1196,37 @@
       authMessage.className = "auth-message";
     }
 
-    function setAuthMode(mode) {
+    function setAuthBusy(busy) {
+      authBusy = busy;
+      [authApiBase, authEmail, authPassword, confirmPassword, authSubmit, loginTab, signupTab]
+        .forEach((element) => { element.disabled = busy; });
+      const switchButton = authNote.querySelector("[data-switch]");
+      if (switchButton) switchButton.disabled = busy;
+    }
+
+    function invalidateAuthFlow() {
+      authRequestSequence += 1;
+      if (activeAuthController) activeAuthController.abort();
+      activeAuthController = null;
+      if (authTransitionTimer !== null) window.clearTimeout(authTransitionTimer);
+      authTransitionTimer = null;
+      setAuthBusy(false);
+    }
+
+    function isCurrentAuthRequest(requestId, controller) {
+      return requestId === authRequestSequence
+        && activeAuthController === controller
+        && !controller.signal.aborted;
+    }
+
+    function setAuthMode(mode, { force = false } = {}) {
+      if (authBusy && !force) return;
       authMode = mode;
       const isSignup = mode === "signup";
-      document.getElementById("loginTab").classList.toggle("active", !isSignup);
-      document.getElementById("signupTab").classList.toggle("active", isSignup);
-      document.getElementById("loginTab").setAttribute("aria-selected", String(!isSignup));
-      document.getElementById("signupTab").setAttribute("aria-selected", String(isSignup));
+      loginTab.classList.toggle("active", !isSignup);
+      signupTab.classList.toggle("active", isSignup);
+      loginTab.setAttribute("aria-selected", String(!isSignup));
+      signupTab.setAttribute("aria-selected", String(isSignup));
       authTitle.textContent = isSignup ? "새 계정을 만들어보세요" : "다시 오신 것을 환영합니다";
       authDescription.textContent = isSignup
         ? "보안 프록시 콘솔에서 안전한 AI 사용을 시작하세요."
@@ -1200,6 +1238,7 @@
       switchButton.type = "button";
       switchButton.dataset.switch = isSignup ? "login" : "signup";
       switchButton.textContent = isSignup ? "로그인" : "회원가입";
+      switchButton.disabled = authBusy;
       authNote.append(switchButton);
       confirmField.hidden = !isSignup;
       confirmPassword.required = isSignup;
@@ -1208,6 +1247,7 @@
     }
 
     function showApp(email) {
+      authTransitionTimer = null;
       authView.hidden = true;
       appView.hidden = false;
       sessionUser.textContent = `${email}로 로그인됨`;
@@ -1219,11 +1259,12 @@
       authView.hidden = false;
       if (resetForm) authForm.reset();
       authApiBase.value = authOrigin || apiBase.value || "http://127.0.0.1:8000";
-      setAuthMode("login");
+      setAuthMode("login", { force: true });
       authEmail.focus();
     }
 
     function clearStoredAuth(message = "", { resetWorkspace = true } = {}) {
+      invalidateAuthFlow();
       authToken = null;
       authOrigin = null;
       sessionStorage.removeItem(TOKEN_STORAGE_KEY);
@@ -1236,15 +1277,16 @@
       }
     }
 
-    async function submitAuth() {
-      const apiOrigin = normalizeApiOrigin(authApiBase.value);
-      const endpoint = authMode === "signup" ? "/auth/signup" : "/auth/login";
+    async function submitAuth(snapshot, controller) {
+      const endpoint = snapshot.mode === "signup" ? "/auth/signup" : "/auth/login";
+      const apiOrigin = snapshot.apiOrigin;
       const { payload } = await requestJson(`${apiOrigin}${endpoint}`, {
         method: "POST",
+        controller,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: authEmail.value.trim(),
-          password: authPassword.value
+          email: snapshot.email,
+          password: snapshot.password
         })
       });
       return { payload, apiOrigin };
@@ -1286,8 +1328,8 @@
       return isValid;
     }
 
-    document.getElementById("loginTab").addEventListener("click", () => setAuthMode("login"));
-    document.getElementById("signupTab").addEventListener("click", () => setAuthMode("signup"));
+    loginTab.addEventListener("click", () => setAuthMode("login"));
+    signupTab.addEventListener("click", () => setAuthMode("signup"));
     authNote.addEventListener("click", (event) => {
       const switchButton = event.target.closest("[data-switch]");
       if (switchButton) setAuthMode(switchButton.dataset.switch);
@@ -1309,39 +1351,63 @@
         return;
       }
 
-      authSubmit.disabled = true;
+      const snapshot = Object.freeze({
+        mode: authMode,
+        apiOrigin: normalizeApiOrigin(authApiBase.value),
+        email: authEmail.value.trim(),
+        password: authPassword.value
+      });
+      const requestId = ++authRequestSequence;
+      const controller = new AbortController();
+      activeAuthController = controller;
+      setAuthBusy(true);
       authSubmit.classList.add("is-loading");
-      authSubmit.textContent = authMode === "signup" ? "가입 처리 중..." : "로그인 중...";
+      authSubmit.textContent = snapshot.mode === "signup" ? "가입 처리 중..." : "로그인 중...";
       authMessage.textContent = "";
       try {
-        const { payload, apiOrigin } = await submitAuth();
-        if (authMode === "signup") {
-          setAuthMode("login");
+        const { payload, apiOrigin } = await submitAuth(snapshot, controller);
+        if (!isCurrentAuthRequest(requestId, controller)) return;
+        if (snapshot.mode === "signup") {
+          setAuthMode("login", { force: true });
           authApiBase.value = apiOrigin;
-          authEmail.value = payload.email;
+          authEmail.value = typeof payload?.email === "string" ? payload.email : snapshot.email;
           authPassword.value = "";
           authMessage.textContent = "가입이 완료되었습니다. 로그인해 주세요.";
           authMessage.className = "auth-message success";
         } else {
-          authToken = payload.access_token;
+          const accessToken = typeof payload?.access_token === "string" ? payload.access_token.trim() : "";
+          if (!accessToken) {
+            throw new ApiRequestError("서버가 유효한 access_token을 반환하지 않았습니다.", {
+              kind: "invalid-response"
+            });
+          }
+          authToken = accessToken;
           authOrigin = apiOrigin;
           apiBase.value = apiOrigin;
           sessionStorage.setItem(TOKEN_STORAGE_KEY, authToken);
           sessionStorage.setItem(ORIGIN_STORAGE_KEY, authOrigin);
           authMessage.textContent = "로그인되었습니다. 콘솔로 이동합니다.";
           authMessage.className = "auth-message success";
-          window.setTimeout(() => showApp(payload.email), 350);
+          authTransitionTimer = window.setTimeout(() => {
+            if (requestId !== authRequestSequence || authToken !== accessToken || authOrigin !== apiOrigin) return;
+            showApp(typeof payload?.email === "string" ? payload.email : snapshot.email);
+          }, 350);
         }
       } catch (error) {
+        if (error.kind === "aborted" || !isCurrentAuthRequest(requestId, controller)) return;
         authMessage.textContent = requestErrorMessage(error, "인증 요청을 처리하지 못했습니다.");
         authMessage.className = "auth-message error";
       } finally {
-        authSubmit.disabled = false;
-        authSubmit.classList.remove("is-loading");
-        authSubmit.textContent = authMode === "signup" ? "회원가입" : "로그인";
+        if (isCurrentAuthRequest(requestId, controller)) {
+          activeAuthController = null;
+          setAuthBusy(false);
+          authSubmit.classList.remove("is-loading");
+          authSubmit.textContent = authMode === "signup" ? "회원가입" : "로그인";
+        }
       }
     });
     document.getElementById("logoutBtn").addEventListener("click", async () => {
+      invalidateAdminRequests();
       let logoutMessage = "로그아웃되었습니다.";
       try {
         if (authToken && authOrigin) await requestJson(`${authOrigin}/auth/logout`, {
@@ -1404,6 +1470,9 @@
     let proxyRequestSequence = 0;
     let activeProxyController = null;
     let adminAuthenticated = false;
+    let adminRequestSequence = 0;
+    let activeAdminController = null;
+    let adminTokenVersion = 0;
 
     async function restoreSession() {
       if (!authToken && !authOrigin) return;
@@ -1413,12 +1482,21 @@
       }
       authApiBase.value = authOrigin;
       apiBase.value = authOrigin;
+      const sessionToken = authToken;
+      const sessionOrigin = authOrigin;
+      const requestId = ++authRequestSequence;
+      const controller = new AbortController();
+      activeAuthController = controller;
       try {
         const { payload } = await requestJson(`${authOrigin}/auth/me`, {
+          controller,
           headers: { Authorization: `Bearer ${authToken}` }
         });
+        if (!isCurrentAuthRequest(requestId, controller)
+            || authToken !== sessionToken || authOrigin !== sessionOrigin) return;
         showApp(payload.email);
       } catch (error) {
+        if (error.kind === "aborted" || !isCurrentAuthRequest(requestId, controller)) return;
         if (error.kind === "unauthorized") {
           clearStoredAuth("세션이 만료되었거나 무효입니다. 다시 로그인해 주세요.");
           return;
@@ -1426,6 +1504,8 @@
         showAuth({ resetForm: false });
         authMessage.textContent = "서버에 연결하지 못해 세션을 확인할 수 없습니다. 로컬 토큰은 유지되며 새로고침하여 다시 확인할 수 있습니다.";
         authMessage.className = "auth-message error";
+      } finally {
+        if (isCurrentAuthRequest(requestId, controller)) activeAuthController = null;
       }
     }
 
@@ -1777,7 +1857,32 @@
       }
     }
 
+    function invalidateAdminRequests() {
+      adminRequestSequence += 1;
+      if (activeAdminController) activeAdminController.abort();
+      activeAdminController = null;
+      refreshAdminBtn.disabled = false;
+    }
+
+    function isCurrentAdminRequest(context) {
+      let currentOrigin;
+      try {
+        currentOrigin = normalizeApiOrigin(apiBase.value);
+      } catch {
+        return false;
+      }
+      return context.requestId === adminRequestSequence
+        && activeAdminController === context.controller
+        && !context.controller.signal.aborted
+        && context.tokenVersion === adminTokenVersion
+        && context.token === adminToken.value.trim()
+        && context.origin === currentOrigin
+        && context.sessionToken === authToken
+        && context.sessionOrigin === authOrigin;
+    }
+
     function clearAdminData({ clearToken = false, messageText = "관리자 인증 전에는 통계와 이력이 잠겨 있습니다." } = {}) {
+      invalidateAdminRequests();
       adminAuthenticated = false;
       latestAdminBlocks = [];
       if (clearToken) adminToken.value = "";
@@ -1859,13 +1964,27 @@
       refreshAdminBtn.disabled = true;
       adminStatus.textContent = "관리자 자격과 집계 데이터를 확인하는 중입니다...";
       adminStatus.className = "auth-message";
+      invalidateAdminRequests();
+      const controller = new AbortController();
+      activeAdminController = controller;
+      const context = Object.freeze({
+        requestId: adminRequestSequence,
+        controller,
+        token,
+        tokenVersion: adminTokenVersion,
+        origin,
+        sessionToken: authToken,
+        sessionOrigin: authOrigin
+      });
+      refreshAdminBtn.disabled = true;
       const headers = { "X-Admin-Token": token };
       try {
         const [statsResult, reasonsResult, blocksResult] = await Promise.all([
-          requestJson(`${origin}/admin/stats`, { headers }),
-          requestJson(`${origin}/admin/reason-codes`, { headers }),
-          requestJson(`${origin}/admin/recent-blocks`, { headers })
+          requestJson(`${origin}/admin/stats`, { headers, controller }),
+          requestJson(`${origin}/admin/reason-codes`, { headers, controller }),
+          requestJson(`${origin}/admin/recent-blocks`, { headers, controller })
         ]);
+        if (!isCurrentAdminRequest(context)) return;
         const stats = statsResult.payload;
         const reasons = Array.isArray(reasonsResult.payload) ? reasonsResult.payload : [];
         latestAdminBlocks = Array.isArray(blocksResult.payload) ? blocksResult.payload : [];
@@ -1884,6 +2003,7 @@
         adminStatus.textContent = "관리자 인증 성공 · 전체 감사 로그 통계와 최근 차단 이력을 표시합니다.";
         adminStatus.className = "auth-message success";
       } catch (error) {
+        if (error.kind === "aborted" || !isCurrentAdminRequest(context)) return;
         const authFailure = ["unauthorized", "forbidden"].includes(error.kind) || error.status === 503;
         const adminErrorMessage = error.kind === "unauthorized"
           ? "관리자 토큰이 유효하지 않습니다."
@@ -1898,7 +2018,10 @@
         });
         adminStatus.className = "auth-message error";
       } finally {
-        refreshAdminBtn.disabled = false;
+        if (isCurrentAdminRequest(context)) {
+          activeAdminController = null;
+          refreshAdminBtn.disabled = false;
+        }
       }
     }
 
@@ -1985,7 +2108,8 @@
       renderAdminBlocks();
     });
     adminToken.addEventListener("input", () => {
-      if (adminAuthenticated) clearAdminData({ messageText: "관리자 토큰이 변경되어 다시 인증해야 합니다." });
+      adminTokenVersion += 1;
+      clearAdminData({ messageText: "관리자 토큰이 변경되어 다시 인증해야 합니다." });
     });
     message.addEventListener("input", () => {
       resetPreflightControls({ incrementVersion: true });
@@ -1997,6 +2121,7 @@
       resetResultView();
     });
     authApiBase.addEventListener("change", () => {
+      invalidateAuthFlow();
       try {
         const origin = normalizeApiOrigin(authApiBase.value);
         authApiBase.value = origin;
@@ -2015,6 +2140,11 @@
         }
       } catch (error) {
         clearStoredAuth(error.message);
+      }
+    });
+    apiBase.addEventListener("input", () => {
+      if (activeAdminController || adminAuthenticated) {
+        clearAdminData({ messageText: "API 주소가 변경되어 관리자 인증을 다시 확인해야 합니다." });
       }
     });
     document.getElementById("fillSafeBtn").addEventListener("click", () => {

@@ -14,7 +14,7 @@ python -m pip install -e ".[dev,perf]"
 $env:ADMIN_API_TOKEN = "replace-with-a-local-demo-token"
 $env:AUTH_DB_PATH = "backend/data/auth.sqlite3"
 $env:UI_ALLOWED_ORIGINS = "http://127.0.0.1:5500,http://localhost:5500"
-$env:UPSTREAM_LLM_PROVIDER = "mock"
+$env:LLM_PROVIDER = "mock"
 $env:MOCK_LLM_URL = "http://127.0.0.1:8001/v1/chat/completions"
 ```
 

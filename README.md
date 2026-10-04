@@ -162,7 +162,7 @@ flowchart TD
 
 ### 2026-09-03 현행 검증
 
-현재 환경에서 전체 테스트는 `174 passed, 1 skipped, 8 warnings`로 통과했다. skip 1건은 실제 비용이 발생할 수 있는 OpenAI API 스모크 테스트이며, `RUN_LIVE_OPENAI_TESTS=1`, `OPENAI_API_KEY`, `OPENAI_MODEL`이 모두 설정되지 않아 실행하지 않았다. 아래 탐지 성능 수치는 기존 실제 평가 산출물을 유지하며 Provider 어댑터 테스트 결과와 합쳐 성능 향상으로 주장하지 않는다.
+현재 통합 브랜치에서 전체 테스트는 `188 passed, 1 skipped, 8 warnings`로 통과했다. skip 1건은 실제 비용이 발생할 수 있는 OpenAI API 스모크 테스트이며, `RUN_LIVE_OPENAI_TESTS=1`, `OPENAI_API_KEY`, `OPENAI_MODEL`이 모두 설정되지 않아 실행하지 않았다. 아래 탐지 성능 수치는 기존 실제 평가 산출물을 유지하며 Provider 어댑터 테스트 결과와 합쳐 성능 향상으로 주장하지 않는다.
 
 | 데이터셋 | 범위 | Precision | Recall | F1 |
 |---|---|---:|---:|---:|
@@ -1089,6 +1089,7 @@ PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 높이는
 - `docs/demo_scenario.md`
 - `docs/demo_runbook.md`
 - `docs/codex_ui_api_integration.md`
+- `docs/codex_ui_openai_integration.md`
 - `docs/logging_policy.md`
 - `docs/validator_agent.md`
 - `docs/pqc_audit_integrity.md`
@@ -1102,6 +1103,7 @@ PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 높이는
 - `reports/evaluation_report.md`
 - `reports/external_validation_report.md`
 - `reports/current_verification_report.md`
+- `reports/ui_openai_integration_verification.md`
 - `reports/baseline_compare_report.md`
 - `reports/baseline_compare_results.json`
 - `reports/validator_agent_expected_effect.md`

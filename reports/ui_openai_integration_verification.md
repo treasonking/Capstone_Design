@@ -105,3 +105,54 @@ python -m pytest -q
 - 세션은 프로세스 메모리 기반이라 서버 재시작과 다중 worker 공유를 지원하지 않는다.
 - 관리자 인증은 별도 토큰 방식이며 계정별 RBAC가 아니다.
 - SSE 검증은 응답 전체 버퍼링으로 first-byte latency와 메모리 비용이 증가한다.
+
+## 2026-10-05 timeout 복구 후속 검증
+
+### 범위와 기준
+
+- 수정 기준: `8479eebff5610e8eb2e2e871a8823d1d127d9f83`
+- 작업 브랜치: `codex/ui-openai-integration`
+- 범위: 로그인·회원가입·세션 복원·관리자 조회의 timeout 후 UI 복구와 재시도
+- 제외: 디자인, Provider 구조, 탐지 정책·평가 데이터, 인증 방식, 감사 서명 알고리즘
+
+기존 구현은 현재 요청 판정에 `!controller.signal.aborted`를 포함했다. `requestJson`이 timeout 때 controller를 abort하면 현재 요청까지 stale로 판정되어 `catch`의 오류 안내와 `finally`의 잠금 해제가 실행되지 않았다. 수정 전 추가 회귀 테스트에서 로그인, 회원가입, 세션 복원, 관리자 timeout 4개 경로가 실패했고 기존 stale 차단 테스트는 통과했다.
+
+수정 후에는 작업 소유권과 성공 적용 가능성을 분리했다. timeout된 현재 작업은 오류 안내와 상태 정리를 수행하고, 명시적 취소·세대 변경·origin/토큰/세션 변경으로 소유권을 잃은 요청은 success, failure, finally 모두 새 화면을 변경하지 못한다.
+
+### 실행 결과
+
+```powershell
+node --test frontend/demo_async.test.js
+```
+
+- 결과: `15 passed, 0 failed`
+- 포함: `AUTH-TIMEOUT`, `SIGNUP-TIMEOUT`, `RESTORE-TIMEOUT`, `ADMIN-TIMEOUT`, `AUTH-STALE`, `ADMIN-STALE`, 기존 token/logout/origin/session invalidation
+- fixture에서만 기본 timeout을 10ms로 줄였고 제품의 `REQUEST_TIMEOUT_MS=15000`은 유지했다.
+
+```powershell
+$env:RUN_LIVE_OPENAI_TESTS = "0"
+python -m pytest backend/tests/test_demo_ui_contract.py backend/tests/test_auth_api.py backend/tests/test_admin_api.py -q
+```
+
+- 결과: `25 passed, 8 warnings in 20.56s`
+
+```powershell
+$env:RUN_LIVE_OPENAI_TESTS = "0"
+python -m pytest -q
+```
+
+- 결과: `189 passed, 1 skipped, 8 warnings in 17.12s`
+- skip: 실제 OpenAI API smoke 1건. 키·모델·비용 승인이 없어 실행하지 않았다.
+- 경고: 기존 Starlette TestClient/httpx, FastAPI `on_event`, Joblib/NumPy 사용 중단 예정 경고다.
+
+### 5500 브라우저 검증
+
+수정된 실제 `frontend/demo.html`과 지연 API fixture를 동일 origin `http://127.0.0.1:5500`에서 제공했다. fixture는 합성 이메일·비밀번호·토큰만 사용했으며 제품 timeout 15초를 그대로 적용했다.
+
+- 첫 로그인: 16초 지연으로 `요청 시간이 초과되었습니다.` 표시, 로그인 버튼·필드·탭 복구 확인
+- 같은 화면에서 로그인 재시도: 성공 후 콘솔 전환 확인
+- 첫 관리자 조회: 16초 지연으로 timeout 표시, 이전 통계 `-` 초기화, 새로고침 버튼과 관리자 토큰 유지 확인
+- 같은 토큰으로 관리자 재조회: 총 요청 `12`, 허용 `7`, 마스킹 `2`, 경고 `1`, 차단 `2` 표시 확인
+- 검증 후 임시 fixture와 에이전트가 연 탭을 닫고 기존 5500 정적 서버를 복원했다.
+
+이번 변경은 UI의 비동기 상태 복구만 수정했으며 PII·Prompt Injection 탐지 성능, Validator Agent 동작, OpenAI Provider, 감사 로그 서명 방식에는 변화를 주지 않았다. 감사 서명은 계속 **ML-DSA 교체 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조**이며 실제 ML-DSA가 아니다.

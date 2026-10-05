@@ -60,6 +60,11 @@ OpenAI 경로는 서버에서만 다음 값을 읽는다.
 | UI-01 관리자 stale 응답 | 관리자 전용 AbortController·요청 세대·토큰 버전·사용자 세션·origin snapshot을 캡처하고 성공·실패·finally 모두 최신 요청일 때만 DOM을 갱신 | 토큰 변경, 로그아웃, origin 변경, 사용자 세션 변경 뒤 지연 응답이 통계 재표시를 못함 |
 | UI-02 인증 모드 경합 | 요청 시작 시 mode/origin/email/password snapshot을 고정하고 입력·탭·전환 버튼을 잠금. 응답의 `access_token`을 검증하고 지연 화면 전환도 세대로 무효화 | 회원가입 응답 대기 중 로그인 탭 전환 시도, 누락 토큰, 지연 전환 취소 검증 |
 | UI-03 body timeout 누락 | timeout을 response header 수신이 아니라 `response.text()`와 JSON 처리 완료까지 유지 | header 지연, body 지연·실패, caller abort, 비JSON, 204 응답 검증 |
+| UI-04 timeout 후 잠금 유지 | 인증·세션 복원·관리자 요청에서 작업 소유권과 성공 응답 적용 가능성을 분리. timeout으로 controller가 abort되어도 현재 작업의 오류 표시와 정리는 수행하고, 취소된 요청의 늦은 성공은 적용하지 않음 | 로그인·회원가입·세션 복원·관리자 timeout 후 상태 복구와 재시도, 새 요청 뒤 이전 success/failure/finally 차단 검증 |
+
+`ownsAuthRequest`와 `ownsAdminRequest`는 요청 세대, 현재 controller, origin·토큰·세션 snapshot을 기준으로 현재 작업의 정리 권한을 판단한다. timeout이 발생해 `signal.aborted`가 되더라도 동일 작업의 `catch`는 오류 안내를 표시하고 `finally`는 입력·탭·버튼과 controller를 복구한다. 반대로 `canApplyAuthSuccess`와 `canApplyAdminSuccess`는 ownership에 더해 signal이 중단되지 않았는지 확인하므로, 취소를 무시하고 늦게 도착한 성공 응답은 토큰·화면·관리자 통계를 변경하지 못한다.
+
+`/auth/me` timeout은 401 세션 만료와 구분한다. timeout이나 네트워크 확인 실패에서는 저장 토큰을 유지하고 재확인을 안내하지만, 401일 때만 로컬 인증을 제거한다. 회원가입 timeout은 서버가 이미 가입을 완료했을 가능성이 있으므로 실패로 단정하지 않으며, 동일 이메일의 409 안내 후 로그인으로 전환할 수 있다.
 
 모바일에서는 grid 자식의 최소 너비 전파를 차단했다. 390px viewport에서 문서 `scrollWidth`와 `clientWidth`가 모두 375px로 확인되어 수평 오버플로가 없다.
 

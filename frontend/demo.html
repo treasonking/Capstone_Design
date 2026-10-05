@@ -1213,9 +1213,13 @@
       setAuthBusy(false);
     }
 
-    function isCurrentAuthRequest(requestId, controller) {
+    function ownsAuthRequest(requestId, controller) {
       return requestId === authRequestSequence
-        && activeAuthController === controller
+        && activeAuthController === controller;
+    }
+
+    function canApplyAuthSuccess(requestId, controller) {
+      return ownsAuthRequest(requestId, controller)
         && !controller.signal.aborted;
     }
 
@@ -1366,7 +1370,7 @@
       authMessage.textContent = "";
       try {
         const { payload, apiOrigin } = await submitAuth(snapshot, controller);
-        if (!isCurrentAuthRequest(requestId, controller)) return;
+        if (!canApplyAuthSuccess(requestId, controller)) return;
         if (snapshot.mode === "signup") {
           setAuthMode("login", { force: true });
           authApiBase.value = apiOrigin;
@@ -1394,11 +1398,11 @@
           }, 350);
         }
       } catch (error) {
-        if (error.kind === "aborted" || !isCurrentAuthRequest(requestId, controller)) return;
+        if (!ownsAuthRequest(requestId, controller) || error.kind === "aborted") return;
         authMessage.textContent = requestErrorMessage(error, "인증 요청을 처리하지 못했습니다.");
         authMessage.className = "auth-message error";
       } finally {
-        if (isCurrentAuthRequest(requestId, controller)) {
+        if (ownsAuthRequest(requestId, controller)) {
           activeAuthController = null;
           setAuthBusy(false);
           authSubmit.classList.remove("is-loading");
@@ -1492,11 +1496,11 @@
           controller,
           headers: { Authorization: `Bearer ${authToken}` }
         });
-        if (!isCurrentAuthRequest(requestId, controller)
+        if (!canApplyAuthSuccess(requestId, controller)
             || authToken !== sessionToken || authOrigin !== sessionOrigin) return;
         showApp(payload.email);
       } catch (error) {
-        if (error.kind === "aborted" || !isCurrentAuthRequest(requestId, controller)) return;
+        if (!ownsAuthRequest(requestId, controller) || error.kind === "aborted") return;
         if (error.kind === "unauthorized") {
           clearStoredAuth("세션이 만료되었거나 무효입니다. 다시 로그인해 주세요.");
           return;
@@ -1505,7 +1509,7 @@
         authMessage.textContent = "서버에 연결하지 못해 세션을 확인할 수 없습니다. 로컬 토큰은 유지되며 새로고침하여 다시 확인할 수 있습니다.";
         authMessage.className = "auth-message error";
       } finally {
-        if (isCurrentAuthRequest(requestId, controller)) activeAuthController = null;
+        if (ownsAuthRequest(requestId, controller)) activeAuthController = null;
       }
     }
 
@@ -1864,7 +1868,7 @@
       refreshAdminBtn.disabled = false;
     }
 
-    function isCurrentAdminRequest(context) {
+    function ownsAdminRequest(context) {
       let currentOrigin;
       try {
         currentOrigin = normalizeApiOrigin(apiBase.value);
@@ -1873,12 +1877,16 @@
       }
       return context.requestId === adminRequestSequence
         && activeAdminController === context.controller
-        && !context.controller.signal.aborted
         && context.tokenVersion === adminTokenVersion
         && context.token === adminToken.value.trim()
         && context.origin === currentOrigin
         && context.sessionToken === authToken
         && context.sessionOrigin === authOrigin;
+    }
+
+    function canApplyAdminSuccess(context) {
+      return ownsAdminRequest(context)
+        && !context.controller.signal.aborted;
     }
 
     function clearAdminData({ clearToken = false, messageText = "관리자 인증 전에는 통계와 이력이 잠겨 있습니다." } = {}) {
@@ -1984,7 +1992,7 @@
           requestJson(`${origin}/admin/reason-codes`, { headers, controller }),
           requestJson(`${origin}/admin/recent-blocks`, { headers, controller })
         ]);
-        if (!isCurrentAdminRequest(context)) return;
+        if (!canApplyAdminSuccess(context)) return;
         const stats = statsResult.payload;
         const reasons = Array.isArray(reasonsResult.payload) ? reasonsResult.payload : [];
         latestAdminBlocks = Array.isArray(blocksResult.payload) ? blocksResult.payload : [];
@@ -2003,7 +2011,7 @@
         adminStatus.textContent = "관리자 인증 성공 · 전체 감사 로그 통계와 최근 차단 이력을 표시합니다.";
         adminStatus.className = "auth-message success";
       } catch (error) {
-        if (error.kind === "aborted" || !isCurrentAdminRequest(context)) return;
+        if (!ownsAdminRequest(context) || error.kind === "aborted") return;
         const authFailure = ["unauthorized", "forbidden"].includes(error.kind) || error.status === 503;
         const adminErrorMessage = error.kind === "unauthorized"
           ? "관리자 토큰이 유효하지 않습니다."
@@ -2018,7 +2026,7 @@
         });
         adminStatus.className = "auth-message error";
       } finally {
-        if (isCurrentAdminRequest(context)) {
+        if (ownsAdminRequest(context)) {
           activeAdminController = null;
           refreshAdminBtn.disabled = false;
         }

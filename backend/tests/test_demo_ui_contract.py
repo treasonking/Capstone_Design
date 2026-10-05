@@ -55,6 +55,19 @@ def test_demo_ui_distinguishes_errors_and_prevents_stale_results() -> None:
     assert "blockedInputVersion === inputVersion" in script
 
 
+def test_demo_ui_separates_request_ownership_from_success_application() -> None:
+    script = _inline_script()
+
+    assert "function ownsAuthRequest(requestId, controller)" in script
+    assert "function canApplyAuthSuccess(requestId, controller)" in script
+    assert "function ownsAdminRequest(context)" in script
+    assert "function canApplyAdminSuccess(context)" in script
+    assert "ownsAuthRequest(requestId, controller)\n        && !controller.signal.aborted" in script
+    assert "ownsAdminRequest(context)\n        && !context.controller.signal.aborted" in script
+    assert "function isCurrentAuthRequest" not in script
+    assert "function isCurrentAdminRequest" not in script
+
+
 def test_demo_ui_uses_text_rendering_for_server_values() -> None:
     script = _inline_script()
 

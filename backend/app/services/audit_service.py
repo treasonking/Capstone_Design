@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import hmac
+import os
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -14,17 +17,23 @@ LOG_FILE = LOG_DIR / "audit_log.jsonl"
 _DENIED_LOG_KEYS = {
     "api_key",
     "authorization",
+    "headers",
     "content",
+    "instructions",
     "message",
     "masked_text",
     "prompt",
     "raw_prompt",
     "raw_response",
+    "request_body",
     "response",
+    "response_body",
+    "safe_input",
     "secret",
     "system_prompt",
     "token",
 }
+_DEVELOPMENT_USER_ID_SALT = "public-development-only-audit-user-id-salt"
 
 
 def _sanitize_for_log(value: Any) -> Any:
@@ -40,6 +49,16 @@ def _sanitize_for_log(value: Any) -> Any:
     return value
 
 
+def _pseudonymize_user_id(user_id: str) -> str:
+    salt = os.getenv("AUDIT_USER_ID_SALT", _DEVELOPMENT_USER_ID_SALT)
+    digest = hmac.new(
+        salt.encode("utf-8"),
+        user_id.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return f"hmac-sha256:{digest[:24]}"
+
+
 def _build_log_entry(
     request_id: str,
     user_id: str,
@@ -53,7 +72,7 @@ def _build_log_entry(
     # 감사와 관리자 통계에 필요한 메타데이터만 저장합니다.
     entry = {
         "request_id": request_id,
-        "user_id": user_id,
+        "user_id": _pseudonymize_user_id(user_id),
         "timestamp": audit_summary.get("timestamp_utc"),
         "timestamp_utc": audit_summary.get("timestamp_utc"),
         "action": final_action,
@@ -63,8 +82,23 @@ def _build_log_entry(
         "injection_detected": bool(input_summary.get("injection_detected")) or bool(output_summary.get("injection_detected")),
         "latency_ms": audit_summary.get("latency_ms"),
         "upstream_call": bool(audit_summary.get("upstream_call")),
+        "upstream_called": bool(
+            audit_summary.get("upstream_called", audit_summary.get("upstream_call"))
+        ),
+        "upstream_status": audit_summary.get("upstream_status"),
+        "upstream_latency_ms": audit_summary.get("upstream_latency_ms"),
+        "provider": audit_summary.get("provider"),
+        "model": audit_summary.get("model"),
         "input_action": audit_summary.get("input_action"),
         "output_action": audit_summary.get("output_action"),
+        "input_decision": audit_summary.get("input_decision"),
+        "output_decision": audit_summary.get("output_decision"),
+        "pii_detection_count": int(input_summary.get("pii_detection_count", 0))
+        + int(output_summary.get("pii_detection_count", 0)),
+        "injection_detection_count": int(
+            input_summary.get("injection_detection_count", 0)
+        )
+        + int(output_summary.get("injection_detection_count", 0)),
         "input": input_summary,
         "output": output_summary,
         "validator": validator_summary,
@@ -73,9 +107,19 @@ def _build_log_entry(
             "output": output_summary.get("detector_counts", {}),
         },
     }
+    if audit_summary.get("block_type"):
+        entry["block_type"] = audit_summary["block_type"]
+    if audit_summary.get("error_type"):
+        entry["error_type"] = audit_summary["error_type"]
+    if audit_summary.get("upstream_finish_reason"):
+        entry["upstream_finish_reason"] = audit_summary["upstream_finish_reason"]
+    if audit_summary.get("upstream_token_usage"):
+        entry["upstream_token_usage"] = _sanitize_for_log(
+            audit_summary["upstream_token_usage"]
+        )
     hybrid_detection = audit_summary.get("hybrid_detection")
     if hybrid_detection is not None:
-        entry["hybrid_detection"] = hybrid_detection
+        entry["hybrid_detection"] = _sanitize_for_log(hybrid_detection)
     return entry
 
 

@@ -87,6 +87,7 @@ BLOCK > MASK > WARN > ALLOW
 - Validator Agent는 규칙 기반 검증 모듈이므로 모든 우회 표현을 탐지하지는 못한다.
 - 출력 검증 단계가 추가되어 latency가 증가한다.
 - SSE 엔드포인트는 보안 검증을 위해 upstream 응답을 버퍼링한 뒤 Validator Agent 검증 후 안전한 응답만 반환한다. 따라서 이 구현은 실시간 토큰 스트리밍이 아니라 검증 후 일괄 반환 구조에 가깝다.
+- 입력 또는 출력이 `BLOCK`이면 원본 응답 token event를 보내지 않는다. 이 보안 경계는 통합 테스트로 확인한다.
 - Validator Agent는 본 연구의 핵심 정량 평가 대상이 아니며, 독립 벤치마킹은 후속 연구로 둔다.
 
 ## Future Work

@@ -167,18 +167,18 @@ class LightweightClassifier:
                 "Lightweight model detector disabled by configuration."
             )
             return
-        if joblib is None:
-            self._status_code = "dependency_missing"
-            self._status_note = (
-                "Optional dependency 'joblib' is not installed."
-            )
-            return
         if (
             not self.vectorizer_path.exists()
             or not self.classifier_path.exists()
         ):
             self._status_code = "artifact_missing"
             self._status_note = "Model artifact files are missing."
+            return
+        if joblib is None:
+            self._status_code = "dependency_missing"
+            self._status_note = (
+                "Optional dependency 'joblib' is not installed."
+            )
             return
 
         try:
@@ -200,7 +200,6 @@ class LightweightClassifier:
             if predicted_label in probabilities_by_class:
                 return probabilities_by_class[predicted_label]
             return max(probabilities_by_class.values())
-
         return 1.0
 
     def prompt_injection_score(self, text: str) -> float:

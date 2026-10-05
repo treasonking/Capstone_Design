@@ -16,6 +16,22 @@
 - 보안 설명, 정책 작성, 예방 방법 문의처럼 공격을 설명하는 문장은 차단 대상이 아니다. 예: `Explain what prompt injection is.`, `이전 지시를 무시하라는 공격을 어떻게 막을 수 있어?`
 - Validator Agent는 정책 결정 재검증을 위한 운영형 확장 요소이며, 본 연구의 핵심 정량 평가 대상이 아니다. 적용 전후 오탐·미탐 변화와 latency 평가는 후속 연구로 둔다.
 - PQC 기반 감사로그 서명 구조는 탐지 성능 향상 요소가 아니라 감사로그 무결성 확장 요소이다. 현재 구현은 ML-DSA 교체 가능한 인터페이스와 Mock signer 기반 검증 구조이며, 실제 PQC 알고리즘 적용 및 성능 평가는 후속 연구로 둔다.
+- 사용자 계정은 SQLite에 저장하지만 로그인 세션은 서버 프로세스 메모리에만 저장한다. 서버 재시작 시 토큰이 무효화되고, 공유 세션 저장소 없이 여러 worker를 사용하면 세션이 worker 간 공유되지 않는다.
+- 관리자 API는 별도 `ADMIN_API_TOKEN`으로 보호되며 공개 기본값은 없다. 이는 계정별 관리자 역할과 권한 회수를 제공하는 RBAC 구현이 아니다.
+- SSE 경로도 upstream 응답 전체를 메모리에 버퍼링한 뒤 검증한다. 검증 전 원본 토큰 노출을 막는 대신 first-byte latency와 메모리 사용량이 증가하며, 대용량 응답 제한은 별도 운영 정책이 필요하다.
+- `store=False`는 OpenAI Responses application state 저장을 끄지만 모든 데이터 보존을 의미하지 않는다. 조직이 승인된 Zero Data Retention 또는 Modified Abuse Monitoring 제어를 사용하지 않으면 abuse monitoring log에 고객 콘텐츠가 보존될 수 있으므로 기관 정책과 최신 OpenAI 데이터 제어 문서를 별도 확인해야 한다.
+- OpenAI Provider를 사용하면 `ALLOW` 입력과 `MASK` 처리된 입력이 외부 사업자에게 전송된다. 탐지 누락, 마스킹 한계, Provider별 처리 지역·보존 정책 차이는 프록시만으로 제거할 수 없다.
+- Provider 직전 egress guard는 위치가 확인된 PII를 정책 action과 무관하게 마스킹하고, 위치를 알 수 없는 PII 신호는 `PII_UNMASKABLE_DETECTED`로 차단한다. 그러나 탐지기가 PII 자체를 놓친 경우에는 원문 전송 위험이 남는다.
+- 모델별 응답 품질과 Validator 탐지 결과가 달라질 수 있으며 비용, Rate Limit, 네트워크 장애, timeout이 발생할 수 있다. `PROVIDER_AUTH_ERROR`, `PROVIDER_RATE_LIMITED`, `PROVIDER_TIMEOUT`, `PROVIDER_UPSTREAM_ERROR`, `PROVIDER_INVALID_RESPONSE`는 정책 차단과 별도 오류로 기록한다.
+- 자동 Provider 라우팅과 다른 사업자로의 자동 폴백은 구현하지 않았다. 향후 도입하려면 기관 allowlist, 사용자 또는 기관의 명시적 동의, 전송 데이터 분류 재검사, Provider 변경 감사 기록, 최대 시도 횟수가 필요하다.
+- 현재 실제 구현 Provider는 Mock과 OpenAI뿐이다. Claude, Gemini, Azure OpenAI, 로컬 LLM은 공통 인터페이스에 어댑터를 추가해야 하며 현 상태에서 지원한다고 설명하면 안 된다.
+- 기본 Docker Compose는 `OPENAI_API_KEY`를 자동 전달하지 않는다. 환경변수 직접 주입은 Compose 설정 출력과 컨테이너 메타데이터에 평문으로 나타날 수 있으므로 운영 배포에는 조직의 secret store 또는 Docker secret 통합이 필요하다.
+
+OpenAI 관련 운영 판단은 공식 [Responses API 안내](https://developers.openai.com/api/docs/guides/migrate-to-responses), [데이터 제어 문서](https://developers.openai.com/api/docs/guides/your-data), [오류 코드 문서](https://developers.openai.com/api/docs/guides/error-codes)의 최신 내용을 기준으로 다시 확인해야 한다.
+- 감사 로그의 개발용 signer는 HMAC-SHA256 Mock 구현이다. 기본 개발 키와 기본 `user_id` salt는 공개된 fallback 값이므로 운영 보안을 제공하지 않는다. 비운영 환경 밖에서는 `AUDIT_LOG_HMAC_KEY`, `AUDIT_USER_ID_SALT`를 별도 비밀 관리 체계에서 주입해야 한다.
+- `user_id`는 저장 전에 HMAC 기반 가명값으로 바뀌지만, salt가 유출되거나 식별자 후보 공간이 작으면 사전 대입 위험이 남는다.
+- 기본 경량 분류 artifact와 external-tuned artifact가 서로 다른 scikit-learn 버전에서 만들어졌다. 직렬화 artifact는 버전 호환성 경고 없이 로드되는 버전에서 재학습·고정하고 해시와 학습 메타데이터를 함께 배포해야 한다.
+- 외부 held-out split에는 train/eval 정규화 텍스트 해시 중복 42건이 남아 있어 external-tuned 수치가 낙관적일 수 있다.
 
 ## Operation Guidance
 
@@ -23,3 +39,4 @@
 - 외부 영어 데이터셋 결과는 범용 확장을 위한 한계 분석 자료로 분리한다.
 - 실제 운영 수준으로 확장하려면 영어 공개 데이터셋 기반 재학습, threshold 조정, 간접 인젝션/RAG 문서 공격 평가, hard negative 확장이 필요하다.
 - Validator Agent와 PQC를 탐지 성능을 높이는 핵심 기법처럼 설명하지 않는다. 두 요소는 운영 환경에서 정책 결정의 신뢰성, 감사 가능성, 로그 무결성을 높이기 위한 확장 요소로 설명한다.
+- 기존 로컬 `logs/audit_log.jsonl`에는 서명 도입 전 또는 구형 포맷 레코드가 섞일 수 있다. 배포 시 로그 스키마 버전과 키 ID별 검증·보존·마이그레이션 정책을 정의해야 한다.

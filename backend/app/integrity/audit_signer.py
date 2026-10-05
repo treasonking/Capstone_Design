@@ -4,11 +4,11 @@ import copy
 from typing import Any
 
 from backend.app.integrity.canonical_json import canonical_sha256
-from backend.app.integrity.pqc_signer import AuditSigner, MockMLDSASigner
+from backend.app.integrity.pqc_signer import AuditSigner, MockAuditSigner
 
 
-def _default_signer() -> MockMLDSASigner:
-    return MockMLDSASigner()
+def _default_signer() -> MockAuditSigner:
+    return MockAuditSigner()
 
 
 def sign_audit_record(
@@ -21,6 +21,8 @@ def sign_audit_record(
         "hash_alg": active_signer.hash_alg,
         "signature_alg": active_signer.signature_alg,
         "public_key_id": active_signer.public_key_id,
+        "implementation_status": active_signer.implementation_status,
+        "replacement_target": active_signer.replacement_target,
     }
     digest = canonical_sha256(signed_record)
     signed_record["integrity"]["signature"] = active_signer.sign(digest)

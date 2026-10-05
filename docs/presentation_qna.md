@@ -25,7 +25,7 @@ A.
 
 A.
 - `/admin/stats`, `/admin/recent-blocks`, `/admin/reason-codes`, `/admin/upstream-config`는 `X-Admin-Token` 헤더 기반 인증을 사용한다.
-- 토큰은 `ADMIN_API_TOKEN` 환경변수에서 읽고, 미설정 시 개발 기본값 `dev-admin-token`을 사용한다.
+- 토큰은 `ADMIN_API_TOKEN` 환경변수에서 읽으며 공개 개발 기본값은 없다. 미설정·빈 값이면 관리자 API가 503으로 안전하게 접근을 거부한다.
 - 사용자 프록시 엔드포인트 `/proxy/chat`, `/v1/chat/completions`에는 이 인증을 적용하지 않는다.
 
 ## Q5. strict policy는 무엇이 다른가요?
@@ -92,7 +92,7 @@ A.
 A.
 - 실제 ML-DSA 라이브러리를 직접 탑재한 것은 아니다.
 - 현재 구현은 ML-DSA 교체가 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조이다.
-- `MOCK-ML-DSA` signer는 내부적으로 HMAC-SHA256을 사용하며, 발표에서는 "PQC를 직접 구현했다"가 아니라 "운영 환경에서 ML-DSA로 교체 가능한 감사 로그 무결성 검증 구조를 구현했다"라고 설명한다.
+- `HMAC-SHA256-MOCK` signer는 개발·테스트용이며, 발표에서는 "PQC를 직접 구현했다"가 아니라 "운영 환경에서 ML-DSA로 교체 가능한 감사 로그 무결성 검증 구조를 구현했다"라고 설명한다.
 - 실제 PQC 알고리즘 적용, 키 관리, 서명·검증 latency 평가는 후속 연구 범위로 둔다.
 
 ## Q14. `/proxy/analyze`에는 왜 Validator Agent가 실행되지 않나요?

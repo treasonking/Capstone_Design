@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from backend.app.detection.injection_detector import detect_injection
+from backend.app.detection.models import DetectionResult, DetectorType
 from backend.app.detection.pii_detector import detect_pii
 from backend.app.detection.reason_codes import ReasonCode
 from backend.app.engine.policy_engine import evaluate_policy
@@ -64,3 +65,47 @@ def test_policy_engine_blocks_rrn_request_intent() -> None:
     assert decision.final_action.value == "BLOCK"
     assert ReasonCode.INJ_POLICY_BYPASS.value in decision.reasons
     assert ReasonCode.PII_REQUEST_RRN.value in decision.reasons
+
+
+def test_policy_action_strength_overrides_yaml_priority(tmp_path) -> None:
+    policy_path = tmp_path / "action-priority.yaml"
+    policy_path.write_text(
+        """
+default_action: ALLOW
+rules:
+  PII_EMAIL_DETECTED:
+    action: MASK
+    priority: 999
+    threshold: 0.0
+  INJ_RULE_DISCLOSURE_ATTEMPT:
+    action: BLOCK
+    priority: 1
+    threshold: 0.0
+""".strip(),
+        encoding="utf-8",
+    )
+    detections = [
+        DetectionResult(
+            detector_type=DetectorType.PII,
+            category="EMAIL",
+            reason_code=ReasonCode.PII_EMAIL_DETECTED.value,
+            start=0,
+            end=16,
+            matched_text="test@example.com",
+            score=1.0,
+        ),
+        DetectionResult(
+            detector_type=DetectorType.INJECTION,
+            category="RULE_DISCLOSURE",
+            reason_code=ReasonCode.INJ_RULE_DISCLOSURE_ATTEMPT.value,
+            start=0,
+            end=0,
+            matched_text="internal rules",
+            score=5.0,
+        ),
+    ]
+
+    decision = evaluate_policy("test@example.com internal rules", detections, policy_path)
+
+    assert decision.final_action.value == "BLOCK"
+    assert decision.masked_text is None

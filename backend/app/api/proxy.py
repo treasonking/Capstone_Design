@@ -1,13 +1,15 @@
 from __future__ import annotations
 from fastapi.middleware.cors import CORSMiddleware
 
+import hmac
 import logging
 import os
+import re
 import time
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import StreamingResponse
 
 from backend.app.config import get_detection_settings
@@ -18,6 +20,7 @@ from backend.app.schemas.admin import (
     ReasonCodeStatItem,
     RecentBlockItem,
 )
+from backend.app.schemas.auth import AuthCredentials, AuthTokenResponse, AuthUserResponse
 from backend.app.schemas.proxy import (
     ChatCompletionRequest,
     ProxyAnalyzeResponse,
@@ -31,7 +34,16 @@ from backend.app.services.audit_service import (
     get_recent_block_history,
     save_audit_log,
 )
+from backend.app.services.auth_service import (
+    authenticate_user,
+    create_user,
+    issue_token,
+    resolve_token,
+    revoke_token,
+    token_ttl_seconds,
+)
 from backend.app.services.llm_service import get_upstream_config_summary
+from backend.app.services.llm_service import not_called_provider_metadata
 from backend.app.services.proxy_service import (
     POLICY_PATH,
     _detect_text,
@@ -53,16 +65,26 @@ from backend.app.validator import ValidatorAgent, resolve_final_action
 app = FastAPI()
 logger = logging.getLogger(__name__)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+
+def _allowed_ui_origins() -> list[str]:
+    configured = os.getenv("UI_ALLOWED_ORIGINS", "")
+    if configured.strip():
+        return [origin.strip().rstrip("/") for origin in configured.split(",") if origin.strip()]
+    return [
         "http://127.0.0.1:5500",
         "http://localhost:5500",
-    ],
+    ]
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_ui_origins(),
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+_EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
 @app.on_event("startup")
@@ -71,31 +93,107 @@ async def log_detection_configuration() -> None:
     logger.info("Detection mode: %s", settings.detection_mode)
     logger.info("Model detector enabled: %s", settings.enable_model_detector)
 
-def _admin_api_token() -> str:
-    return os.getenv("ADMIN_API_TOKEN", "dev-admin-token")
+def _admin_api_token() -> str | None:
+    configured = os.getenv("ADMIN_API_TOKEN", "").strip()
+    return configured or None
 
 
 def _require_admin_token(
     x_admin_token: str | None = Header(default=None),
 ) -> None:
-    if x_admin_token is not None and not isinstance(x_admin_token, str):
-        return
-    if x_admin_token != _admin_api_token():
+    configured = _admin_api_token()
+    if configured is None:
+        raise HTTPException(
+            status_code=503,
+            detail="관리자 인증이 설정되지 않았습니다.",
+        )
+    if not x_admin_token or not hmac.compare_digest(x_admin_token, configured):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
+def _normalized_email(credentials: AuthCredentials) -> str:
+    email = credentials.email.strip().lower()
+    if not _EMAIL_PATTERN.fullmatch(email):
+        raise HTTPException(status_code=422, detail="올바른 이메일 형식을 입력해 주세요.")
+    return email
+
+
+def _bearer_token(authorization: str | None) -> str | None:
+    if not authorization:
+        return None
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        return None
+    return token
+
+
+def _require_authenticated_user(
+    authorization: str | None = Header(default=None),
+) -> str:
+    email = resolve_token(_bearer_token(authorization))
+    if not email:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+    return email
+
+
+@app.post("/auth/signup", response_model=AuthUserResponse, status_code=201)
+async def auth_signup(credentials: AuthCredentials) -> AuthUserResponse:
+    email = _normalized_email(credentials)
+    if not create_user(email, credentials.password):
+        raise HTTPException(status_code=409, detail="이미 가입된 이메일입니다.")
+    return AuthUserResponse(email=email)
+
+
+@app.post("/auth/login", response_model=AuthTokenResponse)
+async def auth_login(credentials: AuthCredentials) -> AuthTokenResponse:
+    email = _normalized_email(credentials)
+    if not authenticate_user(email, credentials.password):
+        raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다.")
+    return AuthTokenResponse(
+        access_token=issue_token(email),
+        expires_in=token_ttl_seconds(),
+        email=email,
+    )
+
+
+@app.post("/auth/logout", status_code=204)
+async def auth_logout(
+    authorization: str | None = Header(default=None),
+) -> None:
+    revoke_token(_bearer_token(authorization))
+
+
+@app.get("/auth/me", response_model=AuthUserResponse)
+async def auth_me(
+    authorization: str | None = Header(default=None),
+) -> AuthUserResponse:
+    email = resolve_token(_bearer_token(authorization))
+    if not email:
+        raise HTTPException(status_code=401, detail="인증이 필요합니다.")
+    return AuthUserResponse(email=email)
+
+
 @app.post("/proxy/chat")
-async def proxy_chat(req: ProxyRequest) -> ProxyResponse:
+async def proxy_chat(
+    req: ProxyRequest,
+    _email: str = Depends(_require_authenticated_user),
+) -> ProxyResponse:
     return await process_proxy_chat(req)
 
 
 @app.post("/proxy/analyze")
-async def proxy_analyze(req: ProxyRequest) -> ProxyAnalyzeResponse:
+async def proxy_analyze(
+    req: ProxyRequest,
+    _email: str = Depends(_require_authenticated_user),
+) -> ProxyAnalyzeResponse:
     return await process_proxy_analyze(req)
 
 
 @app.post("/proxy/chat/stream")
-async def proxy_chat_stream(req: ProxyRequest) -> StreamingResponse:
+async def proxy_chat_stream(
+    req: ProxyRequest,
+    _email: str = Depends(_require_authenticated_user),
+) -> StreamingResponse:
     return StreamingResponse(
         process_proxy_chat_stream(req),
         media_type="text/event-stream",
@@ -221,6 +319,8 @@ async def chat_completions(req: ChatCompletionRequest) -> dict:
         "reason_codes": final_reasons,
         "input_action": action,
         "output_action": output_action,
+        "input_decision": action,
+        "output_decision": output_action,
         "upstream_call": False,
         "input": {
             **decision.audit_summary,
@@ -228,6 +328,7 @@ async def chat_completions(req: ChatCompletionRequest) -> dict:
         },
         "output": output_summary,
         "validator": _validator_audit_summary(validator_summary),
+        **not_called_provider_metadata("mock"),
     }
     if "hybrid_detection" in audit:
         audit_summary["hybrid_detection"] = {

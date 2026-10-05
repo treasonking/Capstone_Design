@@ -147,8 +147,24 @@ def detect_hybrid(
         )
     )
     primary = max(combined, key=_priority_key) if combined else None
-    reason_codes = ordered_reason_codes([item.reason_code for item in combined])
-    final_action = action_for_reasons(reason_codes) if reason_codes else "ALLOW"
+    signal_reason_codes = ordered_reason_codes([item.reason_code for item in combined])
+    operational_reason_codes = ordered_reason_codes(
+        [
+            *signal_reason_codes,
+            *[
+                reason
+                for summary in detector_results
+                if summary.detector == "llm"
+                and summary.status in {"artifact_missing", "dependency_missing", "error"}
+                for reason in summary.reasons
+            ],
+        ]
+    )
+    final_action = (
+        action_for_reasons(operational_reason_codes)
+        if operational_reason_codes
+        else "ALLOW"
+    )
     detector_counts = _detector_counts(detector_results)
     detectors_invoked = [result.detector for result in detector_results]
 
@@ -162,10 +178,10 @@ def detect_hybrid(
         model_prediction_accepted=model_result.model_prediction_accepted,
         model_reason_code=model_result.model_reason_code,
         fallback_used=model_result.fallback_used,
-        reason_codes=reason_codes,
+        reason_codes=operational_reason_codes,
         primary_reason_code=(
-            select_primary_reason(reason_codes)
-            if reason_codes
+            select_primary_reason(signal_reason_codes)
+            if signal_reason_codes
             else primary.reason_code if primary else None
         ),
         risk_score=max((_normalized_score(item) for item in combined), default=0.0),

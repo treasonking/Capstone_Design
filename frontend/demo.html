@@ -1066,6 +1066,7 @@
     const sessionUser = document.getElementById("sessionUser");
     const TOKEN_STORAGE_KEY = "orca_auth_token";
     const ORIGIN_STORAGE_KEY = "orca_auth_origin";
+    const FLASH_MESSAGE_KEY = "orca_auth_flash";
     const REQUEST_TIMEOUT_MS = 15000;
     let authMode = "login";
     let authToken = sessionStorage.getItem(TOKEN_STORAGE_KEY);
@@ -1353,6 +1354,7 @@
       try {
         const { payload, apiOrigin } = await submitAuth();
         if (authMode === "signup") {
+          sessionStorage.setItem(FLASH_MESSAGE_KEY, "가입이 완료되었습니다. 로그인해 주세요.");
           navigateTo("/login");
         } else {
           authToken = payload.access_token;
@@ -2073,6 +2075,12 @@
       updateMessageCount();
     });
     applyRoutePresentation();
+    const authFlashMessage = sessionStorage.getItem(FLASH_MESSAGE_KEY);
+    if (authFlashMessage && routePath === "/login") {
+      sessionStorage.removeItem(FLASH_MESSAGE_KEY);
+      authMessage.textContent = authFlashMessage;
+      authMessage.className = "auth-message success";
+    }
     updateMessageCount();
     clearAdminData();
     syncProxyControls();

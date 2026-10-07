@@ -783,7 +783,7 @@ python -m uvicorn tools.mock_llm:app --host 127.0.0.1 --port 8001 --app-dir .
 
 ```bash
 cd frontend
-python -m http.server 5500
+python dev_server.py
 ```
 
 브라우저에서 `http://127.0.0.1:5500/demo.html`로 접속합니다. 로그인 전에 API Base URL을 설정하고 회원가입·로그인을 진행합니다. 사용자 Bearer 토큰은 인증에 성공한 API origin에만 전송됩니다. `frontend/demo.html`은 발표용 정적 데모 페이지이며 운영용 관리자 콘솔이 아닙니다. 공개 기본 관리자 토큰은 없으며, `ADMIN_API_TOKEN`이 미설정이면 관리자 API는 안전하게 접근을 거부합니다. 관리자 토큰은 브라우저 저장소에 저장하지 않습니다. 전체 절차는 `docs/demo_runbook.md`를 참고합니다.

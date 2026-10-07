@@ -827,6 +827,7 @@
         <span id="sessionUser"></span>
         <button class="secondary" id="logoutBtn" type="button">로그아웃</button>
       </div>
+    <section id="userConsole" aria-label="일반 사용자 프록시 콘솔">
     <section class="hero">
       <h1>LLM Security Proxy Demo</h1>
       <p>백엔드 보안 프록시의 사용자 입력 흐름과 관리자 요약을 한 화면에서 보여주는 발표용 정적 데모 페이지입니다. FastAPI 프록시가 <code>http://127.0.0.1:8000</code>에서 실행 중일 때 사용할 수 있으며, API 호출까지 함께 확인하려면 <code>http://127.0.0.1:5500/demo.html</code>로 서빙하는 구성을 권장합니다.</p>
@@ -957,7 +958,9 @@
       </article>
     </section>
 
-    <section class="grid" style="margin-top: 18px;">
+    </section>
+
+    <section id="adminView" class="grid" style="margin-top: 18px;" aria-label="관리자 요약">
       <article class="panel">
         <h2>관리자 요약</h2>
           <p>별도 관리자 토큰으로 전체 통계와 최근 차단 이력을 조회합니다. 계정별 RBAC 화면은 아닙니다.</p>
@@ -1029,7 +1032,9 @@
       </article>
     </section>
 
-    <footer class="panel footer">
+    </section>
+
+    <footer class="panel footer" id="appFooter">
       <h2>사용 주의</h2>
       <p>본 페이지는 캡스톤 발표 및 로컬 검증용 정적 데모 페이지이며, 운영용 관리자 콘솔이 아닙니다. 사용자 세션은 Authorization 헤더로 지정된 API origin에만 전송되며, 외부 LLM API 키는 프런트엔드에 보관하지 않습니다. 관리자 토큰은 브라우저 저장소에 저장하지 않습니다.</p>
     </footer>
@@ -1051,6 +1056,9 @@
     const confirmPassword = document.getElementById("confirmPassword");
     const authApiBase = document.getElementById("authApiBase");
     const apiBase = document.getElementById("apiBase");
+    const userConsole = document.getElementById("userConsole");
+    const adminView = document.getElementById("adminView");
+    const appFooter = document.getElementById("appFooter");
     const apiBaseError = document.getElementById("apiBaseError");
     const emailError = document.getElementById("emailError");
     const passwordError = document.getElementById("passwordError");
@@ -1062,6 +1070,28 @@
     let authMode = "login";
     let authToken = sessionStorage.getItem(TOKEN_STORAGE_KEY);
     let authOrigin = sessionStorage.getItem(ORIGIN_STORAGE_KEY);
+    const routePath = ["/login", "/signup", "/app", "/admin"].includes(window.location.pathname)
+      ? window.location.pathname
+      : "/login";
+    const protectedRoute = routePath === "/app" || routePath === "/admin";
+    const adminRoute = routePath === "/admin";
+
+    function navigateTo(path) {
+      if (window.location.pathname === path) return;
+      window.location.assign(path);
+    }
+
+    function applyRoutePresentation() {
+      const authRoute = routePath === "/login" || routePath === "/signup";
+      authView.hidden = !authRoute;
+      appView.hidden = authRoute;
+      userConsole.hidden = !authRoute ? adminRoute : true;
+      adminView.hidden = !adminRoute;
+      appFooter.hidden = authRoute;
+      document.getElementById("loginTab").hidden = routePath === "/signup";
+      document.getElementById("signupTab").hidden = routePath === "/login";
+      setAuthMode(routePath === "/signup" ? "signup" : "login");
+    }
 
     class ApiRequestError extends Error {
       constructor(messageText, { status = 0, kind = "request", payload = null } = {}) {
@@ -1210,6 +1240,9 @@
     function showApp(email) {
       authView.hidden = true;
       appView.hidden = false;
+      userConsole.hidden = adminRoute;
+      adminView.hidden = !adminRoute;
+      appFooter.hidden = false;
       sessionUser.textContent = `${email}로 로그인됨`;
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -1217,6 +1250,9 @@
     function showAuth({ resetForm = true } = {}) {
       appView.hidden = true;
       authView.hidden = false;
+      userConsole.hidden = true;
+      adminView.hidden = true;
+      appFooter.hidden = true;
       if (resetForm) authForm.reset();
       authApiBase.value = authOrigin || apiBase.value || "http://127.0.0.1:8000";
       setAuthMode("login");
@@ -1234,6 +1270,7 @@
         authMessage.textContent = message;
         authMessage.className = "auth-message error";
       }
+      if (protectedRoute) navigateTo("/login");
     }
 
     async function submitAuth() {
@@ -1286,11 +1323,11 @@
       return isValid;
     }
 
-    document.getElementById("loginTab").addEventListener("click", () => setAuthMode("login"));
-    document.getElementById("signupTab").addEventListener("click", () => setAuthMode("signup"));
+    document.getElementById("loginTab").addEventListener("click", () => navigateTo("/login"));
+    document.getElementById("signupTab").addEventListener("click", () => navigateTo("/signup"));
     authNote.addEventListener("click", (event) => {
       const switchButton = event.target.closest("[data-switch]");
-      if (switchButton) setAuthMode(switchButton.dataset.switch);
+      if (switchButton) navigateTo(switchButton.dataset.switch === "signup" ? "/signup" : "/login");
     });
     document.querySelectorAll(".toggle-password").forEach((button) => {
       button.addEventListener("click", () => {
@@ -1316,12 +1353,7 @@
       try {
         const { payload, apiOrigin } = await submitAuth();
         if (authMode === "signup") {
-          setAuthMode("login");
-          authApiBase.value = apiOrigin;
-          authEmail.value = payload.email;
-          authPassword.value = "";
-          authMessage.textContent = "가입이 완료되었습니다. 로그인해 주세요.";
-          authMessage.className = "auth-message success";
+          navigateTo("/login");
         } else {
           authToken = payload.access_token;
           authOrigin = apiOrigin;
@@ -1330,7 +1362,7 @@
           sessionStorage.setItem(ORIGIN_STORAGE_KEY, authOrigin);
           authMessage.textContent = "로그인되었습니다. 콘솔로 이동합니다.";
           authMessage.className = "auth-message success";
-          window.setTimeout(() => showApp(payload.email), 350);
+          window.setTimeout(() => navigateTo("/app"), 350);
         }
       } catch (error) {
         authMessage.textContent = requestErrorMessage(error, "인증 요청을 처리하지 못했습니다.");
@@ -1417,12 +1449,14 @@
         const { payload } = await requestJson(`${authOrigin}/auth/me`, {
           headers: { Authorization: `Bearer ${authToken}` }
         });
-        showApp(payload.email);
+        if (routePath === "/login" || routePath === "/signup") navigateTo("/app");
+        else showApp(payload.email);
       } catch (error) {
         if (error.kind === "unauthorized") {
           clearStoredAuth("세션이 만료되었거나 무효입니다. 다시 로그인해 주세요.");
           return;
         }
+        if (protectedRoute) showAuth({ resetForm: false });
         showAuth({ resetForm: false });
         authMessage.textContent = "서버에 연결하지 못해 세션을 확인할 수 없습니다. 로컬 토큰은 유지되며 새로고침하여 다시 확인할 수 있습니다.";
         authMessage.className = "auth-message error";
@@ -2038,10 +2072,12 @@
       resetResultView();
       updateMessageCount();
     });
+    applyRoutePresentation();
     updateMessageCount();
     clearAdminData();
     syncProxyControls();
-    restoreSession();
+    if (protectedRoute && (!authToken || !authOrigin)) navigateTo("/login");
+    else restoreSession();
   </script>
 </body>
 </html>

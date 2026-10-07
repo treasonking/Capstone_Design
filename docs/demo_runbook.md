@@ -37,10 +37,10 @@ python -m uvicorn backend.app.api.proxy:app --host 127.0.0.1 --port 8000
 터미널 3에서 정적 UI를 실행한다.
 
 ```powershell
-python -m http.server 5500 --bind 127.0.0.1 --directory frontend
+python frontend/dev_server.py
 ```
 
-브라우저에서 `http://127.0.0.1:5500/demo.html`을 연다. 다른 UI origin을 사용하면 그 origin을 `UI_ALLOWED_ORIGINS`에 쉼표로 구분해 추가하고 프록시를 다시 시작한다.
+브라우저에서 `http://127.0.0.1:5500/login`을 연다. 사용자 화면은 `/login`, `/signup`, `/app`, 관리자 화면은 `/admin` 경로를 사용한다. 다른 UI origin을 사용하면 그 origin을 `UI_ALLOWED_ORIGINS`에 쉼표로 구분해 추가하고 프록시를 다시 시작한다.
 
 ## 3. 회원가입과 로그인
 

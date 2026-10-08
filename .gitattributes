@@ -1,3 +1,4 @@
 *.py text eol=lf
 *.toml text eol=lf
 *.md text eol=lf
+securitylab/** text eol=lf

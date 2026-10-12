@@ -4,7 +4,8 @@ import asyncio
 
 import pytest
 
-from backend.app.api.proxy import ProxyRequest, proxy_chat
+from backend.app.schemas.proxy import ProxyRequest
+from backend.app.services.proxy_service import process_proxy_chat as proxy_chat
 from backend.app.detection.hybrid_detector import detect_hybrid
 from backend.app.detection.reason_codes import ReasonCode
 

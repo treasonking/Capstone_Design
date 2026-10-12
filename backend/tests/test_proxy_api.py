@@ -5,7 +5,8 @@ import asyncio
 import httpx
 import pytest
 
-from backend.app.api.proxy import ProxyRequest, proxy_chat
+from backend.app.schemas.proxy import ProxyRequest
+from backend.app.services.proxy_service import process_proxy_chat as proxy_chat
 from backend.app.detection.reason_codes import ReasonCode
 from backend.app.providers.errors import ProviderTimeoutError
 from backend.app.services import llm_service

@@ -23,10 +23,13 @@ def _inline_script() -> str:
     return match.group(1)
 
 
-def test_demo_ui_has_pre_auth_origin_and_no_default_admin_secret() -> None:
+def test_demo_ui_uses_deployment_origin_and_no_default_admin_secret() -> None:
     html = _html()
 
     assert 'id="authApiBase"' in html
+    assert 'id="authApiBase" type="hidden"' in html
+    assert 'src="/config.js"' in html
+    assert "window.ORCA_CONFIG?.apiOrigin" in html
     assert html.index('id="authApiBase"') < html.index('id="authEmail"')
     assert 'id="adminToken" type="password"' in html
     assert 'value="dev-admin-token"' not in html
@@ -85,6 +88,7 @@ def test_demo_ui_mobile_grids_allow_children_to_shrink() -> None:
     assert ".grid > *," in html
     assert ".stack > *," in html
     assert "grid-template-columns: minmax(0, 1fr);" in html
+    assert "#adminView .helper, #adminView .list-item, #userConsole .meta { overflow-wrap: anywhere; }" in html
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is not installed")

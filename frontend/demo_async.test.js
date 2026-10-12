@@ -78,6 +78,8 @@ class FakeElement {
     this.children.push(...children);
   }
 
+  insertBefore(child) { this.children.push(child); }
+
   querySelector(selector) {
     if (selector === "span") {
       if (!this.span) this.span = new FakeElement(`${this.id}-span`);
@@ -115,7 +117,7 @@ class FakeStorage {
   }
 }
 
-function createHarness({ storage = {}, fetchImpl, requestTimeoutMs } = {}) {
+function createHarness({ storage = {}, fetchImpl, requestTimeoutMs, route = "/login" } = {}) {
   const elements = new Map();
   const element = (id) => {
     if (!elements.has(id)) elements.set(id, new FakeElement(id));
@@ -123,6 +125,8 @@ function createHarness({ storage = {}, fetchImpl, requestTimeoutMs } = {}) {
   };
   const sessionStorage = new FakeStorage(storage);
   let currentFetch = fetchImpl || (() => Promise.reject(new Error("unexpected fetch")));
+  const location = { pathname: route };
+  const windowEvents = new FakeElement();
   const context = vm.createContext({
     AbortController,
     DOMException,
@@ -136,6 +140,12 @@ function createHarness({ storage = {}, fetchImpl, requestTimeoutMs } = {}) {
     fetch: (...args) => currentFetch(...args),
     sessionStorage,
     window: {
+      location,
+      history: {
+        pushState: (state, title, path) => { location.pathname = path; },
+        replaceState: (state, title, path) => { location.pathname = path; },
+      },
+      addEventListener: (type, callback) => windowEvents.addEventListener(type, callback),
       clearTimeout,
       confirm: () => true,
       scrollTo() {},
@@ -162,6 +172,7 @@ function createHarness({ storage = {}, fetchImpl, requestTimeoutMs } = {}) {
     context,
     element,
     sessionStorage,
+    windowEvents,
     setFetch(nextFetch) {
       currentFetch = nextFetch;
     },
@@ -174,6 +185,163 @@ function createHarness({ storage = {}, fetchImpl, requestTimeoutMs } = {}) {
 function abortError() {
   return new DOMException("aborted", "AbortError");
 }
+
+function chatHarness(options = {}) {
+  const h = createHarness(options);
+  h.run("authToken = 'user-token'; authOrigin = 'http://127.0.0.1:8000'; setRoute('/app'); showApp('synthetic@example.com');");
+  return h;
+}
+
+function chatFetch(final = { action: "ALLOW", content: "safe answer" }, analysis = "ALLOW", requests = []) {
+  return (url, options) => {
+    requests.push({ url, body: JSON.parse(options.body), headers: options.headers });
+    return Promise.resolve(jsonResponse(url.endsWith("/proxy/analyze") ? { action: analysis } : final, { signal: options.signal }));
+  };
+}
+
+test("CHAT final content only, memory-only history, no policy or history sent, literal HTML", async () => {
+  const requests = [];
+  const raw = '<img src=x onerror="alert(1)">';
+  const h = chatHarness({ fetchImpl: chatFetch({ action: "ALLOW", content: raw }, "ALLOW", requests) });
+  h.element("chatInput").value = raw;
+  await h.element("chatForm").emit("submit");
+  assert.equal(h.run("chatTurns[0].answer.textContent"), raw);
+  assert.equal(h.run("chatTurns[0].answer.hidden"), false);
+  h.element("chatInput").value = "second question";
+  await h.element("chatForm").emit("submit");
+  assert.equal(h.run("chatTurns.length"), 2);
+  assert.deepEqual(requests.map(r => r.body), [{message:raw}, {message:raw}, {message:"second question"}, {message:"second question"}]);
+  assert.ok(requests.every(r => !r.headers["X-Admin-Token"]));
+  assert.equal(h.sessionStorage.values.size, 0);
+  assert.equal(h.element("userConsole").hidden, true);
+});
+
+test("CHAT empty input, IME Enter, Shift Enter and duplicate submission guards", async () => {
+  const response = deferred();
+  let calls = 0;
+  const h = chatHarness({ fetchImpl: () => { calls++; return response.promise; } });
+  await h.element("chatForm").emit("submit");
+  assert.equal(calls, 0);
+  h.element("chatInput").value = "한글 질문";
+  for (const event of [{isComposing:true}, {keyCode:229}, {shiftKey:true}]) {
+    await h.element("chatInput").emit("keydown", {key:"Enter", ...event});
+  }
+  assert.equal(calls, 0);
+  const pending = h.element("chatInput").emit("keydown", {key:"Enter"});
+  await h.element("chatForm").emit("submit");
+  assert.equal(calls, 1);
+  response.resolve(jsonResponse({action:"BLOCK"}));
+  await pending;
+  assert.equal(h.run("chatTurns.length"), 1);
+  assert.equal(h.element("chatSendBtn").disabled, false);
+});
+
+test("CHAT MASK notice and BLOCK never render unsafe content", async () => {
+  const h = chatHarness({ fetchImpl: chatFetch({action:"MASK", content:"masked answer", input_masked:true}) });
+  h.element("chatInput").value = "synthetic contact";
+  await h.element("chatForm").emit("submit");
+  assert.match(h.run("chatTurns[0].status.textContent"), /가리고 전송/);
+  h.setFetch(chatFetch({action:"BLOCK", content:"must never appear"}));
+  h.element("chatInput").value = "question";
+  await h.element("chatForm").emit("submit");
+  assert.equal(h.run("chatTurns[1].answer.hidden"), true);
+  assert.equal(h.run("chatTurns[1].answer.textContent"), "");
+});
+
+test("CHAT WARN cancel has no provider request; confirm uses original snapshot", async () => {
+  const requests = [];
+  const h = chatHarness({fetchImpl:chatFetch({action:"WARN", content:"safe final"}, "WARN", requests)});
+  h.run("window.confirm = () => false");
+  h.element("chatInput").value = "warn question";
+  await h.element("chatForm").emit("submit");
+  assert.equal(requests.length, 1);
+  assert.equal(h.element("chatInput").value, "warn question");
+  h.run("window.confirm = () => { chatInput.value = 'mutated'; return true; }");
+  await h.element("chatForm").emit("submit");
+  assert.equal(requests[2].body.message, "warn question");
+  assert.equal(h.run("chatTurns[1].answer.textContent"), "safe final");
+});
+
+test("CHAT errors and body timeout recover with manual original-input retry only", async (t) => {
+  for (const failure of ["server", "provider", "body-timeout"]) {
+    await t.test(failure, async () => {
+      let calls = 0;
+      const h = chatHarness({requestTimeoutMs:10, fetchImpl:(url, options) => {
+        calls++;
+        if (url.endsWith("/proxy/analyze")) return Promise.resolve(jsonResponse({action:"ALLOW"}));
+        if (failure === "provider") return Promise.resolve(jsonResponse({action:"ERROR", content:"internal secret"}));
+        return Promise.resolve(jsonResponse({detail:"internal secret", action:"ALLOW", content:"late"}, {
+          status:failure === "server" ? 500 : 200, signal:options.signal, bodyDelayMs:failure === "body-timeout" ? 80 : 0,
+        }));
+      }});
+      h.element("chatInput").value = "original question";
+      await h.element("chatForm").emit("submit");
+      assert.equal(calls, 2);
+      assert.equal(h.run("chatTurns[0].answer.hidden"), true);
+      assert.equal(h.run("chatTurns[0].retry.hidden"), false);
+      assert.doesNotMatch(h.run("chatTurns[0].status.textContent"), /internal secret/);
+      assert.equal(h.element("chatSendBtn").disabled, false);
+      assert.equal(h.element("chatInput").disabled, false);
+      const requests = [];
+      h.setFetch(chatFetch(undefined, "ALLOW", requests));
+      h.element("chatInput").value = "different draft";
+      await h.run("chatTurns[0].retry.emit('click')");
+      assert.equal(requests[1].body.message, "original question");
+      assert.equal(h.run("chatTurns.length"), 1);
+      assert.equal(h.run("chatTurns[0].answer.textContent"), "safe answer");
+      assert.equal(h.element("chatInput").value, "different draft");
+    });
+  }
+});
+
+test("CHAT invalidation prevents stale response or finally after new chat, route leave, logout", async (t) => {
+  for (const kind of ["new", "route", "logout", "pagehide"]) {
+    await t.test(kind, async () => {
+      const old = deferred();
+      const h = chatHarness({fetchImpl:(url) => url.endsWith("/proxy/chat") ? old.promise : Promise.resolve(jsonResponse({action:"ALLOW"}))});
+      h.element("chatInput").value = "old question";
+      const pending = h.element("chatForm").emit("submit");
+      await new Promise(r => setTimeout(r, 5));
+      if (kind === "new") await h.element("newChatBtn").emit("click");
+      if (kind === "route") h.run("navigateTo('/login')");
+      if (kind === "logout") await h.element("logoutBtn").emit("click");
+      if (kind === "pagehide") await h.windowEvents.emit("pagehide");
+      assert.equal(h.run("chatTurns.length"), 0);
+      h.run("authToken='new-token'; authOrigin='http://127.0.0.1:8000'; setRoute('/app');");
+      h.setFetch(chatFetch());
+      h.element("chatInput").value = "new question";
+      await h.element("chatForm").emit("submit");
+      old.resolve(jsonResponse({action:"ALLOW", content:"stale"}));
+      await pending;
+      assert.equal(h.run("chatTurns.length"), 1);
+      assert.equal(h.run("chatTurns[0].answer.textContent"), "safe answer");
+      assert.equal(h.element("chatSendBtn").disabled, false);
+    });
+  }
+});
+
+test("RESTORE 401 clears token; origin change never sends old bearer to new API", async () => {
+  let calls = 0;
+  const storage = {orca_auth_token:"stored", orca_auth_origin:"http://127.0.0.1:8000"};
+  const h = createHarness({storage, fetchImpl:() => Promise.resolve(jsonResponse({}, {status:401}))});
+  await new Promise(r => setTimeout(r, 10));
+  assert.equal(h.sessionStorage.getItem("orca_auth_token"), null);
+  const other = createHarness({storage:{...storage, orca_auth_origin:"http://127.0.0.1:9000"}, fetchImpl:() => {calls++;}});
+  assert.equal(calls, 0);
+  assert.equal(other.sessionStorage.getItem("orca_auth_token"), null);
+});
+
+test("stale proxy 401 cannot log out a newer user session", async () => {
+  const response = deferred();
+  const h = chatHarness({fetchImpl:() => response.promise});
+  h.element("chatInput").value = "old question";
+  const pending = h.element("chatForm").emit("submit");
+  h.run("resetChat(); authToken='new-session';");
+  response.resolve(jsonResponse({}, {status:401}));
+  await pending;
+  assert.equal(h.run("authToken"), "new-session");
+  assert.equal(h.run("chatTurns.length"), 0);
+});
 
 function jsonResponse(payload, { status = 200, signal, bodyDelayMs = 0, bodyError } = {}) {
   return {
@@ -433,7 +601,7 @@ test("AUTH-STALE prevents an invalidated request from overwriting a newer login"
 });
 
 async function prepareAdminHarness() {
-  const adminResponses = [deferred(), deferred(), deferred()];
+  const adminResponses = [deferred(), deferred(), deferred(), deferred()];
   let index = 0;
   const harness = createHarness({
     fetchImpl: (url) => {
@@ -459,6 +627,7 @@ function resolveAdminResponses(adminResponses) {
   }));
   adminResponses[1].resolve(jsonResponse([{ reason_code: "SAFE_INPUT", count: 93 }]));
   adminResponses[2].resolve(jsonResponse([]));
+  adminResponses[3].resolve(jsonResponse({ provider: "mock" }));
 }
 
 function successfulAdminFetch(total = 99) {
@@ -507,7 +676,7 @@ test("ADMIN-TIMEOUT clears stale metrics, restores refresh, and permits retry", 
 });
 
 test("ADMIN-STALE prevents an invalidated refresh from changing newer results or controls", async () => {
-  const oldResponses = [deferred(), deferred(), deferred()];
+  const oldResponses = [deferred(), deferred(), deferred(), deferred()];
   let oldIndex = 0;
   const harness = createHarness({ fetchImpl: () => oldResponses[oldIndex++].promise });
   harness.run("authToken = 'user-token'; authOrigin = 'http://127.0.0.1:8000'; apiBase.value = authOrigin;");

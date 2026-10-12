@@ -26,6 +26,8 @@ from backend.app.schemas.proxy import (
     ProxyAnalyzeResponse,
     ProxyRequest,
     ProxyResponse,
+    UserAnalyzeResponse,
+    UserChatResponse,
 )
 from backend.app.schemas.upstream import UpstreamConfigResponse
 from backend.app.services.audit_service import (
@@ -46,6 +48,7 @@ from backend.app.services.llm_service import get_upstream_config_summary
 from backend.app.services.llm_service import not_called_provider_metadata
 from backend.app.services.proxy_service import (
     POLICY_PATH,
+    ALLOWED_POLICY_IDS,
     _detect_text,
     _audit_from_detections,
     _combine_reason_codes,
@@ -173,26 +176,51 @@ async def auth_me(
     return AuthUserResponse(email=email)
 
 
+def _proxy_access(req: ProxyRequest, admin_token: str | None) -> tuple[ProxyRequest, bool]:
+    # A debug flag or a user-supplied policy cannot grant diagnostic privileges.
+    if admin_token is not None:
+        _require_admin_token(admin_token)
+        return req, True
+    policy_id = os.getenv("USER_POLICY_ID", "default").strip()
+    if policy_id not in ALLOWED_POLICY_IDS:
+        raise HTTPException(status_code=503, detail="사용자 정책 설정을 확인할 수 없습니다.")
+    return req.model_copy(update={"policy_id": policy_id, "model": "", "user_id": "anonymous"}), False
+
+
 @app.post("/proxy/chat")
 async def proxy_chat(
     req: ProxyRequest,
     _email: str = Depends(_require_authenticated_user),
-) -> ProxyResponse:
-    return await process_proxy_chat(req)
+    x_admin_token: str | None = Header(default=None),
+) -> ProxyResponse | UserChatResponse:
+    effective, diagnostic = _proxy_access(req, x_admin_token)
+    result = await process_proxy_chat(effective)
+    if diagnostic:
+        return result
+    return UserChatResponse(
+        action=result.action,
+        content=None if result.action in {"BLOCK", "ERROR"} else result.content,
+        input_masked=result.input_action == "MASK" or result.audit_summary.get("input", {}).get("provider_input_masked") is True,
+        output_masked=result.output_action == "MASK",
+    )
 
 
 @app.post("/proxy/analyze")
 async def proxy_analyze(
     req: ProxyRequest,
     _email: str = Depends(_require_authenticated_user),
-) -> ProxyAnalyzeResponse:
-    return await process_proxy_analyze(req)
+    x_admin_token: str | None = Header(default=None),
+) -> ProxyAnalyzeResponse | UserAnalyzeResponse:
+    effective, diagnostic = _proxy_access(req, x_admin_token)
+    result = await process_proxy_analyze(effective)
+    return result if diagnostic else UserAnalyzeResponse(action=result.action)
 
 
 @app.post("/proxy/chat/stream")
 async def proxy_chat_stream(
     req: ProxyRequest,
     _email: str = Depends(_require_authenticated_user),
+    _admin: None = Depends(_require_admin_token),
 ) -> StreamingResponse:
     return StreamingResponse(
         process_proxy_chat_stream(req),
@@ -240,7 +268,11 @@ async def admin_upstream_config(
 
 
 @app.post("/v1/chat/completions")
-async def chat_completions(req: ChatCompletionRequest) -> dict:
+async def chat_completions(
+    req: ChatCompletionRequest,
+    _email: str = Depends(_require_authenticated_user),
+    _admin: None = Depends(_require_admin_token),
+) -> dict:
     started = time.perf_counter()
     timestamp_utc = datetime.now(timezone.utc).isoformat()
     request_id = str(uuid.uuid4())

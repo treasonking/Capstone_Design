@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -23,6 +23,19 @@ class ProxyResponse(BaseModel):
     output_action: str | None = None
     content: str | None
     audit_summary: dict[str, Any] = Field(default_factory=dict)
+
+
+class UserAnalyzeResponse(BaseModel):
+    """Preflight only; no provider call or output validation result."""
+    action: Literal["ALLOW", "MASK", "WARN", "BLOCK"]
+
+
+class UserChatResponse(BaseModel):
+    """Minimal projection of the final, server-validated response."""
+    action: Literal["ALLOW", "MASK", "WARN", "BLOCK", "ERROR"]
+    content: str | None
+    input_masked: bool = False
+    output_masked: bool = False
 
 
 class DetectionPreviewItem(BaseModel):

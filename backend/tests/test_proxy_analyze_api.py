@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
+import pytest
 
 from backend.app.api.proxy import app
 from backend.app.services.auth_service import issue_token
 
 
 client = TestClient(app)
-AUTH_HEADERS = {"Authorization": f"Bearer {issue_token('test@example.com')}"}
+AUTH_HEADERS = {"Authorization": f"Bearer {issue_token('test@example.com')}", "X-Admin-Token": "test-diagnostic-token"}
+
+
+@pytest.fixture(autouse=True)
+def diagnostic_access(monkeypatch):
+    monkeypatch.setenv("ADMIN_API_TOKEN", "test-diagnostic-token")
 
 
 def test_proxy_request_rejects_empty_message() -> None:

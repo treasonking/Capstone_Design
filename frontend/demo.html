@@ -755,6 +755,28 @@
         font-size: 2rem;
       }
     }
+    .chat-panel { max-width: 880px; margin: 0 auto; height: calc(100dvh - 150px); min-height: 430px; display: flex; flex-direction: column; }
+    .chat-heading { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+    .chat-heading h1 { font-size: 24px; margin: 0; }
+    .chat-log { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 18px 0; min-height: 100px; }
+    .chat-turn { margin-bottom: 22px; }
+    .chat-bubble { padding: 12px 16px; border-radius: 14px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; }
+    .chat-user { background: #eee; color: #111; margin-left: 12%; }
+    .chat-assistant { border: 1px solid #ddd; margin-right: 5%; }
+    .chat-label { display: block; font-size: 12px; font-weight: 700; margin: 8px 0; }
+    .chat-state { font-size: 14px; padding: 10px 0; overflow-wrap: anywhere; }
+    .chat-composer { border-top: 1px solid #ddd; padding-top: 12px; }
+    .chat-composer textarea { min-height: 76px; max-height: 180px; resize: vertical; }
+    .chat-composer .actions { justify-content: space-between; align-items: center; }
+    .chat-notice { font-size: 12px; color: #555; margin: 8px 0; }
+    #adminView { margin-bottom: 18px; }
+    #adminView .helper, #adminView .list-item, #userConsole .meta { overflow-wrap: anywhere; }
+    @media (max-width: 600px) {
+      .chat-panel { height: calc(100dvh - 110px); padding: 14px; }
+      .chat-heading h1 { font-size: 20px; }
+      .chat-user { margin-left: 5%; }
+      .session-bar { flex-wrap: wrap; overflow-wrap: anywhere; }
+    }
   </style>
 </head>
 <body>
@@ -784,14 +806,8 @@
           <p id="authDescription">계정으로 로그인하고 보안 프록시 콘솔을 시작하세요.</p>
 
           <form id="authForm" novalidate>
-            <div class="field">
-              <div class="field-label">
-                <label for="authApiBase">API Base URL</label>
-              </div>
-              <input id="authApiBase" type="url" value="http://127.0.0.1:8000" autocomplete="off" required>
-              <div class="helper">로그인 토큰은 인증에 성공한 이 origin으로만 전송됩니다.</div>
-              <div class="field-error" id="apiBaseError" aria-live="polite"></div>
-            </div>
+            <input id="authApiBase" type="hidden" value="http://127.0.0.1:8000">
+            <div class="field-error" id="apiBaseError" aria-live="polite"></div>
 
             <div class="field">
               <div class="field-label">
@@ -834,11 +850,24 @@
     <div id="appView" hidden>
       <div class="session-bar">
         <span id="sessionUser"></span>
+        <nav aria-label="화면 이동"><button id="chatNav" class="secondary" type="button">채팅</button> <button id="adminNav" class="secondary" type="button">관리자</button></nav>
         <button class="secondary" id="logoutBtn" type="button">로그아웃</button>
       </div>
+    <section id="chatView" class="panel chat-panel" aria-label="사용자 채팅" hidden>
+      <header class="chat-heading"><h1>TEAM ORCA</h1><button id="newChatBtn" class="secondary" type="button">새 대화</button></header>
+      <p class="chat-notice">안전 검사를 거친 답변을 제공합니다. 각 질문은 독립적으로 처리되며 이전 대화는 AI에 전달되지 않습니다.</p>
+      <div id="chatLog" class="chat-log" role="log" aria-label="대화 기록" aria-live="polite"></div>
+      <form id="chatForm" class="chat-composer">
+        <label for="chatInput">메시지</label>
+        <textarea id="chatInput" placeholder="무엇을 도와드릴까요?" autocomplete="off"></textarea>
+        <div class="actions"><span class="chat-notice">Enter 전송 · Shift+Enter 줄바꿈</span><button id="chatSendBtn" class="primary" type="submit">전송</button></div>
+        <div id="chatStatus" class="chat-state" role="status" aria-live="polite"></div>
+      </form>
+    </section>
+    <section id="userConsole" aria-label="관리자 검증 콘솔" hidden>
     <section class="hero">
-      <h1>LLM Security Proxy Demo</h1>
-      <p>백엔드 보안 프록시의 사용자 입력 흐름과 관리자 요약을 한 화면에서 보여주는 발표용 정적 데모 페이지입니다. FastAPI 프록시가 <code>http://127.0.0.1:8000</code>에서 실행 중일 때 사용할 수 있으며, API 호출까지 함께 확인하려면 <code>http://127.0.0.1:5500/demo.html</code>로 서빙하는 구성을 권장합니다.</p>
+      <h1>관리자 검증 콘솔</h1>
+      <p>관리자 권한으로 지금 실행한 요청의 상세 결과입니다. 과거 요청 원문이나 개별 감사 서명을 조회하는 기능이 아닙니다. 서명은 ML-DSA 교체 가능한 감사 로그 서명 인터페이스와 Mock signer 기반 검증 구조입니다.</p>
     </section>
 
     <section class="grid">
@@ -862,9 +891,8 @@
         <div class="stack">
           <div class="row">
             <div>
-              <label for="apiBase">API Base URL</label>
-              <input id="apiBase" type="url" value="http://127.0.0.1:8000" autocomplete="off">
-              <div class="helper">주소를 바꾸면 현재 인증이 초기화됩니다.</div>
+              <input id="apiBase" type="hidden" value="http://127.0.0.1:8000">
+              <div class="helper">API 주소는 실행 설정에서 관리합니다.</div>
             </div>
             <div>
               <label for="policyId">policy_id</label>
@@ -966,7 +994,9 @@
       </article>
     </section>
 
-    <section class="grid" style="margin-top: 18px;">
+    </section>
+
+    <section id="adminView" class="grid" style="margin-top: 18px;" aria-label="관리자 요약">
       <article class="panel">
         <h2>관리자 요약</h2>
           <p>별도 관리자 토큰으로 전체 통계와 최근 차단 이력을 조회합니다. 계정별 RBAC 화면은 아닙니다.</p>
@@ -982,6 +1012,7 @@
             </div>
           </div>
           <div class="auth-message" id="adminStatus" role="status" aria-live="polite">관리자 인증 전에는 통계와 이력이 잠겨 있습니다.</div>
+          <p id="upstreamConfig" class="helper">Provider 설정은 관리자 인증 후 조회합니다.</p>
 
           <div class="cards">
             <div class="card">
@@ -1038,13 +1069,14 @@
       </article>
     </section>
 
-    <footer class="panel footer">
+    <footer class="panel footer" id="appFooter">
       <h2>사용 주의</h2>
       <p>본 페이지는 캡스톤 발표 및 로컬 검증용 정적 데모 페이지이며, 운영용 관리자 콘솔이 아닙니다. 사용자 세션은 Authorization 헤더로 지정된 API origin에만 전송되며, 외부 LLM API 키는 프런트엔드에 보관하지 않습니다. 관리자 토큰은 브라우저 저장소에 저장하지 않습니다.</p>
     </footer>
     </div>
   </div>
 
+  <script src="/config.js"></script>
   <script>
     const authView = document.getElementById("authView");
     const appView = document.getElementById("appView");
@@ -1060,6 +1092,9 @@
     const confirmPassword = document.getElementById("confirmPassword");
     const authApiBase = document.getElementById("authApiBase");
     const apiBase = document.getElementById("apiBase");
+    const userConsole = document.getElementById("userConsole");
+    const adminView = document.getElementById("adminView");
+    const appFooter = document.getElementById("appFooter");
     const apiBaseError = document.getElementById("apiBaseError");
     const emailError = document.getElementById("emailError");
     const passwordError = document.getElementById("passwordError");
@@ -1067,12 +1102,55 @@
     const sessionUser = document.getElementById("sessionUser");
     const loginTab = document.getElementById("loginTab");
     const signupTab = document.getElementById("signupTab");
+    const chatView = document.getElementById("chatView");
+    const chatInput = document.getElementById("chatInput");
+    const chatLog = document.getElementById("chatLog");
+    const chatStatus = document.getElementById("chatStatus");
+    const chatSendBtn = document.getElementById("chatSendBtn");
+    const configuredApiOrigin = window.ORCA_CONFIG?.apiOrigin || "http://127.0.0.1:8000";
+    authApiBase.value = configuredApiOrigin;
+    apiBase.value = configuredApiOrigin;
     const TOKEN_STORAGE_KEY = "orca_auth_token";
     const ORIGIN_STORAGE_KEY = "orca_auth_origin";
+    const FLASH_MESSAGE_KEY = "orca_auth_flash";
     const REQUEST_TIMEOUT_MS = 15000;
     let authMode = "login";
     let authToken = sessionStorage.getItem(TOKEN_STORAGE_KEY);
     let authOrigin = sessionStorage.getItem(ORIGIN_STORAGE_KEY);
+    let routePath = ["/login", "/signup", "/app", "/admin"].includes(window.location.pathname.replace(/\/$/, ""))
+      ? window.location.pathname.replace(/\/$/, "")
+      : "/login";
+    let protectedRoute = routePath === "/app" || routePath === "/admin";
+    let adminRoute = routePath === "/admin";
+
+    function setRoute(path, replace = false) {
+      routePath = path;
+      protectedRoute = path === "/app" || path === "/admin";
+      adminRoute = path === "/admin";
+      window.history[replace ? "replaceState" : "pushState"](null, "", path);
+    }
+
+    function navigateTo(path) {
+      if (authBusy) return;
+      invalidateAuthFlow();
+      clearSensitiveWorkspace();
+      setRoute(path);
+      applyRoutePresentation();
+      if (protectedRoute) restoreSession();
+    }
+
+    function applyRoutePresentation() {
+      const authRoute = routePath === "/login" || routePath === "/signup";
+      authView.hidden = !authRoute;
+      appView.hidden = true;
+      userConsole.hidden = true;
+      adminView.hidden = true;
+      chatView.hidden = true;
+      appFooter.hidden = true;
+      document.getElementById("loginTab").hidden = routePath === "/signup";
+      document.getElementById("signupTab").hidden = routePath === "/login";
+      setAuthMode(routePath === "/signup" ? "signup" : "login");
+    }
     let authBusy = false;
     let authRequestSequence = 0;
     let activeAuthController = null;
@@ -1252,15 +1330,27 @@
 
     function showApp(email) {
       authTransitionTimer = null;
+      if (!protectedRoute) setRoute("/app", true);
       authView.hidden = true;
       appView.hidden = false;
+      chatView.hidden = adminRoute;
+      userConsole.hidden = !adminRoute || !adminAuthenticated;
+      adminView.hidden = !adminRoute;
+      appFooter.hidden = !adminRoute;
+      authPassword.value = "";
+      confirmPassword.value = "";
       sessionUser.textContent = `${email}로 로그인됨`;
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     function showAuth({ resetForm = true } = {}) {
+      if (protectedRoute) setRoute("/login", true);
       appView.hidden = true;
       authView.hidden = false;
+      userConsole.hidden = true;
+      chatView.hidden = true;
+      adminView.hidden = true;
+      appFooter.hidden = true;
       if (resetForm) authForm.reset();
       authApiBase.value = authOrigin || apiBase.value || "http://127.0.0.1:8000";
       setAuthMode("login", { force: true });
@@ -1279,6 +1369,7 @@
         authMessage.textContent = message;
         authMessage.className = "auth-message error";
       }
+      if (protectedRoute) navigateTo("/login");
     }
 
     async function submitAuth(snapshot, controller) {
@@ -1332,11 +1423,11 @@
       return isValid;
     }
 
-    loginTab.addEventListener("click", () => setAuthMode("login"));
-    signupTab.addEventListener("click", () => setAuthMode("signup"));
+    loginTab.addEventListener("click", () => navigateTo("/login"));
+    signupTab.addEventListener("click", () => navigateTo("/signup"));
     authNote.addEventListener("click", (event) => {
       const switchButton = event.target.closest("[data-switch]");
-      if (switchButton) setAuthMode(switchButton.dataset.switch);
+      if (switchButton) navigateTo(switchButton.dataset.switch === "signup" ? "/signup" : "/login");
     });
     document.querySelectorAll(".toggle-password").forEach((button) => {
       button.addEventListener("click", () => {
@@ -1349,6 +1440,7 @@
     });
     authForm.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (authBusy) return;
       if (!validateAuthForm()) {
         authMessage.textContent = "입력 내용을 확인해 주세요.";
         authMessage.className = "auth-message error";
@@ -1372,10 +1464,13 @@
         const { payload, apiOrigin } = await submitAuth(snapshot, controller);
         if (!canApplyAuthSuccess(requestId, controller)) return;
         if (snapshot.mode === "signup") {
+          setRoute("/login", true);
+          applyRoutePresentation();
           setAuthMode("login", { force: true });
           authApiBase.value = apiOrigin;
           authEmail.value = typeof payload?.email === "string" ? payload.email : snapshot.email;
           authPassword.value = "";
+          confirmPassword.value = "";
           authMessage.textContent = "가입이 완료되었습니다. 로그인해 주세요.";
           authMessage.className = "auth-message success";
         } else {
@@ -1411,19 +1506,21 @@
       }
     });
     document.getElementById("logoutBtn").addEventListener("click", async () => {
-      invalidateAdminRequests();
+      const logoutToken = authToken;
+      const logoutOrigin = authOrigin;
+      clearStoredAuth("로그아웃되었습니다.");
       let logoutMessage = "로그아웃되었습니다.";
       try {
-        if (authToken && authOrigin) await requestJson(`${authOrigin}/auth/logout`, {
+        if (logoutToken && logoutOrigin) await requestJson(`${logoutOrigin}/auth/logout`, {
           method: "POST",
-          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+          headers: { Authorization: `Bearer ${logoutToken}` }
         });
       } catch (error) {
         logoutMessage = error.kind === "unauthorized"
           ? "서버 세션이 이미 만료되었습니다. 로컬 인증 정보를 정리했습니다."
           : "로컬 로그아웃은 완료했지만 서버 토큰 폐기는 확인하지 못했습니다.";
       } finally {
-        clearStoredAuth(logoutMessage);
+        if (!authToken) authMessage.textContent = logoutMessage;
       }
     });
 
@@ -1477,15 +1574,176 @@
     let adminRequestSequence = 0;
     let activeAdminController = null;
     let adminTokenVersion = 0;
+    let chatSequence = 0;
+    let activeChat = null;
+    const chatTurns = [];
+
+    function resetChat() {
+      chatSequence += 1;
+      if (activeChat) activeChat.controller.abort();
+      activeChat = null;
+      chatTurns.length = 0;
+      chatLog.replaceChildren();
+      chatInput.value = "";
+      chatStatus.textContent = "새 질문을 입력해 주세요.";
+      syncChatControls();
+    }
+
+    function syncChatControls() {
+      chatInput.disabled = Boolean(activeChat);
+      chatSendBtn.disabled = Boolean(activeChat);
+      chatSendBtn.textContent = activeChat ? "처리 중…" : "전송";
+      for (const turn of chatTurns) turn.retry.disabled = Boolean(activeChat);
+    }
+
+    function ownsChat(operation) {
+      return activeChat === operation && chatSequence === operation.id
+        && authToken === operation.token && authOrigin === operation.origin
+        && normalizeApiOrigin(apiBase.value) === operation.origin && routePath === "/app";
+    }
+
+    function createChatTurn(text) {
+      const container = document.createElement("article");
+      container.className = "chat-turn";
+      const user = document.createElement("div");
+      user.className = "chat-bubble chat-user";
+      user.textContent = text;
+      const userLabel = document.createElement("span");
+      userLabel.className = "chat-label";
+      userLabel.textContent = "나";
+      const answerLabel = document.createElement("span");
+      answerLabel.className = "chat-label";
+      answerLabel.textContent = "ORCA";
+      const answer = document.createElement("div");
+      answer.className = "chat-bubble chat-assistant";
+      answer.hidden = true;
+      const status = document.createElement("div");
+      status.className = "chat-state";
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "secondary";
+      retry.textContent = "이 질문 다시 시도";
+      retry.hidden = true;
+      const turn = { text, answer, answerLabel, status, retry };
+      retry.addEventListener("click", () => submitChat(turn));
+      container.append(userLabel, user, answerLabel, answer, status, retry);
+      chatLog.append(container);
+      chatTurns.push(turn);
+      return turn;
+    }
+
+    async function submitChat(retryTurn = null) {
+      if (activeChat || routePath !== "/app" || !authToken) return;
+      if (retryTurn && !chatTurns.includes(retryTurn)) return;
+      const text = retryTurn ? retryTurn.text : chatInput.value.trim();
+      if (!text) {
+        chatStatus.textContent = "메시지를 입력해 주세요.";
+        chatInput.focus();
+        return;
+      }
+      const turn = retryTurn || createChatTurn(text);
+      const operation = Object.freeze({ id: ++chatSequence, token: authToken,
+        origin: authOrigin, controller: new AbortController(), text });
+      activeChat = operation;
+      turn.retry.hidden = true;
+      turn.answer.hidden = true;
+      turn.answer.textContent = "";
+      turn.answerLabel.hidden = true;
+      turn.status.textContent = "안전하게 답변을 준비하고 있습니다…";
+      chatStatus.textContent = "응답 대기 중";
+      if (!retryTurn) chatInput.value = "";
+      syncChatControls();
+      try {
+        const options = { method: "POST", body: JSON.stringify({ message: operation.text }), controller: operation.controller };
+        const analysis = await authenticatedRequest("/proxy/analyze", options);
+        if (!ownsChat(operation) || operation.controller.signal.aborted) return;
+        if (!["ALLOW", "MASK", "WARN", "BLOCK"].includes(analysis.payload?.action)) {
+          throw new ApiRequestError("Invalid analysis", { kind: "invalid-response" });
+        }
+        if (analysis.payload.action === "BLOCK") {
+          turn.status.textContent = "요청을 처리할 수 없습니다. 내용을 수정해 주세요.";
+          return;
+        }
+        if (analysis.payload.action === "WARN" && !window.confirm("주의가 필요한 내용입니다. 이 질문을 전송할까요? 취소하면 수정할 수 있습니다.")) {
+          turn.status.textContent = "전송을 취소했습니다. 내용을 수정해 주세요.";
+          chatInput.value = operation.text;
+          return;
+        }
+        const { payload } = await authenticatedRequest("/proxy/chat", options);
+        if (!ownsChat(operation) || operation.controller.signal.aborted) return;
+        if (payload?.action === "BLOCK") {
+          turn.status.textContent = "요청을 처리할 수 없습니다. 내용을 수정해 주세요.";
+          return;
+        }
+        if (!["ALLOW", "MASK", "WARN"].includes(payload?.action) || typeof payload.content !== "string") {
+          throw new ApiRequestError("Unavailable response", { kind: "request" });
+        }
+        turn.answer.textContent = payload.content;
+        turn.answer.hidden = false;
+        turn.answerLabel.hidden = false;
+        turn.status.textContent = payload.input_masked ? "개인정보를 가리고 전송했습니다."
+          : payload.output_masked ? "답변의 개인정보를 가렸습니다."
+          : payload.action === "WARN" ? "주의가 필요한 내용입니다. 답변을 확인해 주세요." : "";
+      } catch (error) {
+        if (!ownsChat(operation) || error.kind === "aborted") return;
+        turn.status.textContent = error.kind === "timeout"
+          ? "응답 시간이 초과되었습니다. 서버에서 처리됐을 수 있습니다. 필요하면 수동으로 다시 시도해 주세요."
+          : "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+        turn.retry.hidden = false;
+      } finally {
+        if (ownsChat(operation)) {
+          activeChat = null;
+          syncChatControls();
+          chatStatus.textContent = "새 질문을 보내거나 실패한 질문을 다시 시도할 수 있습니다.";
+          chatInput.focus();
+          chatLog.scrollTop = chatLog.scrollHeight;
+        }
+      }
+    }
+
+    document.getElementById("chatForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      return submitChat();
+    });
+    chatInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey && !event.isComposing && event.keyCode !== 229) {
+        event.preventDefault();
+        return submitChat();
+      }
+    });
+    document.getElementById("newChatBtn").addEventListener("click", () => { resetChat(); chatInput.focus(); });
+    document.getElementById("chatNav").addEventListener("click", () => navigateTo("/app"));
+    document.getElementById("adminNav").addEventListener("click", () => navigateTo("/admin"));
+    window.addEventListener("pagehide", () => { invalidateAuthFlow(); clearSensitiveWorkspace(); });
+    window.addEventListener("popstate", () => {
+      invalidateAuthFlow();
+      clearSensitiveWorkspace();
+      const path = window.location.pathname.replace(/\/$/, "");
+      setRoute(["/login", "/signup", "/app", "/admin"].includes(path) ? path : "/login", true);
+      applyRoutePresentation();
+      if (protectedRoute) restoreSession();
+    });
 
     async function restoreSession() {
-      if (!authToken && !authOrigin) return;
+      if (!authToken && !authOrigin) {
+        if (protectedRoute) showAuth({ resetForm: false });
+        return;
+      }
       if (!authToken || !authOrigin) {
         clearStoredAuth("저장된 인증 정보가 완전하지 않아 다시 로그인이 필요합니다.");
         return;
       }
-      authApiBase.value = authOrigin;
-      apiBase.value = authOrigin;
+      let configuredOrigin;
+      try {
+        configuredOrigin = normalizeApiOrigin(apiBase.value);
+      } catch (error) {
+        clearStoredAuth("API 실행 설정을 확인해 주세요.");
+        return;
+      }
+      if (authOrigin !== configuredOrigin) {
+        clearStoredAuth("API 설정이 변경되어 다시 로그인이 필요합니다.");
+        return;
+      }
       const sessionToken = authToken;
       const sessionOrigin = authOrigin;
       const requestId = ++authRequestSequence;
@@ -1734,13 +1992,15 @@
 
     async function authenticatedRequest(path, options = {}) {
       const requestOrigin = normalizeApiOrigin(apiBase.value);
+      const requestToken = authToken;
       try {
         return await requestJson(`${requestOrigin}${path}`, {
           ...options,
           headers: { ...authenticatedHeaders(requestOrigin), ...(options.headers || {}) }
         });
       } catch (error) {
-        if (error.kind === "unauthorized" && authToken) {
+        if (error.kind === "unauthorized" && authToken === requestToken && authOrigin === requestOrigin
+            && authToken && !options.headers?.["X-Admin-Token"]) {
           clearStoredAuth("세션이 만료되었거나 무효입니다. 다시 로그인해 주세요.");
         }
         throw error;
@@ -1776,7 +2036,7 @@
     }
 
     function beginProxyOperation() {
-      if (proxyBusy) return null;
+      if (proxyBusy || !adminAuthenticated || !adminToken.value.trim() || !adminRoute) return null;
       proxyBusy = true;
       proxyRequestSequence += 1;
       activeProxyController = new AbortController();
@@ -1786,12 +2046,14 @@
         version: inputVersion,
         message: message.value,
         policyId: policyId.value,
+        adminToken: adminToken.value.trim(),
         controller: activeProxyController
       };
     }
 
     function isCurrentOperation(operation) {
-      return operation.sequence === proxyRequestSequence && operation.version === inputVersion;
+      return operation.sequence === proxyRequestSequence && operation.version === inputVersion
+        && operation.adminToken === adminToken.value.trim() && adminAuthenticated;
     }
 
     function finishProxyOperation(operation) {
@@ -1813,6 +2075,7 @@
       try {
         const { payload, status } = await authenticatedRequest("/proxy/analyze", {
           method: "POST",
+          headers: { "X-Admin-Token": operation.adminToken },
           controller: operation.controller,
           body: JSON.stringify({ message: operation.message, policy_id: operation.policyId })
         });
@@ -1847,6 +2110,7 @@
       try {
         const { payload, status } = await authenticatedRequest("/proxy/chat", {
           method: "POST",
+          headers: { "X-Admin-Token": operation.adminToken },
           controller: operation.controller,
           body: JSON.stringify({ message: operation.message, policy_id: operation.policyId })
         });
@@ -1891,6 +2155,16 @@
 
     function clearAdminData({ clearToken = false, messageText = "관리자 인증 전에는 통계와 이력이 잠겨 있습니다." } = {}) {
       invalidateAdminRequests();
+      if (activeProxyController) activeProxyController.abort();
+      proxyRequestSequence += 1;
+      activeProxyController = null;
+      proxyBusy = false;
+      resetPreflightControls({ incrementVersion: true });
+      resetResultView();
+      message.value = "";
+      updateMessageCount();
+      userConsole.hidden = true;
+      document.getElementById("upstreamConfig").textContent = "Provider 설정은 관리자 인증 후 조회합니다.";
       adminAuthenticated = false;
       latestAdminBlocks = [];
       if (clearToken) adminToken.value = "";
@@ -1987,16 +2261,19 @@
       refreshAdminBtn.disabled = true;
       const headers = { "X-Admin-Token": token };
       try {
-        const [statsResult, reasonsResult, blocksResult] = await Promise.all([
+        const [statsResult, reasonsResult, blocksResult, configResult] = await Promise.all([
           requestJson(`${origin}/admin/stats`, { headers, controller }),
           requestJson(`${origin}/admin/reason-codes`, { headers, controller }),
-          requestJson(`${origin}/admin/recent-blocks`, { headers, controller })
+          requestJson(`${origin}/admin/recent-blocks`, { headers, controller }),
+          requestJson(`${origin}/admin/upstream-config`, { headers, controller })
         ]);
         if (!canApplyAdminSuccess(context)) return;
         const stats = statsResult.payload;
         const reasons = Array.isArray(reasonsResult.payload) ? reasonsResult.payload : [];
         latestAdminBlocks = Array.isArray(blocksResult.payload) ? blocksResult.payload : [];
         adminAuthenticated = true;
+        userConsole.hidden = !adminRoute;
+        document.getElementById("upstreamConfig").textContent = JSON.stringify(configResult.payload);
         adminReasonFilter.disabled = false;
         clearAdminFilterBtn.disabled = false;
         totalRequests.textContent = String(stats.total_requests ?? 0);
@@ -2080,6 +2357,7 @@
     }
 
     function clearSensitiveWorkspace() {
+      resetChat();
       if (activeProxyController) activeProxyController.abort();
       proxyRequestSequence += 1;
       proxyBusy = false;
@@ -2134,6 +2412,7 @@
         const origin = normalizeApiOrigin(authApiBase.value);
         authApiBase.value = origin;
         apiBase.value = origin;
+        if (authOrigin && origin !== authOrigin) clearStoredAuth("API 설정이 변경되어 다시 로그인이 필요합니다.");
         setFieldError(authApiBase, apiBaseError, "");
       } catch (error) {
         setFieldError(authApiBase, apiBaseError, error.message);
@@ -2176,10 +2455,20 @@
       resetResultView();
       updateMessageCount();
     });
+    appView.insertBefore(adminView, userConsole);
+    setRoute(routePath, true);
+    applyRoutePresentation();
+    const authFlashMessage = sessionStorage.getItem(FLASH_MESSAGE_KEY);
+    if (authFlashMessage && routePath === "/login") {
+      sessionStorage.removeItem(FLASH_MESSAGE_KEY);
+      authMessage.textContent = authFlashMessage;
+      authMessage.className = "auth-message success";
+    }
     updateMessageCount();
     clearAdminData();
     syncProxyControls();
-    restoreSession();
+    if (protectedRoute && (!authToken || !authOrigin)) navigateTo("/login");
+    else restoreSession();
   </script>
 </body>
 </html>

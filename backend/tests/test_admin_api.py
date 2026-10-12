@@ -264,7 +264,8 @@ def test_admin_reason_codes_returns_frequency_stats(tmp_path, monkeypatch) -> No
     assert payload[1]["count"] == 1
 
 
-def test_proxy_and_openai_compatible_routes_do_not_require_admin_token() -> None:
+def test_user_chat_stays_available_but_mock_diagnostics_require_admin(monkeypatch) -> None:
+    monkeypatch.setenv("ADMIN_API_TOKEN", "test-admin")
     proxy_response = client.post(
         "/proxy/chat",
         headers=AUTH_HEADERS,
@@ -275,7 +276,7 @@ def test_proxy_and_openai_compatible_routes_do_not_require_admin_token() -> None
 
     completion_response = client.post(
         "/v1/chat/completions",
+        headers=AUTH_HEADERS,
         json={"model": "mock", "messages": [{"role": "user", "content": "safe question"}]},
     )
-    assert completion_response.status_code == 200
-    assert completion_response.json()["action"] == "ALLOW"
+    assert completion_response.status_code == 401

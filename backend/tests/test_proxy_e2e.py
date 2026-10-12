@@ -10,10 +10,11 @@ from backend.app.services.auth_service import issue_token
 @pytest.fixture(autouse=True)
 def _rule_only_e2e(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENABLE_MODEL_DETECTOR", "false")
+    monkeypatch.setenv("ADMIN_API_TOKEN", "test-diagnostic-token")
 
 
 client = TestClient(app)
-AUTH_HEADERS = {"Authorization": f"Bearer {issue_token('test@example.com')}"}
+AUTH_HEADERS = {"Authorization": f"Bearer {issue_token('test@example.com')}", "X-Admin-Token": "test-diagnostic-token"}
 
 
 def _chat(text: str) -> dict:

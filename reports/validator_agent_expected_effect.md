@@ -27,7 +27,7 @@ Validator Agent를 정량 평가하려면 기존 입력 탐지 데이터셋과 �
 
 Validator Agent는 LLM 응답 생성 후 최종 반환 전에 실행되지만, 탐지 모델 자체를 대체하거나 독립적인 성능 향상을 보장하는 요소는 아니다. 따라서 본 보고서에서는 Validator Agent를 PII 탐지 또는 Prompt Injection 탐지 정량 비교 대상에 포함하지 않는다.
 
-PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 높이는 요소가 아니다. 현재 구현은 ML-DSA 교체 가능한 감사 로그 서명 인터페이스와, 내부적으로 HMAC-SHA256을 사용하는 `MOCK-ML-DSA` signer 기반 검증 구조다.
+PQC 기반 감사로그 서명 구조는 개인정보 탐지 성능을 높이는 요소가 아니다. 현재 구현은 ML-DSA 교체 가능한 감사 로그 서명 인터페이스와, 개발·테스트용 `HMAC-SHA256-MOCK` signer 기반 검증 구조다.
 
 ## Paper-Ready Wording
 

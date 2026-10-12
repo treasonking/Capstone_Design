@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-29T01:16:56",
+  "generated_at": "2026-07-28T15:39:41",
   "iterations": 30,
   "warmup": 5,
   "cases": [
@@ -30,110 +30,110 @@
       "action": "ALL",
       "sample_count": 5,
       "measurement_count": 150,
-      "avg_latency_ms": 2.717,
+      "avg_latency_ms": 4.38,
       "avg_response_time_ms": "",
-      "p95_latency_ms": 4.982,
-      "min_latency_ms": 1.387,
-      "max_latency_ms": 8.34
+      "p95_latency_ms": 9.923,
+      "min_latency_ms": 2.171,
+      "max_latency_ms": 18.69
     },
     {
       "benchmark": "detector_only",
       "action": "ALLOW",
       "sample_count": 1,
       "measurement_count": 30,
-      "avg_latency_ms": 2.904,
+      "avg_latency_ms": 4.381,
       "avg_response_time_ms": "",
-      "p95_latency_ms": 6.247,
-      "min_latency_ms": 1.387,
-      "max_latency_ms": 8.34
+      "p95_latency_ms": 9.923,
+      "min_latency_ms": 2.313,
+      "max_latency_ms": 18.69
     },
     {
       "benchmark": "detector_only",
       "action": "BLOCK",
       "sample_count": 2,
       "measurement_count": 60,
-      "avg_latency_ms": 2.53,
+      "avg_latency_ms": 4.663,
       "avg_response_time_ms": "",
-      "p95_latency_ms": 3.811,
-      "min_latency_ms": 1.521,
-      "max_latency_ms": 5.758
+      "p95_latency_ms": 12.401,
+      "min_latency_ms": 2.171,
+      "max_latency_ms": 17.385
     },
     {
       "benchmark": "detector_only",
       "action": "MASK",
       "sample_count": 1,
       "measurement_count": 30,
-      "avg_latency_ms": 2.665,
+      "avg_latency_ms": 4.544,
       "avg_response_time_ms": "",
-      "p95_latency_ms": 4.572,
-      "min_latency_ms": 1.442,
-      "max_latency_ms": 5.105
+      "p95_latency_ms": 9.439,
+      "min_latency_ms": 2.46,
+      "max_latency_ms": 10.817
     },
     {
       "benchmark": "detector_only",
       "action": "WARN",
       "sample_count": 1,
       "measurement_count": 30,
-      "avg_latency_ms": 2.956,
+      "avg_latency_ms": 3.651,
       "avg_response_time_ms": "",
-      "p95_latency_ms": 5.258,
-      "min_latency_ms": 1.44,
-      "max_latency_ms": 6.103
+      "p95_latency_ms": 7.681,
+      "min_latency_ms": 2.405,
+      "max_latency_ms": 9.399
     },
     {
       "benchmark": "proxy_end_to_end",
       "action": "ALL",
       "sample_count": 5,
       "measurement_count": 150,
-      "avg_latency_ms": 42.092,
-      "avg_response_time_ms": 42.092,
-      "p95_latency_ms": 69.408,
-      "min_latency_ms": 18.528,
-      "max_latency_ms": 111.824
+      "avg_latency_ms": 84.581,
+      "avg_response_time_ms": 84.581,
+      "p95_latency_ms": 137.325,
+      "min_latency_ms": 32.36,
+      "max_latency_ms": 194.168
     },
     {
       "benchmark": "proxy_end_to_end",
       "action": "ALLOW",
       "sample_count": 1,
       "measurement_count": 30,
-      "avg_latency_ms": 52.301,
-      "avg_response_time_ms": 52.301,
-      "p95_latency_ms": 71.495,
-      "min_latency_ms": 40.22,
-      "max_latency_ms": 87.123
+      "avg_latency_ms": 105.284,
+      "avg_response_time_ms": 105.284,
+      "p95_latency_ms": 143.084,
+      "min_latency_ms": 68.805,
+      "max_latency_ms": 164.939
     },
     {
       "benchmark": "proxy_end_to_end",
       "action": "BLOCK",
       "sample_count": 2,
       "measurement_count": 60,
-      "avg_latency_ms": 27.4,
-      "avg_response_time_ms": 27.4,
-      "p95_latency_ms": 39.169,
-      "min_latency_ms": 18.528,
-      "max_latency_ms": 46.152
+      "avg_latency_ms": 54.745,
+      "avg_response_time_ms": 54.745,
+      "p95_latency_ms": 74.271,
+      "min_latency_ms": 32.36,
+      "max_latency_ms": 89.768
     },
     {
       "benchmark": "proxy_end_to_end",
       "action": "MASK",
       "sample_count": 1,
       "measurement_count": 30,
-      "avg_latency_ms": 50.442,
-      "avg_response_time_ms": 50.442,
-      "p95_latency_ms": 69.408,
-      "min_latency_ms": 39.849,
-      "max_latency_ms": 70.472
+      "avg_latency_ms": 100.06,
+      "avg_response_time_ms": 100.06,
+      "p95_latency_ms": 128.161,
+      "min_latency_ms": 65.793,
+      "max_latency_ms": 151.309
     },
     {
       "benchmark": "proxy_end_to_end",
       "action": "WARN",
       "sample_count": 1,
       "measurement_count": 30,
-      "avg_latency_ms": 52.916,
-      "avg_response_time_ms": 52.916,
-      "p95_latency_ms": 71.196,
-      "min_latency_ms": 40.317,
-      "max_latency_ms": 111.824
+      "avg_latency_ms": 108.072,
+      "avg_response_time_ms": 108.072,
+      "p95_latency_ms": 150.442,
+      "min_latency_ms": 59.589,
+      "max_latency_ms": 194.168
     }
   ],
   "measurements": [
@@ -142,2100 +142,2100 @@
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 1,
-      "latency_ms": 1.724
+      "latency_ms": 3.802
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 1,
-      "latency_ms": 1.914
+      "latency_ms": 7.762
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 1,
-      "latency_ms": 2.394
+      "latency_ms": 3.021
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 1,
-      "latency_ms": 2.152
+      "latency_ms": 3.107
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 1,
-      "latency_ms": 4.676
+      "latency_ms": 5.812
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 2,
-      "latency_ms": 3.812
+      "latency_ms": 2.992
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 2,
-      "latency_ms": 2.991
+      "latency_ms": 2.701
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 2,
-      "latency_ms": 5.258
+      "latency_ms": 2.522
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 2,
-      "latency_ms": 2.627
+      "latency_ms": 4.989
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 2,
-      "latency_ms": 2.31
+      "latency_ms": 2.455
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 3,
-      "latency_ms": 2.597
+      "latency_ms": 2.313
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 3,
-      "latency_ms": 2.613
+      "latency_ms": 3.003
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 3,
-      "latency_ms": 4.544
+      "latency_ms": 3.897
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 3,
-      "latency_ms": 3.575
+      "latency_ms": 6.724
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 3,
-      "latency_ms": 3.032
+      "latency_ms": 2.81
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 4,
-      "latency_ms": 4.031
+      "latency_ms": 4.7
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 4,
-      "latency_ms": 3.933
+      "latency_ms": 2.72
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 4,
-      "latency_ms": 2.234
+      "latency_ms": 2.405
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 4,
-      "latency_ms": 2.541
+      "latency_ms": 2.42
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 4,
-      "latency_ms": 2.131
+      "latency_ms": 7.164
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 5,
-      "latency_ms": 4.982
+      "latency_ms": 3.009
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 5,
-      "latency_ms": 1.769
+      "latency_ms": 2.936
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 5,
-      "latency_ms": 3.089
+      "latency_ms": 5.256
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 5,
-      "latency_ms": 3.546
+      "latency_ms": 3.165
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 5,
-      "latency_ms": 4.025
+      "latency_ms": 2.897
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 6,
-      "latency_ms": 3.394
+      "latency_ms": 2.61
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 6,
-      "latency_ms": 3.29
+      "latency_ms": 3.388
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 6,
-      "latency_ms": 3.225
+      "latency_ms": 2.805
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 6,
-      "latency_ms": 3.481
+      "latency_ms": 2.901
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 6,
-      "latency_ms": 2.481
+      "latency_ms": 3.865
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 7,
-      "latency_ms": 2.141
+      "latency_ms": 2.846
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 7,
-      "latency_ms": 1.952
+      "latency_ms": 5.513
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 7,
-      "latency_ms": 3.109
+      "latency_ms": 3.684
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 7,
-      "latency_ms": 5.758
+      "latency_ms": 4.603
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 7,
-      "latency_ms": 2.875
+      "latency_ms": 2.697
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 8,
-      "latency_ms": 2.892
+      "latency_ms": 4.179
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 8,
-      "latency_ms": 4.141
+      "latency_ms": 2.775
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 8,
-      "latency_ms": 3.739
+      "latency_ms": 7.681
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 8,
-      "latency_ms": 3.454
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "block-pii-exfiltration",
-      "action": "BLOCK",
-      "iteration": 8,
-      "latency_ms": 2.684
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "allow-safe-summary",
-      "action": "ALLOW",
-      "iteration": 9,
-      "latency_ms": 6.247
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "mask-phone",
-      "action": "MASK",
-      "iteration": 9,
-      "latency_ms": 2.334
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "warn-account",
-      "action": "WARN",
-      "iteration": 9,
-      "latency_ms": 1.614
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "block-injection",
-      "action": "BLOCK",
-      "iteration": 9,
-      "latency_ms": 1.615
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "block-pii-exfiltration",
-      "action": "BLOCK",
-      "iteration": 9,
-      "latency_ms": 1.539
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "allow-safe-summary",
-      "action": "ALLOW",
-      "iteration": 10,
-      "latency_ms": 1.468
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "mask-phone",
-      "action": "MASK",
-      "iteration": 10,
-      "latency_ms": 3.184
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "warn-account",
-      "action": "WARN",
-      "iteration": 10,
       "latency_ms": 2.758
     },
     {
       "benchmark": "detector_only",
+      "sample_id": "block-pii-exfiltration",
+      "action": "BLOCK",
+      "iteration": 8,
+      "latency_ms": 2.171
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "allow-safe-summary",
+      "action": "ALLOW",
+      "iteration": 9,
+      "latency_ms": 6.433
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "mask-phone",
+      "action": "MASK",
+      "iteration": 9,
+      "latency_ms": 3.269
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "warn-account",
+      "action": "WARN",
+      "iteration": 9,
+      "latency_ms": 3.771
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "block-injection",
+      "action": "BLOCK",
+      "iteration": 9,
+      "latency_ms": 12.401
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "block-pii-exfiltration",
+      "action": "BLOCK",
+      "iteration": 9,
+      "latency_ms": 14.538
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "allow-safe-summary",
+      "action": "ALLOW",
+      "iteration": 10,
+      "latency_ms": 2.671
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "mask-phone",
+      "action": "MASK",
+      "iteration": 10,
+      "latency_ms": 5.597
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "warn-account",
+      "action": "WARN",
+      "iteration": 10,
+      "latency_ms": 2.775
+    },
+    {
+      "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 10,
-      "latency_ms": 2.238
+      "latency_ms": 2.756
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 10,
-      "latency_ms": 2.206
+      "latency_ms": 7.875
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 11,
-      "latency_ms": 2.406
+      "latency_ms": 2.68
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 11,
-      "latency_ms": 5.105
+      "latency_ms": 2.791
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 11,
-      "latency_ms": 2.29
+      "latency_ms": 4.946
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 11,
-      "latency_ms": 1.799
+      "latency_ms": 2.94
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 11,
-      "latency_ms": 1.521
+      "latency_ms": 2.461
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 12,
-      "latency_ms": 1.387
+      "latency_ms": 3.074
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 12,
-      "latency_ms": 1.493
+      "latency_ms": 3.549
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 12,
-      "latency_ms": 3.626
+      "latency_ms": 2.597
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 12,
-      "latency_ms": 2.471
+      "latency_ms": 2.434
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 12,
-      "latency_ms": 2.189
+      "latency_ms": 2.51
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 13,
-      "latency_ms": 1.824
+      "latency_ms": 2.387
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 13,
-      "latency_ms": 1.69
+      "latency_ms": 9.439
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 13,
-      "latency_ms": 1.766
+      "latency_ms": 3.005
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 13,
-      "latency_ms": 3.152
+      "latency_ms": 4.574
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 13,
-      "latency_ms": 1.822
+      "latency_ms": 2.68
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 14,
-      "latency_ms": 1.768
+      "latency_ms": 6.006
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 14,
-      "latency_ms": 1.442
+      "latency_ms": 5.02
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 14,
-      "latency_ms": 1.44
+      "latency_ms": 2.944
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 14,
-      "latency_ms": 2.013
+      "latency_ms": 2.826
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 14,
-      "latency_ms": 1.544
+      "latency_ms": 2.265
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 15,
-      "latency_ms": 3.309
+      "latency_ms": 2.56
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 15,
-      "latency_ms": 1.808
+      "latency_ms": 3.015
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 15,
-      "latency_ms": 1.602
+      "latency_ms": 2.717
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 15,
-      "latency_ms": 2.031
+      "latency_ms": 3.116
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 15,
-      "latency_ms": 1.609
+      "latency_ms": 2.38
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 16,
-      "latency_ms": 2.707
+      "latency_ms": 2.984
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 16,
-      "latency_ms": 3.275
+      "latency_ms": 6.151
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 16,
-      "latency_ms": 2.422
+      "latency_ms": 2.423
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 16,
-      "latency_ms": 1.846
+      "latency_ms": 3.041
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 16,
-      "latency_ms": 1.618
+      "latency_ms": 3.984
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 17,
-      "latency_ms": 1.577
+      "latency_ms": 2.789
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 17,
-      "latency_ms": 1.545
+      "latency_ms": 4.764
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 17,
-      "latency_ms": 1.641
+      "latency_ms": 9.399
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 17,
-      "latency_ms": 3.473
+      "latency_ms": 3.212
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 17,
-      "latency_ms": 1.647
+      "latency_ms": 2.329
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 18,
-      "latency_ms": 1.802
+      "latency_ms": 9.923
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 18,
-      "latency_ms": 1.551
+      "latency_ms": 3.681
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 18,
-      "latency_ms": 1.647
+      "latency_ms": 3.574
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 18,
-      "latency_ms": 1.919
+      "latency_ms": 3.271
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 18,
-      "latency_ms": 2.569
+      "latency_ms": 3.666
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 19,
-      "latency_ms": 3.147
+      "latency_ms": 5.816
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 19,
-      "latency_ms": 1.687
+      "latency_ms": 5.82
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 19,
-      "latency_ms": 1.797
+      "latency_ms": 3.984
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 19,
-      "latency_ms": 2.243
+      "latency_ms": 5.969
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 19,
-      "latency_ms": 1.607
+      "latency_ms": 7.699
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 20,
-      "latency_ms": 1.495
+      "latency_ms": 4.097
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 20,
-      "latency_ms": 3.607
+      "latency_ms": 4.029
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 20,
-      "latency_ms": 3.316
+      "latency_ms": 2.88
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 20,
-      "latency_ms": 2.28
+      "latency_ms": 9.594
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 20,
-      "latency_ms": 2.327
+      "latency_ms": 15.558
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 21,
-      "latency_ms": 8.34
+      "latency_ms": 18.69
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 21,
-      "latency_ms": 3.232
+      "latency_ms": 4.535
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 21,
-      "latency_ms": 6.103
+      "latency_ms": 3.213
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 21,
-      "latency_ms": 3.678
+      "latency_ms": 11.087
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 21,
-      "latency_ms": 2.429
+      "latency_ms": 2.788
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 22,
-      "latency_ms": 2.386
+      "latency_ms": 5.461
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 22,
-      "latency_ms": 1.88
+      "latency_ms": 7.117
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 22,
+      "latency_ms": 2.748
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "block-injection",
+      "action": "BLOCK",
+      "iteration": 22,
+      "latency_ms": 2.833
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "block-pii-exfiltration",
+      "action": "BLOCK",
+      "iteration": 22,
+      "latency_ms": 6.005
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "allow-safe-summary",
+      "action": "ALLOW",
+      "iteration": 23,
+      "latency_ms": 2.722
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "mask-phone",
+      "action": "MASK",
+      "iteration": 23,
+      "latency_ms": 3.166
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "warn-account",
+      "action": "WARN",
+      "iteration": 23,
+      "latency_ms": 3.958
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "block-injection",
+      "action": "BLOCK",
+      "iteration": 23,
+      "latency_ms": 2.714
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "block-pii-exfiltration",
+      "action": "BLOCK",
+      "iteration": 23,
+      "latency_ms": 2.253
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "allow-safe-summary",
+      "action": "ALLOW",
+      "iteration": 24,
+      "latency_ms": 3.63
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "mask-phone",
+      "action": "MASK",
+      "iteration": 24,
+      "latency_ms": 10.817
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "warn-account",
+      "action": "WARN",
+      "iteration": 24,
+      "latency_ms": 2.547
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "block-injection",
+      "action": "BLOCK",
+      "iteration": 24,
+      "latency_ms": 17.385
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "block-pii-exfiltration",
+      "action": "BLOCK",
+      "iteration": 24,
+      "latency_ms": 3.214
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "allow-safe-summary",
+      "action": "ALLOW",
+      "iteration": 25,
+      "latency_ms": 2.585
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "mask-phone",
+      "action": "MASK",
+      "iteration": 25,
+      "latency_ms": 2.46
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "warn-account",
+      "action": "WARN",
+      "iteration": 25,
+      "latency_ms": 6.278
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "block-injection",
+      "action": "BLOCK",
+      "iteration": 25,
+      "latency_ms": 3.4
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "block-pii-exfiltration",
+      "action": "BLOCK",
+      "iteration": 25,
+      "latency_ms": 2.395
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "allow-safe-summary",
+      "action": "ALLOW",
+      "iteration": 26,
+      "latency_ms": 2.451
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "mask-phone",
+      "action": "MASK",
+      "iteration": 26,
+      "latency_ms": 4.876
+    },
+    {
+      "benchmark": "detector_only",
+      "sample_id": "warn-account",
+      "action": "WARN",
+      "iteration": 26,
       "latency_ms": 3.204
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
-      "iteration": 22,
-      "latency_ms": 3.153
+      "iteration": 26,
+      "latency_ms": 2.567
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
-      "iteration": 22,
-      "latency_ms": 1.957
+      "iteration": 26,
+      "latency_ms": 2.673
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
-      "iteration": 23,
-      "latency_ms": 1.572
+      "iteration": 27,
+      "latency_ms": 6.645
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
-      "iteration": 23,
-      "latency_ms": 1.577
+      "iteration": 27,
+      "latency_ms": 4.023
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
-      "iteration": 23,
-      "latency_ms": 2.707
+      "iteration": 27,
+      "latency_ms": 2.559
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
-      "iteration": 23,
-      "latency_ms": 3.596
+      "iteration": 27,
+      "latency_ms": 6.492
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
-      "iteration": 23,
-      "latency_ms": 1.923
+      "iteration": 27,
+      "latency_ms": 2.925
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
-      "iteration": 24,
-      "latency_ms": 2.034
+      "iteration": 28,
+      "latency_ms": 4.075
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
-      "iteration": 24,
-      "latency_ms": 2.504
+      "iteration": 28,
+      "latency_ms": 5.183
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
-      "iteration": 24,
-      "latency_ms": 4.564
+      "iteration": 28,
+      "latency_ms": 2.782
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
-      "iteration": 24,
-      "latency_ms": 3.811
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "block-pii-exfiltration",
-      "action": "BLOCK",
-      "iteration": 24,
-      "latency_ms": 2.632
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "allow-safe-summary",
-      "action": "ALLOW",
-      "iteration": 25,
+      "iteration": 28,
       "latency_ms": 2.988
     },
     {
       "benchmark": "detector_only",
-      "sample_id": "mask-phone",
-      "action": "MASK",
-      "iteration": 25,
-      "latency_ms": 3.28
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "warn-account",
-      "action": "WARN",
-      "iteration": 25,
-      "latency_ms": 3.0
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "block-injection",
-      "action": "BLOCK",
-      "iteration": 25,
-      "latency_ms": 2.078
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "block-pii-exfiltration",
-      "action": "BLOCK",
-      "iteration": 25,
-      "latency_ms": 1.847
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "allow-safe-summary",
-      "action": "ALLOW",
-      "iteration": 26,
-      "latency_ms": 2.557
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "mask-phone",
-      "action": "MASK",
-      "iteration": 26,
-      "latency_ms": 1.988
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "warn-account",
-      "action": "WARN",
-      "iteration": 26,
-      "latency_ms": 4.359
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "block-injection",
-      "action": "BLOCK",
-      "iteration": 26,
-      "latency_ms": 2.974
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "block-pii-exfiltration",
-      "action": "BLOCK",
-      "iteration": 26,
-      "latency_ms": 1.84
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "allow-safe-summary",
-      "action": "ALLOW",
-      "iteration": 27,
-      "latency_ms": 2.735
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "mask-phone",
-      "action": "MASK",
-      "iteration": 27,
-      "latency_ms": 3.752
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "warn-account",
-      "action": "WARN",
-      "iteration": 27,
-      "latency_ms": 2.397
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "block-injection",
-      "action": "BLOCK",
-      "iteration": 27,
-      "latency_ms": 3.606
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "block-pii-exfiltration",
-      "action": "BLOCK",
-      "iteration": 27,
-      "latency_ms": 2.131
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "allow-safe-summary",
-      "action": "ALLOW",
-      "iteration": 28,
-      "latency_ms": 1.876
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "mask-phone",
-      "action": "MASK",
-      "iteration": 28,
-      "latency_ms": 2.858
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "warn-account",
-      "action": "WARN",
-      "iteration": 28,
-      "latency_ms": 3.255
-    },
-    {
-      "benchmark": "detector_only",
-      "sample_id": "block-injection",
-      "action": "BLOCK",
-      "iteration": 28,
-      "latency_ms": 2.735
-    },
-    {
-      "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 28,
-      "latency_ms": 1.601
+      "latency_ms": 2.943
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 29,
-      "latency_ms": 2.517
+      "latency_ms": 3.396
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 29,
-      "latency_ms": 4.572
+      "latency_ms": 3.086
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 29,
-      "latency_ms": 3.119
+      "latency_ms": 2.935
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 29,
-      "latency_ms": 2.07
+      "latency_ms": 3.568
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 29,
-      "latency_ms": 2.107
+      "latency_ms": 5.595
     },
     {
       "benchmark": "detector_only",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 30,
-      "latency_ms": 5.404
+      "latency_ms": 3.898
     },
     {
       "benchmark": "detector_only",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 30,
-      "latency_ms": 2.983
+      "latency_ms": 3.129
     },
     {
       "benchmark": "detector_only",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 30,
-      "latency_ms": 2.458
+      "latency_ms": 3.029
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 30,
-      "latency_ms": 2.711
+      "latency_ms": 8.774
     },
     {
       "benchmark": "detector_only",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 30,
-      "latency_ms": 2.268
+      "latency_ms": 2.58
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 1,
-      "latency_ms": 48.315
+      "latency_ms": 164.939
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 1,
-      "latency_ms": 52.846
+      "latency_ms": 91.106
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 1,
-      "latency_ms": 58.179
+      "latency_ms": 80.368
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 1,
-      "latency_ms": 26.829
+      "latency_ms": 42.029
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 1,
-      "latency_ms": 23.501
+      "latency_ms": 40.334
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 2,
-      "latency_ms": 67.214
+      "latency_ms": 72.489
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 2,
-      "latency_ms": 60.48
+      "latency_ms": 65.793
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 2,
-      "latency_ms": 57.333
+      "latency_ms": 90.357
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 2,
-      "latency_ms": 26.354
+      "latency_ms": 44.033
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 2,
-      "latency_ms": 36.727
+      "latency_ms": 43.23
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 3,
-      "latency_ms": 60.175
+      "latency_ms": 68.805
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 3,
-      "latency_ms": 67.919
+      "latency_ms": 68.911
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 3,
-      "latency_ms": 111.824
+      "latency_ms": 69.598
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 3,
-      "latency_ms": 32.232
+      "latency_ms": 35.372
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 3,
-      "latency_ms": 45.241
+      "latency_ms": 32.36
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 4,
-      "latency_ms": 61.772
+      "latency_ms": 75.314
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 4,
-      "latency_ms": 60.45
+      "latency_ms": 79.07
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 4,
-      "latency_ms": 58.856
+      "latency_ms": 59.589
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 4,
-      "latency_ms": 38.484
+      "latency_ms": 38.348
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 4,
-      "latency_ms": 39.169
+      "latency_ms": 35.021
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 5,
-      "latency_ms": 64.432
+      "latency_ms": 70.343
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 5,
-      "latency_ms": 55.915
+      "latency_ms": 82.589
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 5,
-      "latency_ms": 58.077
+      "latency_ms": 95.554
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 5,
-      "latency_ms": 26.981
+      "latency_ms": 47.91
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 5,
-      "latency_ms": 36.237
+      "latency_ms": 42.415
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 6,
-      "latency_ms": 52.956
+      "latency_ms": 120.795
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 6,
-      "latency_ms": 55.572
+      "latency_ms": 107.208
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 6,
-      "latency_ms": 70.533
+      "latency_ms": 111.457
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 6,
-      "latency_ms": 24.717
+      "latency_ms": 45.549
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 6,
-      "latency_ms": 33.308
+      "latency_ms": 43.81
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 7,
-      "latency_ms": 71.495
+      "latency_ms": 101.521
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 7,
-      "latency_ms": 67.468
+      "latency_ms": 90.107
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 7,
-      "latency_ms": 64.06
+      "latency_ms": 96.307
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 7,
-      "latency_ms": 35.497
+      "latency_ms": 53.109
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 7,
-      "latency_ms": 46.152
+      "latency_ms": 48.217
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 8,
-      "latency_ms": 87.123
+      "latency_ms": 94.716
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 8,
-      "latency_ms": 69.408
+      "latency_ms": 114.622
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 8,
-      "latency_ms": 70.675
+      "latency_ms": 101.952
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 8,
-      "latency_ms": 38.302
+      "latency_ms": 46.592
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 8,
-      "latency_ms": 37.488
+      "latency_ms": 65.258
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 9,
-      "latency_ms": 56.403
+      "latency_ms": 101.134
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 9,
-      "latency_ms": 70.472
+      "latency_ms": 97.468
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 9,
-      "latency_ms": 71.196
+      "latency_ms": 122.021
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 9,
-      "latency_ms": 31.028
+      "latency_ms": 49.145
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 9,
-      "latency_ms": 32.837
+      "latency_ms": 42.144
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 10,
-      "latency_ms": 57.293
+      "latency_ms": 125.07
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 10,
-      "latency_ms": 51.034
+      "latency_ms": 96.681
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 10,
-      "latency_ms": 45.231
+      "latency_ms": 112.614
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 10,
-      "latency_ms": 24.519
+      "latency_ms": 59.047
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 10,
-      "latency_ms": 18.528
+      "latency_ms": 66.876
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 11,
-      "latency_ms": 43.67
+      "latency_ms": 112.574
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 11,
-      "latency_ms": 47.924
+      "latency_ms": 101.79
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 11,
-      "latency_ms": 44.648
+      "latency_ms": 96.444
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 11,
-      "latency_ms": 23.62
+      "latency_ms": 53.462
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 11,
-      "latency_ms": 31.248
+      "latency_ms": 54.83
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 12,
-      "latency_ms": 52.194
+      "latency_ms": 114.382
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 12,
-      "latency_ms": 45.871
+      "latency_ms": 81.766
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 12,
-      "latency_ms": 55.179
+      "latency_ms": 89.975
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 12,
-      "latency_ms": 27.183
+      "latency_ms": 64.322
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 12,
-      "latency_ms": 23.032
+      "latency_ms": 48.595
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 13,
-      "latency_ms": 41.657
+      "latency_ms": 102.762
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 13,
-      "latency_ms": 44.915
+      "latency_ms": 96.208
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 13,
-      "latency_ms": 42.591
+      "latency_ms": 131.175
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 13,
-      "latency_ms": 19.984
+      "latency_ms": 78.354
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 13,
-      "latency_ms": 22.959
+      "latency_ms": 48.178
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 14,
-      "latency_ms": 45.202
+      "latency_ms": 143.084
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 14,
-      "latency_ms": 47.191
+      "latency_ms": 103.903
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 14,
-      "latency_ms": 40.317
+      "latency_ms": 94.003
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 14,
-      "latency_ms": 19.925
+      "latency_ms": 65.297
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 14,
-      "latency_ms": 23.762
+      "latency_ms": 74.271
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 15,
-      "latency_ms": 40.899
+      "latency_ms": 104.052
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 15,
-      "latency_ms": 42.736
+      "latency_ms": 97.191
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 15,
-      "latency_ms": 44.42
+      "latency_ms": 104.466
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 15,
-      "latency_ms": 19.37
+      "latency_ms": 72.764
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 15,
-      "latency_ms": 20.617
+      "latency_ms": 69.665
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 16,
-      "latency_ms": 44.505
+      "latency_ms": 106.355
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 16,
-      "latency_ms": 47.627
+      "latency_ms": 108.737
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 16,
-      "latency_ms": 44.27
+      "latency_ms": 104.867
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 16,
-      "latency_ms": 20.172
+      "latency_ms": 48.457
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 16,
-      "latency_ms": 23.363
+      "latency_ms": 47.582
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 17,
-      "latency_ms": 42.9
+      "latency_ms": 86.353
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 17,
-      "latency_ms": 40.395
+      "latency_ms": 80.717
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 17,
-      "latency_ms": 47.126
+      "latency_ms": 94.165
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 17,
-      "latency_ms": 29.162
+      "latency_ms": 44.992
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 17,
-      "latency_ms": 22.29
+      "latency_ms": 70.023
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 18,
-      "latency_ms": 44.881
+      "latency_ms": 127.992
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 18,
-      "latency_ms": 42.649
+      "latency_ms": 96.501
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 18,
-      "latency_ms": 44.038
+      "latency_ms": 104.403
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 18,
-      "latency_ms": 20.252
+      "latency_ms": 55.725
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 18,
-      "latency_ms": 25.251
+      "latency_ms": 59.26
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 19,
-      "latency_ms": 51.698
+      "latency_ms": 114.741
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 19,
-      "latency_ms": 39.948
+      "latency_ms": 123.404
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 19,
-      "latency_ms": 45.999
+      "latency_ms": 100.871
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 19,
-      "latency_ms": 29.556
+      "latency_ms": 54.712
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 19,
-      "latency_ms": 25.213
+      "latency_ms": 47.402
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 20,
-      "latency_ms": 55.045
+      "latency_ms": 96.974
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 20,
-      "latency_ms": 47.555
+      "latency_ms": 128.161
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 20,
-      "latency_ms": 47.808
+      "latency_ms": 108.133
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 20,
-      "latency_ms": 24.695
+      "latency_ms": 55.498
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 20,
-      "latency_ms": 23.687
+      "latency_ms": 78.894
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 21,
-      "latency_ms": 46.046
+      "latency_ms": 94.201
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 21,
-      "latency_ms": 42.078
+      "latency_ms": 97.556
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 21,
-      "latency_ms": 42.854
+      "latency_ms": 194.168
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 21,
-      "latency_ms": 27.423
+      "latency_ms": 72.429
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 21,
-      "latency_ms": 29.942
+      "latency_ms": 61.909
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 22,
-      "latency_ms": 51.339
+      "latency_ms": 127.927
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 22,
-      "latency_ms": 45.752
+      "latency_ms": 124.907
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 22,
-      "latency_ms": 54.959
+      "latency_ms": 109.872
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 22,
-      "latency_ms": 25.061
+      "latency_ms": 52.764
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 22,
-      "latency_ms": 40.436
+      "latency_ms": 51.436
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 23,
-      "latency_ms": 54.135
+      "latency_ms": 103.489
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 23,
-      "latency_ms": 54.471
+      "latency_ms": 123.745
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 23,
-      "latency_ms": 44.426
+      "latency_ms": 150.442
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 23,
-      "latency_ms": 29.177
+      "latency_ms": 62.817
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 23,
-      "latency_ms": 26.737
+      "latency_ms": 46.101
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 24,
-      "latency_ms": 51.332
+      "latency_ms": 89.204
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 24,
-      "latency_ms": 48.696
+      "latency_ms": 151.309
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 24,
-      "latency_ms": 45.144
+      "latency_ms": 101.929
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 24,
-      "latency_ms": 25.942
+      "latency_ms": 51.319
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 24,
-      "latency_ms": 30.131
+      "latency_ms": 60.236
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 25,
-      "latency_ms": 41.501
+      "latency_ms": 112.345
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 25,
-      "latency_ms": 45.805
+      "latency_ms": 90.941
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 25,
-      "latency_ms": 49.179
+      "latency_ms": 85.338
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 25,
-      "latency_ms": 19.584
+      "latency_ms": 89.768
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 25,
-      "latency_ms": 21.017
+      "latency_ms": 55.706
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 26,
-      "latency_ms": 50.894
+      "latency_ms": 91.504
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 26,
-      "latency_ms": 41.597
+      "latency_ms": 100.536
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 26,
-      "latency_ms": 44.532
+      "latency_ms": 138.343
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 26,
-      "latency_ms": 22.606
+      "latency_ms": 69.471
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 26,
-      "latency_ms": 19.441
+      "latency_ms": 49.462
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 27,
-      "latency_ms": 45.934
+      "latency_ms": 82.473
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 27,
-      "latency_ms": 43.958
+      "latency_ms": 97.401
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 27,
-      "latency_ms": 41.06
+      "latency_ms": 120.461
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 27,
-      "latency_ms": 21.127
+      "latency_ms": 42.003
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 27,
-      "latency_ms": 20.804
+      "latency_ms": 48.071
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 28,
-      "latency_ms": 51.884
+      "latency_ms": 137.325
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 28,
-      "latency_ms": 48.171
+      "latency_ms": 112.145
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 28,
-      "latency_ms": 40.938
+      "latency_ms": 143.68
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 28,
-      "latency_ms": 20.532
+      "latency_ms": 71.81
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 28,
-      "latency_ms": 26.821
+      "latency_ms": 69.92
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 29,
-      "latency_ms": 45.928
+      "latency_ms": 120.35
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 29,
-      "latency_ms": 39.849
+      "latency_ms": 90.976
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 29,
-      "latency_ms": 42.321
+      "latency_ms": 120.116
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 29,
-      "latency_ms": 22.017
+      "latency_ms": 60.658
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 29,
-      "latency_ms": 24.302
+      "latency_ms": 40.108
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "allow-safe-summary",
       "action": "ALLOW",
       "iteration": 30,
-      "latency_ms": 40.22
+      "latency_ms": 95.299
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "mask-phone",
       "action": "MASK",
       "iteration": 30,
-      "latency_ms": 44.496
+      "latency_ms": 100.36
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "warn-account",
       "action": "WARN",
       "iteration": 30,
-      "latency_ms": 59.699
+      "latency_ms": 109.5
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-injection",
       "action": "BLOCK",
       "iteration": 30,
-      "latency_ms": 30.212
+      "latency_ms": 62.677
     },
     {
       "benchmark": "proxy_end_to_end",
       "sample_id": "block-pii-exfiltration",
       "action": "BLOCK",
       "iteration": 30,
-      "latency_ms": 31.201
+      "latency_ms": 52.98
     }
   ]
 }

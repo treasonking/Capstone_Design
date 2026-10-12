@@ -50,34 +50,28 @@
 
 ## 실행 명령
 
-```bash
-python -m evaluation.evaluate \
-  --dataset evaluation/sample_dataset.json \
-  --report reports/evaluation_report.md
+```powershell
+python -m evaluation.evaluate --dataset evaluation/sample_dataset.json --report reports/evaluation_report.md
 ```
 
 외부 스타일 샘플 초안 검증:
 
-```bash
-python -m evaluation.evaluate \
-  --dataset evaluation/external_validation_sample.json \
-  --report reports/external_validation_report.md
+```powershell
+python -m evaluation.evaluate --dataset evaluation/external_validation_sample.json --report reports/external_validation_report.md
 ```
 
 이 24건 데이터셋은 표본 수가 작으므로 예비 검증용으로만 유지하고, 본 논문의 주요 성능 비교 결과에는 포함하지 않는다.
 
 Hugging Face 공개 데이터셋 기반 Prompt Injection 벤치마크:
 
-```bash
+```powershell
 python -m evaluation.evaluate_external_prompt_injection
 ```
 
 Rule Only / Lightweight Model Only / Hybrid 비교:
 
-```bash
-python -m evaluation.baseline_compare \
-  --report reports/baseline_compare_report.md \
-  --results reports/baseline_compare_results.json
+```powershell
+python -m evaluation.baseline_compare --report reports/baseline_compare_report.md --results reports/baseline_compare_results.json
 ```
 
 이 비교는 Prompt Injection 탐지에 대해 세 가지 모드를 분리한다.
@@ -138,21 +132,44 @@ fallback 상태의 결과는 완전한 Hybrid 성능으로 해석하지 않는�
 ## 최신 벤치마크 스냅샷
 
 <!-- BENCHMARK:START -->
-> `evaluation/sample_dataset.json` (총 113건) 기준 결과  
-> 생성 시각: 2026-04-28T21:29:43  
+> `evaluation/sample_dataset.json` (총 113건) 기준 결과
+> 생성 시각: 2026-07-28T15:39:26
 > 상세 결과: `reports/evaluation_report.md`
 
 | 항목 | Precision | Recall | F1 | TP / FP / FN |
 |---|---:|---:|---:|---:|
-| PII Detection | 1.000 | 1.000 | 1.000 | 29 / 0 / 0 |
-| Prompt Injection Detection | 1.000 | 1.000 | 1.000 | 104 / 0 / 0 |
+| PII Detection | 0.879 | 1.000 | 0.935 | 29 / 4 / 0 |
+| Prompt Injection Detection | 0.852 | 1.000 | 0.920 | 104 / 18 / 0 |
 <!-- BENCHMARK:END -->
 
 자동 갱신:
 
-```bash
+```powershell
 python tools/sync_benchmark_docs.py --dataset evaluation/sample_dataset.json
 ```
+
+## 2026-07-28 현행 재현 결과
+
+아래 표는 이번 점검 환경에서 실제로 다시 실행한 결과다. 데이터셋과 집계 방식이 다르므로 행 사이의 수치를 직접 합치거나 평균내지 않는다.
+
+| 데이터셋 | 범위 | Precision | Recall | F1 | 비고 |
+|---|---|---:|---:|---:|---|
+| `evaluation/sample_dataset.json` | PII reason code | 0.879 | 1.000 | 0.935 | 내부 회귀 113건 |
+| `evaluation/sample_dataset.json` | Injection reason code | 0.852 | 1.000 | 0.920 | 내부 회귀 113건 |
+| `evaluation/external_validation_sample.json` | PII reason code | 0.875 | 1.000 | 0.933 | 외부 스타일 예비 24건 |
+| `evaluation/external_validation_sample.json` | Injection reason code | 0.767 | 1.000 | 0.868 | 외부 스타일 예비 24건 |
+| `datasets/sample_dataset_v2.json` | PII label | 0.979 | 1.000 | 0.989 | 확장 회귀 152건 중 PII task |
+| `datasets/sample_dataset_v2.json` | Injection label | 0.902 | 1.000 | 0.948 | 확장 회귀 152건 중 Injection task |
+
+`models/lightweight` artifact를 로드한 내부 110건 Prompt Injection 이진 비교에서는 Rule Only와 Hybrid가 모두 F1 1.000이었지만, Model Only는 Precision 1.000, Recall 0.127, F1 0.225였다. 이는 내부 회귀셋에서 규칙 계층의 기여가 크다는 뜻이지 운영 일반화 성능을 뜻하지 않는다.
+
+외부 공개 데이터셋의 현재 재실행은 저장된 held-out split과 `models/lightweight_external_tuned` artifact를 사용했다. 이 artifact는 scikit-learn 1.8.0에서 저장되었고 현재 런타임은 1.7.2라 호환성 경고가 발생했다. 따라서 수치는 재현되었지만 배포 기준 성능 주장에는 사용하지 않는다. 또한 train/eval 정규화 텍스트 해시가 42건 겹쳐 일부 수치가 낙관적일 수 있다. 세부 수치와 경고는 `reports/current_verification_report.md`에 기록한다.
+
+## 기술문서 과거 수치의 취급
+
+기준 DOCX의 Holdout Accuracy 0.833, Injection F1 0.923, PII F1 0.783, SAFE F1 0.783은 현재 저장소의 CSV, JSON, 평가 출력에서 동일한 실험 정의와 원시 산출물을 찾지 못했다. 삭제하거나 새 결과로 바꾸지 않고 **과거 측정 결과이며 2026-07-28 실행에서는 미재현**으로만 인용한다.
+
+기존 `reports/external_prompt_injection_report.md`에는 전체 공개 데이터셋 기준 deepset F1 0.1413/Recall 0.0760, ProtectAI F1 0.2950이 보존되어 있다. README의 ProtectAI F1 0.3227은 다른 시점 또는 생성 경로의 결과이므로 동일 실험으로 합치지 않는다.
 
 ## 결과 해석 팁
 

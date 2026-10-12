@@ -28,7 +28,9 @@ def test_audit_record_signing_adds_integrity_fields() -> None:
 
     assert signed["integrity"]["signature"]
     assert signed["integrity"]["hash_alg"] == "SHA-256"
-    assert signed["integrity"]["signature_alg"] == "MOCK-ML-DSA"
+    assert signed["integrity"]["signature_alg"] == "HMAC-SHA256-MOCK"
+    assert signed["integrity"]["implementation_status"] == "MOCK_ONLY"
+    assert signed["integrity"]["replacement_target"] == "ML-DSA"
 
 
 def test_signed_audit_record_verifies_successfully() -> None:

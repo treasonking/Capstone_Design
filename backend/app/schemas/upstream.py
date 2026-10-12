@@ -11,6 +11,7 @@ class UpstreamProviderConfig(BaseModel):
     url: str
     default_model: str
     api_version: str | None = None
+    implementation_status: str | None = None
 
 
 class UpstreamConfigResponse(BaseModel):
@@ -18,4 +19,6 @@ class UpstreamConfigResponse(BaseModel):
     default_provider: str
     default_timeout_seconds: float
     default_retry_count: int
+    automatic_fallback: bool = False
+    allowed_providers: list[str] = Field(default_factory=list)
     providers: dict[str, UpstreamProviderConfig] = Field(default_factory=dict)

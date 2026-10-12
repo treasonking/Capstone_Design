@@ -1,6 +1,6 @@
 # Latency Benchmark Report
 
-- Generated at: `2026-05-29T01:16:56`
+- Generated at: `2026-07-28T15:39:41`
 - Warmup iterations per sample: `5`
 - Measured iterations per sample: `30`
 - Scenario count: `5`
@@ -10,16 +10,16 @@
 
 | Benchmark | Action | Samples | Measurements | Avg Latency(ms) | Avg Response Time(ms) | p95 Latency(ms) | Min(ms) | Max(ms) |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| detector_only | ALL | 5 | 150 | 2.717 |  | 4.982 | 1.387 | 8.34 |
-| detector_only | ALLOW | 1 | 30 | 2.904 |  | 6.247 | 1.387 | 8.34 |
-| detector_only | BLOCK | 2 | 60 | 2.53 |  | 3.811 | 1.521 | 5.758 |
-| detector_only | MASK | 1 | 30 | 2.665 |  | 4.572 | 1.442 | 5.105 |
-| detector_only | WARN | 1 | 30 | 2.956 |  | 5.258 | 1.44 | 6.103 |
-| proxy_end_to_end | ALL | 5 | 150 | 42.092 | 42.092 | 69.408 | 18.528 | 111.824 |
-| proxy_end_to_end | ALLOW | 1 | 30 | 52.301 | 52.301 | 71.495 | 40.22 | 87.123 |
-| proxy_end_to_end | BLOCK | 2 | 60 | 27.4 | 27.4 | 39.169 | 18.528 | 46.152 |
-| proxy_end_to_end | MASK | 1 | 30 | 50.442 | 50.442 | 69.408 | 39.849 | 70.472 |
-| proxy_end_to_end | WARN | 1 | 30 | 52.916 | 52.916 | 71.196 | 40.317 | 111.824 |
+| detector_only | ALL | 5 | 150 | 4.38 |  | 9.923 | 2.171 | 18.69 |
+| detector_only | ALLOW | 1 | 30 | 4.381 |  | 9.923 | 2.313 | 18.69 |
+| detector_only | BLOCK | 2 | 60 | 4.663 |  | 12.401 | 2.171 | 17.385 |
+| detector_only | MASK | 1 | 30 | 4.544 |  | 9.439 | 2.46 | 10.817 |
+| detector_only | WARN | 1 | 30 | 3.651 |  | 7.681 | 2.405 | 9.399 |
+| proxy_end_to_end | ALL | 5 | 150 | 84.581 | 84.581 | 137.325 | 32.36 | 194.168 |
+| proxy_end_to_end | ALLOW | 1 | 30 | 105.284 | 105.284 | 143.084 | 68.805 | 164.939 |
+| proxy_end_to_end | BLOCK | 2 | 60 | 54.745 | 54.745 | 74.271 | 32.36 | 89.768 |
+| proxy_end_to_end | MASK | 1 | 30 | 100.06 | 100.06 | 128.161 | 65.793 | 151.309 |
+| proxy_end_to_end | WARN | 1 | 30 | 108.072 | 108.072 | 150.442 | 59.589 | 194.168 |
 
 ## Method
 

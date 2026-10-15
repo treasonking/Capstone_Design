@@ -1,6 +1,7 @@
 """
 E2E 테스트 자동 실행기 (팀 JSON 데이터셋 지원)
-사용법: python qa_runner.py --dataset ../datasets/sample_dataset_v2_balanced.json
+신버전 대응: 로그인(토큰) 인증 자동 처리 추가
+사용법: python qa_runner.py --dataset datasets/sample_dataset_v2_balanced.json
 """
 
 import json
@@ -14,6 +15,36 @@ from collections import Counter
 DEFAULT_URL     = "http://localhost:8000"
 DEFAULT_DATASET = "../datasets/sample_dataset_v2_balanced.json"
 RESULTS_DIR     = Path("results")
+
+# [신규] QA 테스트 전용 계정 (서버에 자동 가입 후 로그인)
+QA_EMAIL    = "qa_tester@example.com"
+QA_PASSWORD = "qa-test-pass-0001"
+
+
+def get_auth_token(base_url: str) -> str | None:
+    """QA 테스트용 계정을 가입(이미 있으면 무시) 후 로그인해 토큰을 받아온다."""
+    creds = {"email": QA_EMAIL, "password": QA_PASSWORD}
+
+    # 가입 시도 (이미 가입돼 있으면 409가 나는데, 무시하고 넘어간다)
+    try:
+        requests.post(f"{base_url}/auth/signup", json=creds, timeout=10)
+    except Exception as e:
+        print(f"[경고] 회원가입 요청 실패(무시하고 로그인 시도): {e}")
+
+    # 로그인해서 토큰 받기
+    try:
+        resp = requests.post(f"{base_url}/auth/login", json=creds, timeout=10)
+        resp.raise_for_status()
+        token = resp.json().get("access_token")
+        if not token:
+            print("[오류] 로그인 응답에 access_token이 없습니다.")
+            return None
+        print(f"[인증] 로그인 성공, 토큰 발급 완료")
+        return token
+    except Exception as e:
+        print(f"[오류] 로그인 실패: {e}")
+        return None
+
 
 def labels_to_action(labels: list) -> str:
     if not labels:
@@ -30,12 +61,13 @@ def labels_to_action(labels: list) -> str:
         return "MASK"
     return "ALLOW"
 
-def run_test(base_url: str, tc: dict) -> dict:
+
+def run_test(base_url: str, tc: dict, headers: dict) -> dict:
     expected_action = labels_to_action(tc.get("labels", []))
     expected_labels = tc.get("labels", [])
     payload = {"message": tc["text"], "user_id": "qa_tester"}
     try:
-        resp = requests.post(f"{base_url}/proxy/chat", json=payload, timeout=10)
+        resp = requests.post(f"{base_url}/proxy/chat", json=payload, headers=headers, timeout=10)
         resp.raise_for_status()
         data = resp.json()
     except Exception as e:
@@ -61,9 +93,9 @@ def run_test(base_url: str, tc: dict) -> dict:
             for exp in expected_labels
         )
 
-    # [수정] 프록시는 정상 입력에도 SAFE_INPUT 코드를 반환하므로, 이를 탐지 코드로 보지 않는다.
+    # 프록시는 정상 입력에도 SAFE_INPUT 코드를 반환하므로, 이를 탐지 코드로 보지 않는다.
     real_codes = [c for c in actual_reason_codes if not c.startswith("SAFE_")]
-    codes_pass_strict = codes_pass                      # 원본 판정 (비교용 보존)
+    codes_pass_strict = codes_pass
     if not expected_labels:
         codes_pass = len(real_codes) == 0
     overall_pass = action_pass and codes_pass
@@ -82,7 +114,8 @@ def run_test(base_url: str, tc: dict) -> dict:
         "latency_ms":          data.get("audit_summary", {}).get("latency_ms", 0),
     }
 
-def run_all(base_url: str, dataset_path: str) -> list:
+
+def run_all(base_url: str, dataset_path: str, headers: dict) -> list:
     with open(dataset_path, encoding="utf-8") as f:
         test_cases = json.load(f)
 
@@ -94,13 +127,14 @@ def run_all(base_url: str, dataset_path: str) -> list:
 
     results = []
     for i, tc in enumerate(test_cases, 1):
-        result = run_test(base_url, tc)
+        result = run_test(base_url, tc, headers)
         results.append(result)
         icon = "OK" if result["status"] == "PASS" else ("FAIL" if result["status"] == "FAIL" else "ERR")
         print(f"[{i:03d}/{total}] {icon} {tc['id']} | {result['expected_action']} vs {result['actual_action']} | {result['status']}")
         time.sleep(0.05)
 
     return results
+
 
 def save_results(results: list) -> str:
     RESULTS_DIR.mkdir(exist_ok=True)
@@ -110,6 +144,7 @@ def save_results(results: list) -> str:
         json.dump(results, f, ensure_ascii=False, indent=2)
     print(f"\n결과 저장: {output_path}")
     return str(output_path)
+
 
 def print_summary(results: list):
     total   = len(results)
@@ -143,13 +178,21 @@ def print_summary(results: list):
                 print(f"    기대: {r['expected_action']}  실제: {r['actual_action']}")
     print(f"{'='*60}\n")
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--url",     default=DEFAULT_URL)
     parser.add_argument("--dataset", default=DEFAULT_DATASET)
     args = parser.parse_args()
 
-    results     = run_all(args.url, args.dataset)
+    token = get_auth_token(args.url)
+    if not token:
+        print("\n[중단] 인증 토큰을 받지 못해 테스트를 진행할 수 없습니다.")
+        raise SystemExit(1)
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    results     = run_all(args.url, args.dataset, headers)
     result_path = save_results(results)
     print_summary(results)
     print(f"리포트 생성: python diff_report.py --input {result_path}")

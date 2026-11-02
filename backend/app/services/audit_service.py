@@ -22,6 +22,8 @@ _DENIED_LOG_KEYS = {
     "instructions",
     "message",
     "masked_text",
+    "matched_terms",
+    "matched_text",
     "prompt",
     "raw_prompt",
     "raw_response",

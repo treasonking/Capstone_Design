@@ -154,6 +154,27 @@ def test_build_log_entry_records_counts_and_sanitizes_nested_secrets(monkeypatch
     assert api_key not in serialized
 
 
+def test_build_log_entry_excludes_detector_match_fragments_recursively() -> None:
+    fragment = "synthetic-private-text demo@example.com"
+    summary = {
+        "final_action": "BLOCK",
+        "reason_codes": ["INJ_REVEAL_SYSTEM_PROMPT"],
+        "input": {"injection_detected": True, "injection_detection_count": 1,
+                  "prompt_injection": {"matched_categories": ["SYSTEM_PROMPT"], "matched_terms": [fragment]}},
+        "output": {"nested": [{"matched_text": fragment}]},
+        "validator": {"Matched_Terms": [fragment]},
+        "hybrid_detection": {"input": {"matched_text": fragment}},
+    }
+    entry = audit_service._build_log_entry("req-fragments", "test-user", summary)
+    serialized = json.dumps(entry, ensure_ascii=False)
+    assert fragment not in serialized
+    assert "matched_terms" not in serialized.lower()
+    assert "matched_text" not in serialized.lower()
+    assert entry["injection_detection_count"] == 1
+    assert entry["reason_codes"] == ["INJ_REVEAL_SYSTEM_PROMPT"]
+    assert entry["input"]["prompt_injection"]["matched_categories"] == ["SYSTEM_PROMPT"]
+
+
 def test_save_audit_log_writes_jsonl_without_raw_fields(tmp_path) -> None:
     # 저장된 로그는 올바른 JSONL이어야 하며 안전한 메타데이터만 포함해야 합니다.
     log_dir = tmp_path / "logs"

@@ -139,7 +139,7 @@ def test_public_corpus_has_traceable_scope_without_invented_center_details():
     from urllib.parse import urlsplit
 
     documents = resident_center_agent._documents()
-    assert len({doc["id"] for doc in documents}) == len(documents) == 10
+    assert len({doc["id"] for doc in documents}) == len(documents) == 30
     for doc in documents:
         assert doc["scope"] in {"national", "local"}
         assert doc["source_access"] in {"page_text", "official_search_extract"}

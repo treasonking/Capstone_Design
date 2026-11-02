@@ -1,6 +1,8 @@
 # 주민센터 공개자료 출처 검토표
 
-검토일: 2026-11-02. 대상: `backend/app/data/resident_center_services.json` 10개 업무.
+아래 표는 2026-11-02 최초 대조 기록이다. 현재는 30개 업무이며 신규 20건 출처는 [2026-11-03 자료 확대 기록](resident_center_expansion.md)에 정리했다.
+
+최초 검토일: 2026-11-02. 대상: `backend/app/data/resident_center_services.json` 10개 업무.
 공개 민원 안내를 수동 요약한 데모용 자료이며 행정기관의 공식 업무 지침을 대체하지 않는다.
 
 ## 대조 근거

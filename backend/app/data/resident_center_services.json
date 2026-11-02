@@ -21,7 +21,8 @@
     ],
     "limitations": "공식 페이지 검색 추출문을 대조한 요약이다. 정부24의 URL별 추출문에 서류 표기 차이가 있어 완전한 체크리스트로 확정하지 않는다. 임대차계약서를 모든 전입신고에 필수인 서류로 단정하지 않는다. 세대주 확인·대리인 자격·미성년자·재외국민·해외체류자의 상세 요건은 관할기관에 확인한다.",
     "scope": "national",
-    "source_access": "official_search_extract"
+    "source_access": "official_search_extract",
+    "category": "주민등록·인감"
   },
   {
     "id": "resident-copy",
@@ -45,7 +46,8 @@
     ],
     "limitations": "신청 자격과 위임 요건은 관계와 신청 목적에 따라 다르다. 외국인·이해관계인 등의 상세 자격 및 지자체 감면은 이 요약만으로 판단하지 않는다. 무인발급기의 위치·운영시간·실제 적용 수수료는 확인하지 않았다.",
     "scope": "national",
-    "source_access": "official_search_extract"
+    "source_access": "official_search_extract",
+    "category": "주민등록·인감"
   },
   {
     "id": "seal-certificate",
@@ -75,7 +77,8 @@
         "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148934534",
         "source_access": "official_search_extract"
       }
-    ]
+    ],
+    "category": "주민등록·인감"
   },
   {
     "id": "id-card-reissue",
@@ -98,7 +101,8 @@
     ],
     "limitations": "사유별 사전 정정·재등록 절차, 사진 규격, 면제 및 IC 추가 비용의 정확한 적용은 공식 원문과 접수기관에서 확인한다. 처리기간·배송비를 임의로 확정하지 않는다.",
     "scope": "national",
-    "source_access": "page_text"
+    "source_access": "page_text",
+    "category": "주민등록·인감"
   },
   {
     "id": "family-certificate",
@@ -122,7 +126,8 @@
     ],
     "limitations": "도봉구 공개 안내를 요약한 지역 참고자료다. 원문의 무인발급기 무료 안내를 전국 공통 수수료로 일반화하지 않는다. 일반·상세·특정 증명서 선택, 외국인·친양자·제3자 예외 및 제출처 요구는 추가 확인한다.",
     "scope": "local",
-    "source_access": "page_text"
+    "source_access": "page_text",
+    "category": "가족·주거·생활"
   },
   {
     "id": "birth-report",
@@ -145,7 +150,8 @@
     ],
     "limitations": "신고의무자 자격·신고기한·온라인 신고 대상 의료기관·국외출생·혼인외 출생·증명서가 없는 경우의 상세 요건은 관할 가족관계등록관서에서 확인한다. 모든 출생신고가 온라인으로 가능하다고 단정하지 않는다. 출산 지원금 신청까지 완료되는 서비스가 아니다.",
     "scope": "national",
-    "source_access": "official_search_extract"
+    "source_access": "official_search_extract",
+    "category": "생애주기"
   },
   {
     "id": "death-report",
@@ -167,7 +173,8 @@
     ],
     "limitations": "정부24 개요의 신청자격 표기를 근거로 누구나 신고의무자라고 안내하지 않는다. 신고의무자·기한의 기산점·국외사망·대체 증빙은 추가 확인한다. 상속·금융조회·개인별 처리상태는 안내 범위 밖이다.",
     "scope": "national",
-    "source_access": "official_search_extract"
+    "source_access": "official_search_extract",
+    "category": "생애주기"
   },
   {
     "id": "fixed-date",
@@ -189,7 +196,8 @@
     ],
     "limitations": "수수료·대리 신청·온라인 신청·임대차 신고와의 관계는 미수록이다. 전입신고만으로 확정일자까지 완료됐다고 말하지 않는다. 우선변제권 등 법적 효력을 판단하지 않는다.",
     "scope": "local",
-    "source_access": "page_text"
+    "source_access": "page_text",
+    "category": "가족·주거·생활"
   },
   {
     "id": "signature-certificate",
@@ -212,7 +220,8 @@
     ],
     "limitations": "한시 면제는 종료일과 이후 변경 여부를 확인해야 한다. 종이 본인서명사실확인서와 전자본인서명확인서를 혼동하지 않는다. 미성년자·후견·재외국민의 추가 요건 및 제출기관 요구는 담당기관에서 확인한다.",
     "scope": "national",
-    "source_access": "official_search_extract"
+    "source_access": "official_search_extract",
+    "category": "주민등록·인감"
   },
   {
     "id": "bulky-waste",
@@ -245,6 +254,485 @@
         "url": "https://www.guro.go.kr/www/contents.do?key=2072",
         "source_access": "page_text"
       }
-    ]
+    ],
+    "category": "가족·주거·생활"
+  },
+  {
+    "id": "seal-registration",
+    "title": "인감 신규 신고",
+    "keywords": [
+      "인감등록",
+      "인감신고",
+      "인감 신규",
+      "인감 처음",
+      "도장 등록"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 인감 신규 신고",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000021",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "인감증명서를 받기 전에 주소지 관할 읍·면·동에 인장을 신고하여 등록하는 민원이다. 등록할 인장과 신분증을 준비하는 방문 신고이며 수수료는 없다고 안내된다. 대리인을 통한 서면신고는 질병·출산·복역·해외거주 등 본인 방문이 어려운 법정 사유가 있는 경우에 한한다.",
+    "clarify": [
+      "처음 인감을 등록하나요, 등록된 인감을 바꾸나요?",
+      "본인이 방문할 수 있나요? 진단명이나 증빙 사진은 입력하지 마세요."
+    ],
+    "limitations": "증명서 대리 발급과 인감 최초 신고의 서면신고 요건은 다르다. 누구나 위임장만 있으면 신규 신고할 수 있다고 말하지 않는다. 미성년자·후견·외국인과 서면신고 증빙은 관할기관 확인이 필요하다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "주민등록·인감"
+  },
+  {
+    "id": "seal-change",
+    "title": "인감 변경 신고",
+    "keywords": [
+      "인감변경",
+      "인감 변경",
+      "인감도장 변경",
+      "인감도장 바꾸",
+      "인감 분실"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 인감 변경 신고",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000024",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "등록한 인장의 분실·마멸·훼손 등으로 신고 인감을 변경하는 민원이다. 본인 방문에는 새로 등록할 인장과 인정되는 신분증이 안내되며 기본 수수료는 600원이다. 서면신고에는 별도 신고서·보증과 방문 불가 사유 증빙 등 추가 요건이 있다.",
+    "clarify": [
+      "인감을 바꾸려는 것인가요, 증명서만 발급하려는 것인가요?",
+      "본인 방문과 법정 사유에 따른 서면신고 중 어떤 상황인가요?"
+    ],
+    "limitations": "인감 신규 신고·인감증명서 발급과 구분한다. 서면신고 가능 사유·미성년자·후견 관련 추가서류와 수수료 면제 여부는 원문 및 관할기관 확인이 필요하다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "주민등록·인감"
+  },
+  {
+    "id": "resident-correction",
+    "title": "주민등록 정정·세대주 변경",
+    "keywords": [
+      "주민등록정정",
+      "세대주 변경",
+      "세대분리",
+      "세대분가",
+      "세대합가",
+      "거주불명등록"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 주민등록 정정·세대주 변경",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000010",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "세대주 변경·분가·합가, 주민등록 기재사항 정정·말소·거주불명등록 등을 신고하는 민원이다. 정부24는 인터넷·방문 경로, 수수료 없음과 온라인 대리 신청 불가를 안내한다. 거주불명등록에는 사실조사가 필요할 수 있어 단순 정정과 처리기간을 동일하게 단정하지 않는다.",
+    "clarify": [
+      "세대주 변경·세대분리·기재사항 정정 중 어떤 업무인가요?",
+      "방문과 온라인 중 어떤 방법을 원하나요?"
+    ],
+    "limitations": "세대주 확인·신고 자격과 구비서류는 정정 유형별로 다르다. 모든 유형이 온라인에서 완료되거나 즉시 처리된다고 말하지 않는다. 실제 세대정보를 조회하거나 변경하지 않는다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "주민등록·인감"
+  },
+  {
+    "id": "resident-card-first",
+    "title": "주민등록증 신규 발급",
+    "keywords": [
+      "주민등록증 신규",
+      "주민등록증 처음",
+      "민증 처음",
+      "첫 주민등록증"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "주민등록증 신규 발급 공식 안내",
+    "source_url": "https://www.mois.go.kr/frt/sub/a06/b06/IDCard_2/screen.do",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "행정안전부는 주민등록과 가족관계등록이 확인된 17세 이상인 사람 등의 신규 발급을 안내한다. 본인 방문 시 사진 1장을 제출하고 신분 확인과 지문 등록을 한다. 정부24 신청은 사진파일 제출 후 6개월 이내 선택한 읍·면·동에서 지문을 등록해야 신청이 완료되며 미등록 시 자동 반려된다고 안내된다. 신규 발급은 재발급과 구분한다.",
+    "clarify": [
+      "처음 발급받는 경우인가요, 분실·훼손으로 재발급하나요?",
+      "방문과 정부24 신청 중 어떤 경로를 원하나요?"
+    ],
+    "limitations": "국적 취득·영주귀국 등의 신청기간과 본인확인 대체 방법은 공식 원문에서 확인한다. 온라인 신청만으로 방문 없이 완료된다고 말하지 않는다. 사진 규격·IC 비용·수령 일정은 원문 확인이 필요하다.",
+    "scope": "national",
+    "source_access": "page_text",
+    "category": "주민등록·인감"
+  },
+  {
+    "id": "resident-card-loss",
+    "title": "주민등록증 분실신고·철회",
+    "keywords": [
+      "주민등록증 분실신고",
+      "민증 분실신고",
+      "분실신고 철회",
+      "신분증 잃어",
+      "민증 잃어"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 주민등록증 분실신고·철회",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000019",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "주민등록증 분실 사실을 신고하거나 이미 한 분실신고를 철회하는 민원이다. 정부24는 인터넷·방문 신청, 수수료 없음, 온라인 대리 신청 불가를 안내한다. 분실신고 자체는 새 주민등록증의 재발급 신청과 별개의 절차다. 모바일 주민등록증 분실은 모바일 신분증 홈페이지 또는 주민센터 방문 안내를 확인한다.",
+    "clarify": [
+      "분실신고인가요, 찾은 카드의 분실신고 철회인가요?",
+      "실물 주민등록증인가요, 모바일 주민등록증인가요?"
+    ],
+    "limitations": "분실신고를 하면 재발급까지 자동 완료된다고 말하지 않는다. 방문 대리 신고 자격·신분 확인 및 모바일 신분증 처리와의 차이는 담당기관에 확인한다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "주민등록·인감"
+  },
+  {
+    "id": "household-inspection",
+    "title": "전입세대확인서 열람·발급",
+    "keywords": [
+      "전입세대확인",
+      "전입세대 열람",
+      "전입세대열람",
+      "전입세대 확인"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 전입세대확인서 열람·발급",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000305",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "소유자·임차인·계약자 등 법령상 자격이 있는 신청인이 해당 물건의 전입세대를 열람하거나 확인서를 발급받는 방문 민원이다. 신분증과 신청 자격 증빙이 필요하며 대리 신청에는 위임장·위임인과 대리인의 신분 확인 등이 추가된다. 열람은 물건지 건당 300원, 교부는 자격 등에 따라 400원 또는 500원으로 안내된다.",
+    "clarify": [
+      "열람이 필요한가요, 확인서 교부가 필요한가요?",
+      "소유자·임차인·계약자 등 어떤 자격으로 신청하나요? 상세 주소는 쓰지 마세요."
+    ],
+    "limitations": "등본 발급·전입신고와 다른 업무다. 누구나 타인의 전입세대를 조회할 수 있다고 말하지 않는다. 신청 자격·공동이용 서류·면제·교부 금액은 접수기관에서 확인한다. 실제 주소나 타인 정보를 채팅에 요청하지 않는다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "주민등록·인감"
+  },
+  {
+    "id": "resident-notification",
+    "title": "주민등록 관련 통보서비스",
+    "keywords": [
+      "주민등록 통보",
+      "통보서비스",
+      "전입신고 알림",
+      "등본 발급 알림",
+      "주민등록증 발급 알림"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 주민등록 관련 통보서비스",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13110000039",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "전입신고·세대주 변경·주민등록증 발급 및 재발급·등초본 교부·주소변경 사실 등을 문자로 알리는 서비스의 신규·변경·해지 신청이다. 인터넷·방문 신청과 수수료 없음이 안내되며 온라인 대리 신청은 불가하다. 세대주·소유자·임대인 등 통보 종류별 신청 자격과 증빙이 다르다.",
+    "clarify": [
+      "어떤 사실의 통보를 신청하나요?",
+      "신규·변경·해지 중 어떤 신청인가요? 전화번호는 입력하지 마세요."
+    ],
+    "limitations": "이 채팅은 문자 수신 신청을 실제 등록하지 않는다. 휴대전화번호를 채팅으로 받지 않는다. 신청할 통보 종류와 관계별 구비서류는 원문 및 접수기관에서 확인한다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "주민등록·인감"
+  },
+  {
+    "id": "electronic-signature",
+    "title": "전자본인서명확인서 발급",
+    "keywords": [
+      "전자본인서명",
+      "전자 서명확인서",
+      "전자서명 확인서"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 전자본인서명확인서 발급",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13110000048",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "본인이 정부24 PC 웹의 발급시스템에서 전자서명 후 발급하는 별도 서비스다. 최초 이용 전 읍·면·동 또는 출장소에서 발급시스템 이용 승인 신청이 필요하며 발급 수수료는 없다고 안내된다. 발급증을 받은 기관은 시스템에서 원본을 열람하는 방식이다. 제출 가능한 기관과 용도에 제한이 있다.",
+    "clarify": [
+      "발급시스템 이용 승인을 이미 받았나요?",
+      "어느 종류의 기관에 제출하나요? 개인정보는 쓰지 마세요."
+    ],
+    "limitations": "종이 본인서명사실확인서와 절차가 다르다. 아무 은행·민간기업·개인 간 거래에 전자 확인서를 제출할 수 있다고 말하지 않는다. 이용승인 유효기간·갱신·철회는 별도 공식 안내를 확인한다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "주민등록·인감"
+  },
+  {
+    "id": "local-tax-clearance",
+    "title": "지방세 납세증명서",
+    "keywords": [
+      "지방세 납세증명",
+      "지방세 완납",
+      "지방세 체납없음"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 지방세 납세증명서",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000056",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "법령상 제외 금액을 빼고 지방세 체납액이 없음을 증명하는 서류의 발급 민원이다. 인터넷·방문·FAX·우편·무인발급기 경로와 수수료 없음이 안내된다. 본인은 신분증을, 일반 대리 신청은 위임장과 위임인·대리인의 신분 확인 등을 준비한다. 온라인은 대리 신청이 불가하다.",
+    "clarify": [
+      "지방세 체납 없음 증명인가요, 특정 세목의 과세내역 증명인가요?",
+      "본인 신청인가요, 대리 신청인가요?"
+    ],
+    "limitations": "국세 납세증명서나 지방세 세목별 과세증명서와 구분한다. 법인·상속·미성년자 등의 추가 증빙과 유효기간은 공식 원문에서 확인한다. 실제 체납 여부를 조회하거나 완납을 확정하지 않는다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "세금·증명"
+  },
+  {
+    "id": "local-tax-item",
+    "title": "지방세 세목별 과세증명서",
+    "keywords": [
+      "세목별 과세",
+      "세목별과세",
+      "지방세 과세증명",
+      "재산세 과세증명"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 지방세 세목별 과세증명서",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000084",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "특정 지방세 세목의 과세사실을 증명하는 서류다. 정부24는 인터넷·방문·FAX·우편·무인발급기를 안내하며 온라인 대리 신청은 불가하다. 본인은 신분증, 대리인은 위임장·위임인 신분증 사본·대리인 신분증 등이 안내된다. 인터넷 신청은 무료이며 다른 경로 수수료는 자치단체 조례에 따라 결정된다.",
+    "clarify": [
+      "어떤 세목과 과세연도의 증명이 필요한가요?",
+      "온라인과 방문 중 어떤 방법을 원하나요?"
+    ],
+    "limitations": "지방세 체납 없음 증명과 다르다. 과세연도·세목·지역을 확인하되 실제 재산정보를 채팅에 입력하지 않는다. 전국 모든 창구나 무인발급기에서 동일 금액·동일 범위로 발급된다고 단정하지 않는다.",
+    "scope": "national",
+    "source_access": "page_text",
+    "category": "세금·증명"
+  },
+  {
+    "id": "livelihood-certificate",
+    "title": "국민기초생활수급자 증명서",
+    "keywords": [
+      "기초생활수급자 증명",
+      "수급자증명",
+      "수급자 증명서"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 국민기초생활수급자 증명서",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=14600000280",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "기존 수급자에 관한 수급자 증명서를 발급하는 민원으로 정부24는 인터넷·방문·우편·무인발급기 경로와 수수료 없음을 안내한다. 신청자격은 법령상 자격이 있는 사람이며 수급자 증명서 발급신청서가 안내된다.",
+    "clarify": [
+      "기존 수급자 증명서가 필요한가요, 새 지원 신청을 원하나요?",
+      "본인 신청인가요, 위임에 따른 신청인가요?"
+    ],
+    "limitations": "생계급여 등 신규 수급 신청이나 선정 절차와 구분한다. 증명서 발급 가능 여부·대리인 자격·신분 확인은 접수기관에서 확인한다. 개인의 수급 상태를 조회하거나 소득·주민번호를 요청하지 않는다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "복지 증명"
+  },
+  {
+    "id": "single-parent-certificate",
+    "title": "한부모가족 증명서",
+    "keywords": [
+      "한부모가족 증명",
+      "한부모 증명",
+      "한부모가족증명"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 한부모가족 증명서",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=10601000001",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "한부모가족 지원대상자 등에 관한 증명서 발급 민원이다. 정부24는 인터넷·방문·FAX·우편·모바일·무인발급기 경로, 수수료 없음과 법령상 신청 자격을 안내한다. 발급신청서는 해당 공식 서식을 이용한다.",
+    "clarify": [
+      "증명서 발급인가요, 지원 신청 절차 문의인가요?",
+      "본인 또는 법정 자격을 가진 신청인가요?"
+    ],
+    "limitations": "한부모 가구라는 이유만으로 증명서 발급 또는 급여 지원이 확정되는 것은 아니다. 신규 지원대상 선정·소득기준·대리 자격은 별도 확인한다. 가족관계의 상세 개인정보를 채팅에 요청하지 않는다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "복지 증명"
+  },
+  {
+    "id": "disability-certificate",
+    "title": "장애인증명서 발급",
+    "keywords": [
+      "장애인증명",
+      "장애인 증명",
+      "장애 증명서"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 장애인증명서 발급",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=14600000273",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "정부24는 장애인증명서의 인터넷·방문·우편·무인발급기 발급 경로와 수수료 없음을 안내한다. 본인 또는 대리인이 신청할 수 있으나 온라인 대리 신청은 불가하다. 증명서 발급과 최초 장애인 등록·심사는 서로 다른 민원이다.",
+    "clarify": [
+      "등록된 장애인증명서를 발급하려는 건가요, 새로 등록하려는 건가요?",
+      "본인과 대리 중 어떤 신청인가요?"
+    ],
+    "limitations": "방문 신분 확인과 대리 자격을 구비서류 없음이라는 표제만으로 생략할 수 있다고 단정하지 않는다. 장애 여부·정도·급여 자격을 채팅으로 판단하지 않으며 진단서나 진료기록을 받지 않는다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "복지 증명"
+  },
+  {
+    "id": "basic-pension",
+    "title": "기초연금 지급 신청",
+    "keywords": [
+      "기초연금",
+      "노령 기초연금"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 기초연금 지급 신청",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13520000048",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "정부24는 기초연금 지급 신청의 인터넷·방문 경로, 본인 또는 대리 신청과 수수료 없음을 안내한다. 읍·면·동과 국민연금공단 지사 등이 접수기관으로 안내된다. 소득·재산 신고, 금융정보 제공 동의, 신분 확인과 지급계좌 확인 자료 등이 필요하며 대리 신청은 위임 관련 증빙이 추가될 수 있다.",
+    "clarify": [
+      "신규 신청 절차인가요, 기존 수급 관련 문의인가요?",
+      "본인 방문과 대리 신청 중 어떤 방법을 원하나요?"
+    ],
+    "limitations": "연령 조건 외에도 선정 기준과 제외·예외가 있어 수급 여부·금액·지급 개시일을 확정하지 않는다. 신청서에 필요한 계좌·소득·재산정보를 채팅에 제출하게 하지 않는다. 정확한 서류는 신청기관에서 확인한다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "복지 신청"
+  },
+  {
+    "id": "social-assistance",
+    "title": "사회보장급여 신청·변경",
+    "keywords": [
+      "사회보장급여",
+      "생계급여 신청",
+      "기초생활보장 신청",
+      "주거급여 신청"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 사회보장급여 신청·변경",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=14600000275",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "노인·장애인·생활이 어려운 사람 등에 대한 급여·연금·교육비 등 사회보장급여를 신청하거나 변경하는 절차다. 정부24는 기초생활보장·한부모·기초연금·장애인·아동 관련 지원 등 여러 유형을 안내하며 접수기관과 처리기간은 급여별로 다르다.",
+    "clarify": [
+      "어떤 급여나 지원제도의 신청·변경을 원하나요?",
+      "신규 신청인가요, 기존 신청 내용 변경인가요?"
+    ],
+    "limitations": "특정 급여의 상세 기준·지급액·필수서류를 모두 수록한 자료가 아니다. 단순 상담만으로 선정·승인되었다고 말하지 않는다. 원하는 제도 이름을 확인하고 읍·면·동 등 담당기관 상담으로 연결하되 개인정보를 수집하지 않는다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "복지 신청"
+  },
+  {
+    "id": "childcare-support",
+    "title": "보육료·양육수당 신청·변경",
+    "keywords": [
+      "보육료",
+      "양육수당",
+      "어린이집 지원 신청"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 보육료·양육수당 신청·변경",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13510000024",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "정부24는 보육료·양육수당 지원 신청·변경의 인터넷·방문 경로와 수수료 없음을 안내한다. 해당 사회보장급여 신청서를 이용하며 읍·면·동 등에서 접수·처리한다. 어린이집 이용과 가정 양육 등 원하는 지원 유형에 맞게 신청 내용을 확인해야 한다.",
+    "clarify": [
+      "어린이집 보육료인가요, 가정 양육 관련 지원인가요?",
+      "새 신청인가요, 지원 유형을 변경하려는 건가요?"
+    ],
+    "limitations": "원문에 과거 카드명·종일반 등 구형 표현이 남아 있어 이를 현재 필수서류로 재사용하지 않는다. 현재 대상 연령·지원액·변경 적용일·부모급여와의 관계는 최신 담당기관 안내가 필요하다. 아동 이름·생년월일·계좌를 요청하지 않는다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "복지 신청"
+  },
+  {
+    "id": "pregnancy-one-stop",
+    "title": "맘편한 임신 통합서비스",
+    "keywords": [
+      "맘편한 임신",
+      "임신 원스톱",
+      "임신 지원 통합",
+      "임산부 지원 신청"
+    ],
+    "region": "전라남도 목포시 공식 안내 기준",
+    "source_title": "맘편한 임신 통합서비스 공식 안내",
+    "source_url": "https://youth.mokpo.go.kr/health/medical_expense/promote_childbirth/antepartum_care",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "목포시 공식 안내는 정부24 온라인 또는 보건소·관할 행정복지센터 방문으로 임신지원 서비스를 통합 신청하는 경로를 설명한다. 방문 시 신분증과 임신확인서 등이 안내되며 사업별 추가서류가 필요할 수 있다. 일부 서비스는 통합 신청 대상이고 일부는 안내 후 별도 신청이 필요하다.",
+    "clarify": [
+      "신청할 시·군·구는 어디인가요?",
+      "통합서비스 절차인가요, 특정 지원사업 문의인가요?"
+    ],
+    "limitations": "목포시 안내의 지역 참고자료다. 다른 지역 지원품목·쿠폰·지원액·담당 창구로 일반화하지 않는다. 의료 상담이나 개인별 임신지원 자격 판단을 하지 않고 임신확인서 사진·진료기록을 받지 않는다.",
+    "scope": "local",
+    "source_access": "official_search_extract",
+    "category": "생애주기"
+  },
+  {
+    "id": "birth-one-stop",
+    "title": "행복출산 통합신청",
+    "keywords": [
+      "행복출산",
+      "출산 원스톱",
+      "출산지원 통합",
+      "출산 서비스 통합"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 행복출산 통합신청",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=17410000001",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "출생신고와 동시에 또는 이후 각종 출산지원 서비스를 읍·면·동이나 정부24에서 통합 신청하는 민원이다. 본인 또는 대리인이 신청하되 온라인 대리 신청은 불가하다. 신청 자체 수수료는 없으나 구비서류 발급 비용은 별도일 수 있다. 신분 확인과 신청할 사업별 요건·증빙을 확인하며 실제 처리는 서비스별 기관에서 한다.",
+    "clarify": [
+      "출생신고를 이미 했나요, 함께 진행하려 하나요?",
+      "신청할 시·군·구와 원하는 지원 종류는 무엇인가요?"
+    ],
+    "limitations": "출생신고와 행복출산 신청은 구분한다. 통합 신청했다고 모든 급여·지원금이 승인되거나 즉시 지급되는 것은 아니다. 지역별 사업과 현재 지급액·추가서류·신청기한은 별도 확인한다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "생애주기"
+  },
+  {
+    "id": "inheritance-one-stop",
+    "title": "안심상속 재산조회 통합신청",
+    "keywords": [
+      "안심상속",
+      "상속 재산조회",
+      "사망자 재산조회",
+      "피후견인 재산조회"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 안심상속 재산조회 통합신청",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=17400000001",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "상속인·후견인 등 자격 있는 신청인이 사망자·피후견인의 금융·토지·자동차·세금·연금 등 재산조회를 통합 신청하는 절차다. 정부24는 인터넷·방문 경로를 안내하지만 신청인 관계와 유형별 온라인 가능 범위가 다르고 피후견인 조회는 방문 신청만 가능하다. 신청 수수료는 없으나 증빙서류 발급 비용은 별도일 수 있다.",
+    "clarify": [
+      "사망자 재산조회인가요, 피후견인 재산조회인가요?",
+      "신청 관계만 알려주세요. 이름·계좌·재산내역은 입력하지 마세요."
+    ],
+    "limitations": "상속순위·상속포기·대습상속·후견의 개인별 법률 판단은 하지 않는다. 신청 자격과 기한·증빙은 담당기관 확인이 필요하다. 재산을 실제 조회하거나 계좌·주민번호·사망자 개인정보를 요청하지 않는다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "생애주기"
+  },
+  {
+    "id": "disability-registration",
+    "title": "장애인 등록 신청",
+    "keywords": [
+      "장애인등록",
+      "장애인 등록",
+      "장애 등록 신청",
+      "장애 정도심사"
+    ],
+    "region": "전국 공통 제도 안내 기준 — 실제 접수 가능 여부는 관할기관 확인",
+    "source_title": "정부24 — 장애인 등록 신청",
+    "source_url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=14600000117",
+    "checked_at": "2026-11-03",
+    "effective_date": null,
+    "content": "장애인 등록은 거주지 읍·면·동 행정복지센터에 신청하고 장애정도 심사 등을 거치는 절차다. 정부24는 인터넷·방문, 본인 또는 대리 신청, 온라인 대리 신청 불가와 신청 수수료 없음을 안내한다. 유형별 진단서·검사자료·진료기록 등 심사 서류와 사진 등이 필요할 수 있다.",
+    "clarify": [
+      "최초 등록 절차인가요, 이미 등록된 증명서 발급인가요?",
+      "본인과 보호자·대리인 중 어떤 신청 상황인가요?"
+    ],
+    "limitations": "신청 수수료 없음이 의료기관 진단·검사 비용까지 모두 무료라는 뜻은 아니다. 장애 여부·정도·등록 가능성을 채팅으로 판정하지 않는다. 진단명·의료기록·사진을 채팅에 제출하지 말고 담당기관이 안내하는 정식 절차를 이용한다.",
+    "scope": "national",
+    "source_access": "official_search_extract",
+    "category": "복지 신청"
   }
 ]

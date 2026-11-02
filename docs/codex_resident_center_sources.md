@@ -43,3 +43,7 @@
 
 자료·코드·문서 보강 및 관련 회귀 검증 완료. 정확한 실행 수치와 미검증 항목은
 [검증 보고서](../reports/resident_center_sources_verification.md)를 기준으로 한다.
+
+## 후속 확대 완료 기록
+
+2026-11-03 추가 요청으로 자료를 30개 업무로 확대했다. 이 문서의 10건·검증 수치는 당시 기록이며, 현재 범위와 실행 결과는 [확대 Codex 기록](codex_resident_center_expansion.md)과 [확대 검증 보고서](../reports/resident_center_expansion_verification.md)를 따른다.

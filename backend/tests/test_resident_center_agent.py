@@ -34,7 +34,8 @@ def integrated(monkeypatch, tmp_path):
 def test_search_public_documents(query, doc_id):
     doc = resident_center_agent.search_services(query)[0]
     assert doc["id"] == doc_id
-    assert doc["source_url"].startswith("https://www.guro.go.kr/")
+    assert doc["source_url"].startswith("https://www.gov.kr/")
+    assert doc["scope"] == "national"
     assert doc["effective_date"] is None
 
 
@@ -48,7 +49,7 @@ def test_user_chat_retrieves_only_after_preflight_and_masks_before_provider(inte
     assert "주민센터" in calls[0][1]["system_instructions"]
     assert "resident-copy" in calls[0][1]["system_instructions"]
     assert "010-1234-5678" not in str(calls)
-    assert "https://www.guro.go.kr/" in result["content"]
+    assert "https://www.gov.kr/" in result["content"]
     assert set(result) == {"action", "content", "input_masked", "output_masked"}
     saved = log.read_text(encoding="utf-8")
     assert body["message"] not in saved
@@ -102,4 +103,51 @@ def test_stream_uses_same_agent_and_validated_content(integrated):
     assert "seal-certificate" in calls[0][1]["system_instructions"]
     done = json.loads(events[-1].split("data: ")[1])
     assert done["action"] == "ALLOW"
-    assert "https://www.guro.go.kr/" in done["content"]
+    assert "https://www.gov.kr/" in done["content"]
+
+
+@pytest.mark.parametrize("query,scope,source_fragment", [
+    ("등본 온라인 발급", "전국 공통 제도 안내", "CappBizCD=13100000015"),
+    ("가족관계증명서 발급", "지역 한정 참고자료", "dobong.go.kr"),
+    ("소파 버리기", "지역 한정 참고자료", "key=2650"),
+])
+def test_service_scope_and_official_source_reach_validated_response(integrated, query, scope, source_fragment):
+    client, calls, _ = integrated
+    result = client.post("/proxy/chat", json={"message": query, "assistant": "resident_center"}).json()
+    assert result["action"] == "ALLOW"
+    assert f"범위: {scope}" in result["content"]
+    assert source_fragment in result["content"]
+    instructions = calls[0][1]["system_instructions"]
+    assert "운영정보는 확인할 수 없다" in instructions
+    assert "official_search_extract" in instructions or "page_text" in instructions
+
+
+def test_online_seal_restrictions_have_supplementary_official_source(integrated):
+    client, calls, _ = integrated
+    result = client.post("/proxy/chat", json={"message": "인감증명서 인터넷 발급", "assistant": "resident_center"}).json()
+    instructions = calls[0][1]["system_instructions"]
+    documents = json.loads(instructions.split("공개 참고자료(JSON):\n", 1)[1])
+    seal = next(doc for doc in documents if doc["id"] == "seal-certificate")
+    assert "법원·금융기관" in seal["content"]
+    assert "온라인 대리 신청 불가" in seal["content"]
+    assert "148934534" in result["content"]
+    assert result["action"] == "ALLOW"
+
+
+def test_public_corpus_has_traceable_scope_without_invented_center_details():
+    from datetime import date
+    from urllib.parse import urlsplit
+
+    documents = resident_center_agent._documents()
+    assert len({doc["id"] for doc in documents}) == len(documents) == 10
+    for doc in documents:
+        assert doc["scope"] in {"national", "local"}
+        assert doc["source_access"] in {"page_text", "official_search_extract"}
+        date.fromisoformat(doc["checked_at"])
+        assert doc["effective_date"] is None  # Page review is not legal-effect verification.
+        assert doc["limitations"] and doc["clarify"]
+        assert not {"opening_hours", "phone", "counter", "office_address"} & doc.keys()
+        for url in [doc["source_url"], *(s["url"] for s in doc.get("supplementary_sources", []))]:
+            parsed = urlsplit(url)
+            assert parsed.scheme == "https"
+            assert parsed.hostname and parsed.hostname.endswith((".go.kr", ".gov.kr", ".korea.kr"))

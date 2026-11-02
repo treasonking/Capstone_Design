@@ -855,7 +855,7 @@
       </div>
     <section id="chatView" class="panel chat-panel" aria-label="사용자 채팅" hidden>
       <header class="chat-heading"><h1>TEAM ORCA</h1><button id="newChatBtn" class="secondary" type="button">새 대화</button></header>
-      <p class="chat-notice">안전 검사를 거친 답변을 제공합니다. 각 질문은 독립적으로 처리되며 이전 대화는 AI에 전달되지 않습니다.</p>
+      <p class="chat-notice">안전 검사를 거친 답변을 제공합니다. 같은 안내 유형의 최근 대화 최대 6회를 함께 검사해 AI에 전달합니다. 새 대화를 시작하면 이력이 지워집니다.</p>
       <div id="chatLog" class="chat-log" role="log" aria-label="대화 기록" aria-live="polite"></div>
       <form id="chatForm" class="chat-composer">
         <label for="chatAssistant">안내 유형</label>
@@ -863,9 +863,9 @@
           <option value="resident_center">주민센터 안내</option>
           <option value="general">일반 질문</option>
         </select>
-        <p class="chat-notice">주민센터 안내는 구로구 수궁동 공개자료를 참고합니다. 전입신고·등초본·인감증명 방문 안내를 지원하며, 현재 요건은 담당 기관 확인이 필요합니다.</p>
+        <p class="chat-notice">전입신고·등초본·인감증명·주민등록증 재발급·가족관계증명·출생 및 사망신고·확정일자·본인서명·대형폐기물 등 10개 업무의 공개자료를 참고합니다. 지역과 현재 요건은 담당 기관 확인이 필요합니다.</p>
         <label for="chatInput">메시지</label>
-        <textarea id="chatInput" placeholder="무엇을 도와드릴까요?" autocomplete="off"></textarea>
+        <textarea id="chatInput" placeholder="무엇을 도와드릴까요?" autocomplete="off" maxlength="4000"></textarea>
         <div class="actions"><span class="chat-notice">Enter 전송 · Shift+Enter 줄바꿈</span><button id="chatSendBtn" class="primary" type="submit">전송</button></div>
         <div id="chatStatus" class="chat-state" role="status" aria-live="polite"></div>
       </form>
@@ -1632,7 +1632,19 @@
       retry.className = "secondary";
       retry.textContent = "이 질문 다시 시도";
       retry.hidden = true;
-      const turn = { text, assistant: chatAssistant.value || "resident_center", answer, answerLabel, status, retry };
+      const assistant = chatAssistant.value || "resident_center";
+      const history = [];
+      let historySize = 0;
+      for (const previous of [...chatTurns].reverse()) {
+        if (previous.assistant !== assistant) break;
+        if (!previous.completed) continue;
+        const content = previous.answer.textContent;
+        const size = previous.text.length + content.length;
+        if (history.length >= 12 || previous.text.length > 4000 || content.length > 4000 || historySize + size > 16000) break;
+        history.unshift({ role: "user", content: previous.text }, { role: "assistant", content });
+        historySize += size;
+      }
+      const turn = { text, assistant, history, completed: false, answer, answerLabel, status, retry };
       answerLabel.textContent = turn.assistant === "resident_center" ? "ORCA · 주민센터 안내" : "ORCA";
       retry.addEventListener("click", () => submitChat(turn));
       container.append(userLabel, user, answerLabel, answer, status, retry);
@@ -1663,7 +1675,7 @@
       if (!retryTurn) chatInput.value = "";
       syncChatControls();
       try {
-        const options = { method: "POST", body: JSON.stringify({ message: operation.text, assistant: turn.assistant }), controller: operation.controller };
+        const options = { method: "POST", body: JSON.stringify({ message: operation.text, assistant: turn.assistant, history: turn.history }), controller: operation.controller };
         const analysis = await authenticatedRequest("/proxy/analyze", options);
         if (!ownsChat(operation) || operation.controller.signal.aborted) return;
         if (!["ALLOW", "MASK", "WARN", "BLOCK"].includes(analysis.payload?.action)) {
@@ -1688,6 +1700,7 @@
           throw new ApiRequestError("Unavailable response", { kind: "request" });
         }
         turn.answer.textContent = payload.content;
+        turn.completed = true;
         turn.answer.hidden = false;
         turn.answerLabel.hidden = false;
         turn.status.textContent = payload.input_masked ? "개인정보를 가리고 전송했습니다."

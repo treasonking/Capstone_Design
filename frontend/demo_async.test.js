@@ -199,7 +199,7 @@ function chatFetch(final = { action: "ALLOW", content: "safe answer" }, analysis
   };
 }
 
-test("CHAT final content only, memory-only history, no policy or history sent, literal HTML", async () => {
+test("CHAT final content only, memory-only bounded history, no policy sent, literal HTML", async () => {
   const requests = [];
   const raw = '<img src=x onerror="alert(1)">';
   const h = chatHarness({ fetchImpl: chatFetch({ action: "ALLOW", content: raw }, "ALLOW", requests) });
@@ -212,12 +212,42 @@ test("CHAT final content only, memory-only history, no policy or history sent, l
   await h.element("chatForm").emit("submit");
   assert.equal(h.run("chatTurns.length"), 2);
   assert.deepEqual(requests.map(r => r.body), [
-    {message:raw, assistant:"resident_center"}, {message:raw, assistant:"resident_center"},
-    {message:"second question", assistant:"general"}, {message:"second question", assistant:"general"}
+    {message:raw, assistant:"resident_center", history:[]}, {message:raw, assistant:"resident_center", history:[]},
+    {message:"second question", assistant:"general", history:[]}, {message:"second question", assistant:"general", history:[]}
   ]);
   assert.ok(requests.every(r => !r.headers["X-Admin-Token"]));
   assert.equal(h.sessionStorage.values.size, 0);
   assert.equal(h.element("userConsole").hidden, true);
+});
+
+test("CHAT follow-ups carry successful pairs, reset removes history, and history is bounded", async () => {
+  const requests = [];
+  const h = chatHarness({ fetchImpl: chatFetch({action:"ALLOW", content:"공개 안내 답변"}, "ALLOW", requests) });
+  for (let i = 0; i < 8; i++) {
+    h.element("chatInput").value = `질문 ${i}`;
+    await h.element("chatForm").emit("submit");
+  }
+  assert.deepEqual(requests[2].body.history, [
+    {role:"user", content:"질문 0"}, {role:"assistant", content:"공개 안내 답변"}
+  ]);
+  assert.equal(requests.at(-1).body.history.length, 12);
+  assert.equal(requests.at(-1).body.history[0].content, "질문 1");
+  assert.equal(h.sessionStorage.values.size, 0);
+  await h.element("newChatBtn").emit("click");
+  h.element("chatInput").value = "새 질문";
+  await h.element("chatForm").emit("submit");
+  assert.deepEqual(requests.at(-1).body.history, []);
+});
+
+test("CHAT failed or blocked turns are not reused as conversation history", async () => {
+  const requests = [];
+  const h = chatHarness({ fetchImpl: chatFetch({action:"BLOCK", content:null}, "ALLOW", requests) });
+  h.element("chatInput").value = "차단된 질문";
+  await h.element("chatForm").emit("submit");
+  h.setFetch(chatFetch({action:"ALLOW", content:"확인된 답변"}, "ALLOW", requests));
+  h.element("chatInput").value = "다음 질문";
+  await h.element("chatForm").emit("submit");
+  assert.deepEqual(requests.at(-1).body.history, []);
 });
 
 test("CHAT empty input, IME Enter, Shift Enter and duplicate submission guards", async () => {

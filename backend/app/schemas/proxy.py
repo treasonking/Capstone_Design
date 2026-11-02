@@ -2,16 +2,33 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+
+class ConversationMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
 
 
 class ProxyRequest(BaseModel):
     # 클라이언트가 LLM에 직접 보내지 않고 보안 프록시로 보내는 요청 형식입니다.
-    message: str = Field(min_length=1)
+    message: str = Field(min_length=1, max_length=4000)
     policy_id: str = "default"
     user_id: str = "anonymous"
     model: str = ""
     assistant: Literal["general", "resident_center"] = "general"
+    history: list[ConversationMessage] = Field(default_factory=list, max_length=12)
+
+    @model_validator(mode="after")
+    def bounded_conversation(self) -> "ProxyRequest":
+        if sum(len(item.content) for item in self.history) + len(self.message) > 20000:
+            raise ValueError("대화 내용은 총 20,000자 이내여야 합니다.")
+        if self.history and (len(self.history) % 2 or any(
+            item.role != ("user" if index % 2 == 0 else "assistant")
+            for index, item in enumerate(self.history)
+        )):
+            raise ValueError("대화 이력은 사용자·답변 쌍으로 전달해야 합니다.")
+        return self
 
 
 class ProxyResponse(BaseModel):

@@ -23,6 +23,7 @@ from backend.app.engine.policy_engine import evaluate_policy
 from backend.app.providers import ProviderError
 from backend.app.schemas.proxy import DetectionPreviewItem, ProxyAnalyzeResponse, ProxyRequest, ProxyResponse
 from backend.app.services.audit_service import save_audit_log
+from backend.app.services.conversation import conversation_input
 from backend.app.services.llm_service import (
     DEFAULT_SYSTEM_INSTRUCTIONS,
     generate_upstream_response,
@@ -404,10 +405,11 @@ async def process_proxy_analyze(req: ProxyRequest) -> ProxyAnalyzeResponse:
     timestamp_utc = datetime.now(timezone.utc).isoformat()
     request_id = str(uuid.uuid4())
     policy_path = resolve_policy_path(req.policy_id)
+    request_text = conversation_input(req)
 
-    input_hybrid = _detect_text(req.message)
+    input_hybrid = _detect_text(request_text)
     input_detections = input_hybrid.detections
-    input_decision = evaluate_policy(req.message, input_detections, policy_path)
+    input_decision = evaluate_policy(request_text, input_detections, policy_path)
     input_action = input_decision.final_action.value
     input_audit = _audit_from_detections(
         input_action,
@@ -423,7 +425,7 @@ async def process_proxy_analyze(req: ProxyRequest) -> ProxyAnalyzeResponse:
 
     if input_action != PolicyAction.BLOCK.value:
         provider_input = _safe_provider_input(
-            req.message,
+            request_text,
             input_detections,
             pii_detected=pii_detected,
             policy_masked_text=input_decision.masked_text,
@@ -440,7 +442,7 @@ async def process_proxy_analyze(req: ProxyRequest) -> ProxyAnalyzeResponse:
                 "reasons": reasons,
                 "egress_guard_action": input_action,
             }
-        elif provider_input != req.message:
+        elif provider_input != request_text:
             masked_text = provider_input
             input_summary["provider_input_masked"] = True
 
@@ -480,11 +482,12 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
     timestamp_utc = datetime.now(timezone.utc).isoformat()
     request_id = str(uuid.uuid4())
     policy_path = resolve_policy_path(req.policy_id)
+    request_text = conversation_input(req)
 
     # 1단계: 외부 LLM을 호출하기 전에 입력 프롬프트를 먼저 검사합니다.
-    input_hybrid = _detect_text(req.message)
+    input_hybrid = _detect_text(request_text)
     input_detections = input_hybrid.detections
-    input_decision = evaluate_policy(req.message, input_detections, policy_path)
+    input_decision = evaluate_policy(request_text, input_detections, policy_path)
     input_action = input_decision.final_action.value
     input_audit = _audit_from_detections(
         input_action,
@@ -519,7 +522,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
 
     # 정책 MASK뿐 아니라 span이 있는 모든 PII 탐지 결과를 Provider 직전에 다시 마스킹합니다.
     processed_message = _safe_provider_input(
-        req.message,
+        request_text,
         input_detections,
         pii_detected=bool(input_summary.get("pii_detected")),
         policy_masked_text=input_decision.masked_text,
@@ -556,7 +559,7 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
             None,
             audit_summary,
         )
-    input_summary["provider_input_masked"] = processed_message != req.message
+    input_summary["provider_input_masked"] = processed_message != request_text
 
     agent_options, source_note = _resident_center_context(req, processed_message)
     try:
@@ -676,10 +679,11 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
     timestamp_utc = datetime.now(timezone.utc).isoformat()
     request_id = str(uuid.uuid4())
     policy_path = resolve_policy_path(req.policy_id)
+    request_text = conversation_input(req)
 
-    input_hybrid = _detect_text(req.message)
+    input_hybrid = _detect_text(request_text)
     input_detections = input_hybrid.detections
-    input_decision = evaluate_policy(req.message, input_detections, policy_path)
+    input_decision = evaluate_policy(request_text, input_detections, policy_path)
     input_action = input_decision.final_action.value
     input_audit = _audit_from_detections(
         input_action,
@@ -724,7 +728,7 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
         return
 
     processed_message = _safe_provider_input(
-        req.message,
+        request_text,
         input_detections,
         pii_detected=bool(input_summary.get("pii_detected")),
         policy_masked_text=input_decision.masked_text,
@@ -763,7 +767,7 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
         )
         yield _sse_event("done", response.model_dump())
         return
-    input_summary["provider_input_masked"] = processed_message != req.message
+    input_summary["provider_input_masked"] = processed_message != request_text
     agent_options, source_note = _resident_center_context(req, processed_message)
     try:
         provider_response = await generate_upstream_response(

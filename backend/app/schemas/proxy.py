@@ -11,6 +11,7 @@ class ProxyRequest(BaseModel):
     policy_id: str = "default"
     user_id: str = "anonymous"
     model: str = ""
+    assistant: Literal["general", "resident_center"] = "general"
 
 
 class ProxyResponse(BaseModel):

@@ -24,9 +24,11 @@ from backend.app.providers import ProviderError
 from backend.app.schemas.proxy import DetectionPreviewItem, ProxyAnalyzeResponse, ProxyRequest, ProxyResponse
 from backend.app.services.audit_service import save_audit_log
 from backend.app.services.llm_service import (
+    DEFAULT_SYSTEM_INSTRUCTIONS,
     generate_upstream_response,
     not_called_provider_metadata,
 )
+from backend.app.services.resident_center_agent import prepare_instructions
 from backend.app.validator import ValidatorAgent, resolve_final_action
 from backend.app.validator.output_validator import SAFE_OUTPUT
 
@@ -41,6 +43,13 @@ ALLOWED_POLICY_IDS = {
 POLICY_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 logger = logging.getLogger(__name__)
 VALIDATOR_AGENT = ValidatorAgent()
+
+
+def _resident_center_context(req: ProxyRequest, safe_message: str) -> tuple[dict[str, str], str]:
+    if req.assistant != "resident_center":
+        return {}, ""
+    instructions, source_note = prepare_instructions(safe_message, DEFAULT_SYSTEM_INSTRUCTIONS)
+    return {"system_instructions": instructions}, source_note
 
 
 def _detect_text(text: str) -> HybridDetectionResult:
@@ -549,13 +558,15 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
         )
     input_summary["provider_input_masked"] = processed_message != req.message
 
+    agent_options, source_note = _resident_center_context(req, processed_message)
     try:
         provider_response = await generate_upstream_response(
             processed_message,
             request_id=request_id,
             requested_model=req.model,
+            **agent_options,
         )
-        llm_content = provider_response.text
+        llm_content = provider_response.text + source_note
         provider_metadata = provider_response.audit_metadata()
     except ProviderError as exc:
         reasons = [exc.code]
@@ -753,13 +764,15 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
         yield _sse_event("done", response.model_dump())
         return
     input_summary["provider_input_masked"] = processed_message != req.message
+    agent_options, source_note = _resident_center_context(req, processed_message)
     try:
         provider_response = await generate_upstream_response(
             processed_message,
             request_id=request_id,
             requested_model=req.model,
+            **agent_options,
         )
-        llm_content = provider_response.text
+        llm_content = provider_response.text + source_note
         provider_metadata = provider_response.audit_metadata()
     except ProviderError as exc:
         reasons = [exc.code]

@@ -47,6 +47,9 @@ where = ["."]
 include = ["backend*", "evaluation*"]
 exclude = ["backend.tests*"]
 
+[tool.setuptools.package-data]
+"backend.app" = ["data/*.json"]
+
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"

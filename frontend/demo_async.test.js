@@ -207,10 +207,14 @@ test("CHAT final content only, memory-only history, no policy or history sent, l
   await h.element("chatForm").emit("submit");
   assert.equal(h.run("chatTurns[0].answer.textContent"), raw);
   assert.equal(h.run("chatTurns[0].answer.hidden"), false);
+  h.element("chatAssistant").value = "general";
   h.element("chatInput").value = "second question";
   await h.element("chatForm").emit("submit");
   assert.equal(h.run("chatTurns.length"), 2);
-  assert.deepEqual(requests.map(r => r.body), [{message:raw}, {message:raw}, {message:"second question"}, {message:"second question"}]);
+  assert.deepEqual(requests.map(r => r.body), [
+    {message:raw, assistant:"resident_center"}, {message:raw, assistant:"resident_center"},
+    {message:"second question", assistant:"general"}, {message:"second question", assistant:"general"}
+  ]);
   assert.ok(requests.every(r => !r.headers["X-Admin-Token"]));
   assert.equal(h.sessionStorage.values.size, 0);
   assert.equal(h.element("userConsole").hidden, true);
@@ -284,9 +288,11 @@ test("CHAT errors and body timeout recover with manual original-input retry only
       assert.equal(h.element("chatInput").disabled, false);
       const requests = [];
       h.setFetch(chatFetch(undefined, "ALLOW", requests));
+      h.element("chatAssistant").value = "general";
       h.element("chatInput").value = "different draft";
       await h.run("chatTurns[0].retry.emit('click')");
       assert.equal(requests[1].body.message, "original question");
+      assert.equal(requests[1].body.assistant, "resident_center");
       assert.equal(h.run("chatTurns.length"), 1);
       assert.equal(h.run("chatTurns[0].answer.textContent"), "safe answer");
       assert.equal(h.element("chatInput").value, "different draft");

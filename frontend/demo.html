@@ -858,6 +858,12 @@
       <p class="chat-notice">안전 검사를 거친 답변을 제공합니다. 각 질문은 독립적으로 처리되며 이전 대화는 AI에 전달되지 않습니다.</p>
       <div id="chatLog" class="chat-log" role="log" aria-label="대화 기록" aria-live="polite"></div>
       <form id="chatForm" class="chat-composer">
+        <label for="chatAssistant">안내 유형</label>
+        <select id="chatAssistant">
+          <option value="resident_center">주민센터 안내</option>
+          <option value="general">일반 질문</option>
+        </select>
+        <p class="chat-notice">주민센터 안내는 구로구 수궁동 공개자료를 참고합니다. 전입신고·등초본·인감증명 방문 안내를 지원하며, 현재 요건은 담당 기관 확인이 필요합니다.</p>
         <label for="chatInput">메시지</label>
         <textarea id="chatInput" placeholder="무엇을 도와드릴까요?" autocomplete="off"></textarea>
         <div class="actions"><span class="chat-notice">Enter 전송 · Shift+Enter 줄바꿈</span><button id="chatSendBtn" class="primary" type="submit">전송</button></div>
@@ -1104,6 +1110,7 @@
     const signupTab = document.getElementById("signupTab");
     const chatView = document.getElementById("chatView");
     const chatInput = document.getElementById("chatInput");
+    const chatAssistant = document.getElementById("chatAssistant");
     const chatLog = document.getElementById("chatLog");
     const chatStatus = document.getElementById("chatStatus");
     const chatSendBtn = document.getElementById("chatSendBtn");
@@ -1590,6 +1597,7 @@
     }
 
     function syncChatControls() {
+      chatAssistant.disabled = Boolean(activeChat);
       chatInput.disabled = Boolean(activeChat);
       chatSendBtn.disabled = Boolean(activeChat);
       chatSendBtn.textContent = activeChat ? "처리 중…" : "전송";
@@ -1624,7 +1632,8 @@
       retry.className = "secondary";
       retry.textContent = "이 질문 다시 시도";
       retry.hidden = true;
-      const turn = { text, answer, answerLabel, status, retry };
+      const turn = { text, assistant: chatAssistant.value || "resident_center", answer, answerLabel, status, retry };
+      answerLabel.textContent = turn.assistant === "resident_center" ? "ORCA · 주민센터 안내" : "ORCA";
       retry.addEventListener("click", () => submitChat(turn));
       container.append(userLabel, user, answerLabel, answer, status, retry);
       chatLog.append(container);
@@ -1654,7 +1663,7 @@
       if (!retryTurn) chatInput.value = "";
       syncChatControls();
       try {
-        const options = { method: "POST", body: JSON.stringify({ message: operation.text }), controller: operation.controller };
+        const options = { method: "POST", body: JSON.stringify({ message: operation.text, assistant: turn.assistant }), controller: operation.controller };
         const analysis = await authenticatedRequest("/proxy/analyze", options);
         if (!ownsChat(operation) || operation.controller.signal.aborted) return;
         if (!["ALLOW", "MASK", "WARN", "BLOCK"].includes(analysis.payload?.action)) {

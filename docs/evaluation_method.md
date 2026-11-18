@@ -177,3 +177,9 @@ python tools/sync_benchmark_docs.py --dataset evaluation/sample_dataset.json
 - Injection은 보안 특성상 미탐(FN) 억제가 중요하므로 Recall을 우선 점검한다.
 - 계층별 ablation에서는 정규식 패턴 계층, 휴리스틱 규칙 계층, 경량 분류 계층이 각각 정형 PII, 프롬프트 인젝션, 비정형 공격 탐지에 얼마나 기여하는지 분리해서 해석한다.
 - FP/FN 샘플 id를 기반으로 룰을 보정한다.
+
+## Ollama 적응형 입력 탐지 비교
+
+`python -m evaluation.adaptive_compare`는 기존 내부 v2의 PII·인젝션 레이블과 저장소에 보관된 deepset·ProtectAI·Lakera 부분집합의 인젝션 레이블을 사용한다. 각 데이터셋·작업별로 Rule Only, 기존 Hybrid, Ollama Only, Adaptive Hybrid에 같은 원문과 레이블을 공급한다. 탐지 품질은 PII·인젝션 플래그를 기준으로 계산하고, 정책상 차단과 송신 가드를 별도로 집계한다. Ollama Only 결과가 검증에 실패한 데이터셋은 전체 탐지 지표를 N/A로 표기하고, 네 방식 모두에서 채점 가능한 공통 부분집합을 함께 표시한다.
+
+정답 문자열을 명시한 별도 합성 사례에서 마스킹 후 송신 준비 텍스트와 잔존 PII를 비교한다. 이 검사는 합성 입력에 한정하며 외부 네트워크를 사용하지 않는다. 대기 시간은 실제 로컬 모델 호출을 포함한 입력 검사·정책 처리·송신 준비 시간을 측정한다. [평가 설정과 한계](ollama_adaptive_detection.md)

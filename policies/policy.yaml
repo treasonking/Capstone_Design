@@ -165,6 +165,18 @@ rules:
     priority: 62
     threshold: 0.0
     description: "Legacy unavailable status retained for backward compatibility."
+  PII_UNMASKABLE_DETECTED:
+    action: BLOCK
+    priority: 100
+    description: "Block PII evidence without trustworthy masking spans."
+  INJ_LOCAL_LLM_DETECTED:
+    action: BLOCK
+    priority: 100
+    description: "Block an injection finding from validated local model output."
+  LOCAL_LLM_REVIEW_FAILED:
+    action: BLOCK
+    priority: 100
+    description: "Hold requests when a required local review could not be completed."
   SAFE_INPUT:
     action: ALLOW
     priority: 0

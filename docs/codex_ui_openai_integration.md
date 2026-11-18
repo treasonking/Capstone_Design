@@ -28,7 +28,7 @@
 
 ## OpenAI Provider
 
-Provider Registry는 `mock`, `openai`만 허용한다. 요청 본문의 `model`이나 URL로 Provider를 바꿀 수 없으며 Azure OpenAI, Ollama, Claude, Gemini와 자동 폴백은 구현하지 않았다.
+응답 생성용 Provider Registry는 `mock`, `openai`를 허용한다. 요청 본문의 `model`이나 URL로 Provider를 바꿀 수 없다. Ollama는 선택형 입력 검사에서 사용할 수 있다. [적응형 입력 탐지](ollama_adaptive_detection.md)
 
 OpenAI 경로는 서버에서만 다음 값을 읽는다.
 
@@ -99,6 +99,6 @@ $env:OPENAI_MAX_OUTPUT_TOKENS = "1000"
 | Mock Provider | 로컬 HTTP 경로 검증 |
 | OpenAI Provider | 공식 SDK fake client와 통합 Stub으로 검증 |
 | 실제 OpenAI API | 미검증. 키·모델·비용 승인이 없어 호출하지 않음 |
-| Azure OpenAI·Ollama·기타 Provider, 자동 폴백 | 미구현 |
+| Azure OpenAI·Ollama·기타 응답 생성 Provider, 자동 폴백 | 미구현 |
 | 감사 로그 서명 | Mock signer 검증 구조. 실제 ML-DSA 아님 |
 | 외부 데이터셋 성능 | 기존 평가 산출물과 이번 재실행 결과를 별도 유지. Provider 통합 성능으로 해석하지 않음 |

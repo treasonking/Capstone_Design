@@ -616,6 +616,29 @@ tools/
 
 `/proxy/analyze`는 LLM 호출이 없는 사전 분석 API이므로 Validator Agent 출력 재검사는 `SKIPPED`로 기록됩니다. SSE 엔드포인트는 보안 검증을 위해 upstream 응답을 버퍼링한 뒤 Validator Agent 검증 후 안전한 응답만 반환하므로, 실시간 토큰 스트리밍이 아니라 검증 후 일괄 반환에 가깝습니다.
 
+### 선택형 Ollama 로컬 입력 탐지
+
+전문가 멘토링에서 제안된 문맥 판단과 비용 절충을 반영해, 운영 정책상 차단이 확정되지 않은 입력 중 TF-IDF 임계치 부근, 탐지기 불일치, 문맥상 PII 또는 난독화 신호에만 Ollama를 호출합니다. 기본값은 `OLLAMA_ENABLED=false`입니다. 필수 검사가 실패하거나 마스킹 위치를 신뢰할 수 없으면 외부 모델에 보내기 전에 차단합니다.
+
+Windows에서는 [Ollama를 설치](https://docs.ollama.com/windows)하고 서버에서 `OLLAMA_NO_CLOUD=1`을 설정한 뒤 재시작합니다. 프록시의 PowerShell 환경에서 모델을 준비하고 설정합니다.
+
+```powershell
+ollama pull qwen2.5:1.5b
+$env:OLLAMA_MODEL = "qwen2.5:1.5b"
+$env:OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+$env:OLLAMA_ENABLED = "true"
+python -m evaluation.adaptive_compare --health
+python -m evaluation.adaptive_compare
+```
+
+비활성화하려면 `OLLAMA_ENABLED=false`로 프록시를 재시작합니다. 설정, Windows 배포 범위, 평가 절차는 [적응형 입력 탐지 문서](docs/ollama_adaptive_detection.md)에 있습니다. 동일 표본의 네 방식 비교는 [비교 보고서](reports/ollama_adaptive_results.md)와 [JSON 결과](reports/ollama_adaptive_results.json)에 기록합니다.
+
+2026-11-19 Windows에서 `qwen2.5:1.5b`로 평가했습니다. Adaptive Hybrid는 전체 평가 요청 중 70/458건(15.3%)에서 Ollama를 호출했습니다.
+
+- **인젝션 공개 부분집합** — 기존 Hybrid 대비 deepset F1은 0.087에서 0.128로, 양성 표본만 사용한 Lakera Recall은 0.480에서 0.510으로 높아졌습니다. ProtectAI에서는 적응형 호출이 0/100건이었고 두 방식의 Recall은 모두 0.000이었습니다.
+- **내부 회귀** — 기존 Hybrid와 Adaptive Hybrid의 PII F1은 0.988, 인젝션 F1은 1.000으로 각각 같았습니다.
+- **별도 합성 송신 검증** — 정답 PII가 송신 준비 텍스트에 남은 요청은 기존 Hybrid에서 2/5건, Adaptive Hybrid에서 0/5건이었습니다. 이 검증은 외부 생성 API를 사용하지 않았습니다.
+
 ## API 예시
 
 ### 요청 예시

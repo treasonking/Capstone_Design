@@ -24,7 +24,7 @@
 - Provider 직전 egress guard는 위치가 확인된 PII를 정책 action과 무관하게 마스킹하고, 위치를 알 수 없는 PII 신호는 `PII_UNMASKABLE_DETECTED`로 차단한다. 그러나 탐지기가 PII 자체를 놓친 경우에는 원문 전송 위험이 남는다.
 - 모델별 응답 품질과 Validator 탐지 결과가 달라질 수 있으며 비용, Rate Limit, 네트워크 장애, timeout이 발생할 수 있다. `PROVIDER_AUTH_ERROR`, `PROVIDER_RATE_LIMITED`, `PROVIDER_TIMEOUT`, `PROVIDER_UPSTREAM_ERROR`, `PROVIDER_INVALID_RESPONSE`는 정책 차단과 별도 오류로 기록한다.
 - 자동 Provider 라우팅과 다른 사업자로의 자동 폴백은 구현하지 않았다. 향후 도입하려면 기관 allowlist, 사용자 또는 기관의 명시적 동의, 전송 데이터 분류 재검사, Provider 변경 감사 기록, 최대 시도 횟수가 필요하다.
-- 현재 실제 구현 Provider는 Mock과 OpenAI뿐이다. Claude, Gemini, Azure OpenAI, 로컬 LLM은 공통 인터페이스에 어댑터를 추가해야 하며 현 상태에서 지원한다고 설명하면 안 된다.
+- 현재 응답 생성용 Provider는 Mock과 OpenAI다. Ollama는 선택형 입력 검사에 연결된다. [적응형 입력 탐지](ollama_adaptive_detection.md)
 - 기본 Docker Compose는 `OPENAI_API_KEY`를 자동 전달하지 않는다. 환경변수 직접 주입은 Compose 설정 출력과 컨테이너 메타데이터에 평문으로 나타날 수 있으므로 운영 배포에는 조직의 secret store 또는 Docker secret 통합이 필요하다.
 
 OpenAI 관련 운영 판단은 공식 [Responses API 안내](https://developers.openai.com/api/docs/guides/migrate-to-responses), [데이터 제어 문서](https://developers.openai.com/api/docs/guides/your-data), [오류 코드 문서](https://developers.openai.com/api/docs/guides/error-codes)의 최신 내용을 기준으로 다시 확인해야 한다.
@@ -46,3 +46,7 @@ OpenAI 관련 운영 판단은 공식 [Responses API 안내](https://developers.
 - 실제 운영 수준으로 확장하려면 영어 공개 데이터셋 기반 재학습, threshold 조정, 간접 인젝션/RAG 문서 공격 평가, hard negative 확장이 필요하다.
 - Validator Agent와 PQC를 탐지 성능을 높이는 핵심 기법처럼 설명하지 않는다. 두 요소는 운영 환경에서 정책 결정의 신뢰성, 감사 가능성, 로그 무결성을 높이기 위한 확장 요소로 설명한다.
 - 기존 로컬 `logs/audit_log.jsonl`에는 서명 도입 전 또는 구형 포맷 레코드가 섞일 수 있다. 배포 시 로그 스키마 버전과 키 ID별 검증·보존·마이그레이션 정책을 정의해야 한다.
+
+## Ollama 적응형 검사 운영 범위
+
+선택형 로컬 검사는 입력 단계에서 실행된다. 추가 검사 실패 또는 위치가 확인되지 않은 PII 신호는 송신 전에 차단한다. 정상 판정의 정확도와 Ollama 프로세스의 로컬 로그·외부 통신 통제는 배포 환경에서 별도로 확인해야 한다. 라우팅이 선택하지 않은 위험한 입력이나 모델이 정상으로 분류한 입력은 기존 탐지 사각지대에 남을 수 있다. [구성·검증 안내](ollama_adaptive_detection.md)

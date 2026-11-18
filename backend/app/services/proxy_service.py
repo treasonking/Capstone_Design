@@ -12,11 +12,12 @@ from typing import Any
 
 from fastapi import HTTPException
 
+from backend.app.detection.adaptive_detector import inspect_input
 from backend.app.detection.hybrid_detector import (
     HybridDetectionResult,
     detect_hybrid,
 )
-from backend.app.detection.models import DetectionResult, DetectorType, PolicyAction
+from backend.app.detection.models import DetectionResult, DetectorType, PolicyAction, PolicyDecision
 from backend.app.detection.reason_codes import ReasonCode, ordered_reason_codes, select_primary_reason
 from backend.app.engine.masking import apply_masking
 from backend.app.engine.policy_engine import evaluate_policy
@@ -385,6 +386,22 @@ def _recommendation(
     return "안전한 요청으로 판단됩니다."
 
 
+async def _inspect_proxy_input(
+    text: str, policy_path: Path, *, preview: bool = False
+) -> tuple[list[DetectionResult], PolicyDecision, dict[str, Any]]:
+    inspection = await inspect_input(text, policy_path, preview=preview)
+    detections = inspection.hybrid.detections
+    decision = inspection.decision
+    input_audit = _audit_from_detections(
+        decision.final_action.value, decision.reasons, detections, hybrid_result=inspection.hybrid
+    )
+    return detections, decision, {
+        **decision.audit_summary,
+        **input_audit,
+        **inspection.audit_metadata(),
+    }
+
+
 def _preview_items(detections: list[DetectionResult]) -> list[DetectionPreviewItem]:
     return [
         DetectionPreviewItem(
@@ -407,17 +424,10 @@ async def process_proxy_analyze(req: ProxyRequest) -> ProxyAnalyzeResponse:
     policy_path = resolve_policy_path(req.policy_id)
     request_text = conversation_input(req)
 
-    input_hybrid = _detect_text(request_text)
-    input_detections = input_hybrid.detections
-    input_decision = evaluate_policy(request_text, input_detections, policy_path)
-    input_action = input_decision.final_action.value
-    input_audit = _audit_from_detections(
-        input_action,
-        input_decision.reasons,
-        input_detections,
-        hybrid_result=input_hybrid,
+    input_detections, input_decision, input_summary = await _inspect_proxy_input(
+        request_text, policy_path, preview=True
     )
-    input_summary = {**input_decision.audit_summary, **input_audit}
+    input_action = input_decision.final_action.value
     pii_detected = bool(input_summary.get("pii_detected", False))
     injection_detected = bool(input_summary.get("injection_detected", False))
     reasons = list(input_decision.reasons)
@@ -457,6 +467,8 @@ async def process_proxy_analyze(req: ProxyRequest) -> ProxyAnalyzeResponse:
         output_summary=_skipped_output_summary(),
         upstream_call=False,
     )
+    can_forward = input_action != PolicyAction.BLOCK.value
+    review_pending = can_forward and input_summary["local_llm_status"] == "deferred"
     return ProxyAnalyzeResponse(
         request_id=request_id,
         action=input_action,
@@ -465,12 +477,15 @@ async def process_proxy_analyze(req: ProxyRequest) -> ProxyAnalyzeResponse:
         pii_detected=pii_detected,
         injection_detected=injection_detected,
         masked_text=masked_text,
-        should_call_llm=input_action != PolicyAction.BLOCK.value,
+        should_call_llm=can_forward and not review_pending,
         upstream_call=False,
-        recommendation=_recommendation(
-            input_action,
-            pii_detected=pii_detected,
-            injection_detected=injection_detected,
+        recommendation=(
+            "채팅 요청에서 로컬 검사를 완료한 뒤 전송 여부를 결정합니다."
+            if review_pending else _recommendation(
+                input_action,
+                pii_detected=pii_detected,
+                injection_detected=injection_detected,
+            )
         ),
         detector_results=_preview_items(input_detections),
         audit_summary=audit_summary,
@@ -485,17 +500,8 @@ async def process_proxy_chat(req: ProxyRequest) -> ProxyResponse:
     request_text = conversation_input(req)
 
     # 1단계: 외부 LLM을 호출하기 전에 입력 프롬프트를 먼저 검사합니다.
-    input_hybrid = _detect_text(request_text)
-    input_detections = input_hybrid.detections
-    input_decision = evaluate_policy(request_text, input_detections, policy_path)
+    input_detections, input_decision, input_summary = await _inspect_proxy_input(request_text, policy_path)
     input_action = input_decision.final_action.value
-    input_audit = _audit_from_detections(
-        input_action,
-        input_decision.reasons,
-        input_detections,
-        hybrid_result=input_hybrid,
-    )
-    input_summary = {**input_decision.audit_summary, **input_audit}
 
     if input_action == PolicyAction.BLOCK.value:
         audit_summary = _build_audit_summary(
@@ -681,17 +687,8 @@ async def process_proxy_chat_stream(req: ProxyRequest) -> AsyncIterator[str]:
     policy_path = resolve_policy_path(req.policy_id)
     request_text = conversation_input(req)
 
-    input_hybrid = _detect_text(request_text)
-    input_detections = input_hybrid.detections
-    input_decision = evaluate_policy(request_text, input_detections, policy_path)
+    input_detections, input_decision, input_summary = await _inspect_proxy_input(request_text, policy_path)
     input_action = input_decision.final_action.value
-    input_audit = _audit_from_detections(
-        input_action,
-        input_decision.reasons,
-        input_detections,
-        hybrid_result=input_hybrid,
-    )
-    input_summary = {**input_decision.audit_summary, **input_audit}
 
     yield _sse_event(
         "policy",

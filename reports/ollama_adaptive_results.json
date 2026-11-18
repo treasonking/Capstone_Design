@@ -1,0 +1,854 @@
+{
+  "ollama_health": "ready",
+  "ollama_model": "qwen2.5:1.5b",
+  "ollama_settings": {
+    "timeout_seconds": 15.0,
+    "max_input_length": 4000,
+    "threshold_margin": 0.1
+  },
+  "warmup": "completed",
+  "real_inference_verified": true,
+  "limit_per_group": null,
+  "detection_settings": {
+    "enable_model_detector": true,
+    "detection_mode": "hybrid",
+    "model_detector_threshold": 0.7,
+    "model_detector_fail_mode": "warn"
+  },
+  "classifier_status": "enabled",
+  "classifier_sha256": {
+    "classifier": "ceb0e18eb7aeef7433544baf7f7768a5700f03634394f50872942cb6b435d87c",
+    "vectorizer": "0c1dc0923651e90eb7023842bd936d21177cb55681460915141c7ea37079ce14"
+  },
+  "dataset_sha256": {
+    "datasets/sample_dataset_v2.json": "6fcd3a547d8d36d2770aefcf756464b3ad9ea7a547a51c74c23eee0be4253be2",
+    "reports/baselines/multi_dataset/deepset_shared_eval.csv": "ee6e853d6f08652ea35be9cbb102d13638c3ce13d065380d60e4249ac3ff4ca0",
+    "reports/baselines/multi_dataset/protectai_shared_eval.csv": "9e96c8b68ed6e0e2306774abc591b337dc04008a1a6b98c12e73ca0b983d080b",
+    "reports/baselines/multi_dataset/lakera_shared_eval.csv": "493f6f482cf261f1d4b8f8c241ef75f3881eceadd22acc6d5a89f9ddcc7610cc"
+  },
+  "platform": "Windows-10-10.0.19045-SP0",
+  "resources": null,
+  "groups": [
+    {
+      "dataset": "internal_v2",
+      "task": "pii",
+      "requests": 70,
+      "available": 70,
+      "modes": {
+        "Rule Only": {
+          "detection": {
+            "tp": 40,
+            "fp": 1,
+            "fn": 0,
+            "tn": 29,
+            "precision": 0.975609756097561,
+            "recall": 1.0,
+            "f1": 0.9876543209876543,
+            "fpr": 0.03333333333333333,
+            "fnr": 0.0
+          },
+          "scored": 70,
+          "model_status": {
+            "disabled": 70
+          },
+          "local_status": {
+            "disabled": 70
+          },
+          "blocked": 8,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 18.104551433186447,
+            "p50": 15.91249997727573,
+            "p95": 28.545269963797182,
+            "ollama_mean": null
+          },
+          "ollama_calls": 0,
+          "ollama_call_rate": 0.0
+        },
+        "Hybrid": {
+          "detection": {
+            "tp": 40,
+            "fp": 1,
+            "fn": 0,
+            "tn": 29,
+            "precision": 0.975609756097561,
+            "recall": 1.0,
+            "f1": 0.9876543209876543,
+            "fpr": 0.03333333333333333,
+            "fnr": 0.0
+          },
+          "scored": 70,
+          "model_status": {
+            "enabled": 70
+          },
+          "local_status": {
+            "disabled": 70
+          },
+          "blocked": 8,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 18.42833142062383,
+            "p50": 17.38500001374632,
+            "p95": 26.992075028829277,
+            "ollama_mean": null
+          },
+          "ollama_calls": 0,
+          "ollama_call_rate": 0.0
+        },
+        "Ollama Only": {
+          "detection": {
+            "tp": 40,
+            "fp": 30,
+            "fn": 0,
+            "tn": 0,
+            "precision": 0.5714285714285714,
+            "recall": 1.0,
+            "f1": 0.7272727272727273,
+            "fpr": 1.0,
+            "fnr": 0.0
+          },
+          "scored": 70,
+          "model_status": {
+            "ollama_only": 70
+          },
+          "local_status": {
+            "completed": 70
+          },
+          "blocked": 70,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 643.0502628475161,
+            "p50": 642.0956999063492,
+            "p95": 739.6173149580136,
+            "ollama_mean": 618.1772914282711
+          },
+          "ollama_calls": 70,
+          "ollama_call_rate": 1.0
+        },
+        "Adaptive Hybrid": {
+          "detection": {
+            "tp": 40,
+            "fp": 1,
+            "fn": 0,
+            "tn": 29,
+            "precision": 0.975609756097561,
+            "recall": 1.0,
+            "f1": 0.9876543209876543,
+            "fpr": 0.03333333333333333,
+            "fnr": 0.0
+          },
+          "scored": 70,
+          "model_status": {
+            "enabled": 70
+          },
+          "local_status": {
+            "completed": 21,
+            "skipped": 49
+          },
+          "blocked": 29,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 215.38303570622313,
+            "p50": 25.843249983154237,
+            "p95": 714.3532548914663,
+            "ollama_mean": 611.4683428646198
+          },
+          "ollama_calls": 21,
+          "ollama_call_rate": 0.3
+        }
+      }
+    },
+    {
+      "dataset": "internal_v2",
+      "task": "injection",
+      "requests": 82,
+      "available": 82,
+      "modes": {
+        "Rule Only": {
+          "detection": {
+            "tp": 54,
+            "fp": 0,
+            "fn": 0,
+            "tn": 28,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "fpr": 0.0,
+            "fnr": 0.0
+          },
+          "scored": 82,
+          "model_status": {
+            "disabled": 82
+          },
+          "local_status": {
+            "disabled": 82
+          },
+          "blocked": 43,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 19.41203536386261,
+            "p50": 17.49595010187477,
+            "p95": 31.44250507466495,
+            "ollama_mean": null
+          },
+          "ollama_calls": 0,
+          "ollama_call_rate": 0.0
+        },
+        "Hybrid": {
+          "detection": {
+            "tp": 54,
+            "fp": 0,
+            "fn": 0,
+            "tn": 28,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "fpr": 0.0,
+            "fnr": 0.0
+          },
+          "scored": 82,
+          "model_status": {
+            "enabled": 82
+          },
+          "local_status": {
+            "disabled": 82
+          },
+          "blocked": 43,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 20.13641709416378,
+            "p50": 18.949999939650297,
+            "p95": 27.276064991019666,
+            "ollama_mean": null
+          },
+          "ollama_calls": 0,
+          "ollama_call_rate": 0.0
+        },
+        "Ollama Only": {
+          "detection": {
+            "tp": 2,
+            "fp": 0,
+            "fn": 52,
+            "tn": 28,
+            "precision": 1.0,
+            "recall": 0.037037037037037035,
+            "f1": 0.07142857142857142,
+            "fpr": 0.0,
+            "fnr": 0.9629629629629629
+          },
+          "scored": 82,
+          "model_status": {
+            "ollama_only": 82
+          },
+          "local_status": {
+            "completed": 82
+          },
+          "blocked": 58,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 595.2377414597744,
+            "p50": 595.0823500752449,
+            "p95": 741.4484400884248,
+            "ollama_mean": 570.4553256112309
+          },
+          "ollama_calls": 82,
+          "ollama_call_rate": 1.0
+        },
+        "Adaptive Hybrid": {
+          "detection": {
+            "tp": 54,
+            "fp": 0,
+            "fn": 0,
+            "tn": 28,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "fpr": 0.0,
+            "fnr": 0.0
+          },
+          "scored": 82,
+          "model_status": {
+            "enabled": 82
+          },
+          "local_status": {
+            "skipped": 71,
+            "completed": 11
+          },
+          "blocked": 52,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 106.43065243493766,
+            "p50": 19.574300036765635,
+            "p95": 685.1060949848033,
+            "ollama_mean": 610.3184272916141
+          },
+          "ollama_calls": 11,
+          "ollama_call_rate": 0.13414634146341464
+        }
+      }
+    },
+    {
+      "dataset": "deepset",
+      "task": "injection",
+      "requests": 100,
+      "available": 100,
+      "modes": {
+        "Rule Only": {
+          "detection": {
+            "tp": 2,
+            "fp": 0,
+            "fn": 42,
+            "tn": 56,
+            "precision": 1.0,
+            "recall": 0.045454545454545456,
+            "f1": 0.08695652173913043,
+            "fpr": 0.0,
+            "fnr": 0.9545454545454546
+          },
+          "scored": 100,
+          "model_status": {
+            "disabled": 100
+          },
+          "local_status": {
+            "disabled": 100
+          },
+          "blocked": 0,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 32.88587701274082,
+            "p50": 31.477900105528533,
+            "p95": 48.10882491292432,
+            "ollama_mean": null
+          },
+          "ollama_calls": 0,
+          "ollama_call_rate": 0.0
+        },
+        "Hybrid": {
+          "detection": {
+            "tp": 2,
+            "fp": 0,
+            "fn": 42,
+            "tn": 56,
+            "precision": 1.0,
+            "recall": 0.045454545454545456,
+            "f1": 0.08695652173913043,
+            "fpr": 0.0,
+            "fnr": 0.9545454545454546
+          },
+          "scored": 100,
+          "model_status": {
+            "enabled": 100
+          },
+          "local_status": {
+            "disabled": 100
+          },
+          "blocked": 0,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 29.946689007338136,
+            "p50": 26.39479993376881,
+            "p95": 50.291339901741594,
+            "ollama_mean": null
+          },
+          "ollama_calls": 0,
+          "ollama_call_rate": 0.0
+        },
+        "Ollama Only": {
+          "detection": {
+            "tp": 9,
+            "fp": 0,
+            "fn": 35,
+            "tn": 56,
+            "precision": 1.0,
+            "recall": 0.20454545454545456,
+            "f1": 0.33962264150943394,
+            "fpr": 0.0,
+            "fnr": 0.7954545454545454
+          },
+          "scored": 100,
+          "model_status": {
+            "ollama_only": 100
+          },
+          "local_status": {
+            "completed": 100
+          },
+          "blocked": 100,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 734.9263870017603,
+            "p50": 729.4855000218377,
+            "p95": 918.3940948685631,
+            "ollama_mean": 708.0019739991985
+          },
+          "ollama_calls": 100,
+          "ollama_call_rate": 1.0
+        },
+        "Adaptive Hybrid": {
+          "detection": {
+            "tp": 3,
+            "fp": 0,
+            "fn": 41,
+            "tn": 56,
+            "precision": 1.0,
+            "recall": 0.06818181818181818,
+            "f1": 0.1276595744680851,
+            "fpr": 0.0,
+            "fnr": 0.9318181818181818
+          },
+          "scored": 100,
+          "model_status": {
+            "enabled": 100
+          },
+          "local_status": {
+            "completed": 3,
+            "skipped": 97
+          },
+          "blocked": 3,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 54.93669799761847,
+            "p50": 24.61570012383163,
+            "p95": 44.938949833158404,
+            "ollama_mean": 914.5704666152596
+          },
+          "ollama_calls": 3,
+          "ollama_call_rate": 0.03
+        }
+      }
+    },
+    {
+      "dataset": "protectai",
+      "task": "injection",
+      "requests": 100,
+      "available": 100,
+      "modes": {
+        "Rule Only": {
+          "detection": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 50,
+            "tn": 50,
+            "precision": null,
+            "recall": 0.0,
+            "f1": 0.0,
+            "fpr": 0.0,
+            "fnr": 1.0
+          },
+          "scored": 100,
+          "model_status": {
+            "disabled": 100
+          },
+          "local_status": {
+            "disabled": 100
+          },
+          "blocked": 0,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 19.10880699986592,
+            "p50": 17.7347999997437,
+            "p95": 29.02527985861525,
+            "ollama_mean": null
+          },
+          "ollama_calls": 0,
+          "ollama_call_rate": 0.0
+        },
+        "Hybrid": {
+          "detection": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 50,
+            "tn": 50,
+            "precision": null,
+            "recall": 0.0,
+            "f1": 0.0,
+            "fpr": 0.0,
+            "fnr": 1.0
+          },
+          "scored": 100,
+          "model_status": {
+            "enabled": 100
+          },
+          "local_status": {
+            "disabled": 100
+          },
+          "blocked": 0,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 20.54429299198091,
+            "p50": 17.575450125150383,
+            "p95": 34.29013000568375,
+            "ollama_mean": null
+          },
+          "ollama_calls": 0,
+          "ollama_call_rate": 0.0
+        },
+        "Ollama Only": {
+          "detection": {
+            "tp": 4,
+            "fp": 0,
+            "fn": 46,
+            "tn": 50,
+            "precision": 1.0,
+            "recall": 0.08,
+            "f1": 0.14814814814814814,
+            "fpr": 0.0,
+            "fnr": 0.92
+          },
+          "scored": 100,
+          "model_status": {
+            "ollama_only": 100
+          },
+          "local_status": {
+            "completed": 100
+          },
+          "blocked": 98,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 694.6140420041047,
+            "p50": 677.0645501092076,
+            "p95": 888.8150749960914,
+            "ollama_mean": 669.6652979915962
+          },
+          "ollama_calls": 100,
+          "ollama_call_rate": 1.0
+        },
+        "Adaptive Hybrid": {
+          "detection": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 50,
+            "tn": 50,
+            "precision": null,
+            "recall": 0.0,
+            "f1": 0.0,
+            "fpr": 0.0,
+            "fnr": 1.0
+          },
+          "scored": 100,
+          "model_status": {
+            "enabled": 100
+          },
+          "local_status": {
+            "skipped": 100
+          },
+          "blocked": 0,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 20.68650500383228,
+            "p50": 18.634899985045195,
+            "p95": 30.81269992981106,
+            "ollama_mean": null
+          },
+          "ollama_calls": 0,
+          "ollama_call_rate": 0.0
+        }
+      }
+    },
+    {
+      "dataset": "lakera",
+      "task": "injection",
+      "requests": 100,
+      "available": 100,
+      "modes": {
+        "Rule Only": {
+          "detection": {
+            "tp": 47,
+            "fp": 0,
+            "fn": 53,
+            "tn": 0,
+            "precision": null,
+            "recall": 0.47,
+            "f1": null,
+            "fpr": null,
+            "fnr": 0.53
+          },
+          "scored": 100,
+          "model_status": {
+            "disabled": 100
+          },
+          "local_status": {
+            "disabled": 100
+          },
+          "blocked": 47,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 18.11274299863726,
+            "p50": 16.34550013113767,
+            "p95": 27.008659986313432,
+            "ollama_mean": null
+          },
+          "ollama_calls": 0,
+          "ollama_call_rate": 0.0
+        },
+        "Hybrid": {
+          "detection": {
+            "tp": 48,
+            "fp": 0,
+            "fn": 52,
+            "tn": 0,
+            "precision": null,
+            "recall": 0.48,
+            "f1": null,
+            "fpr": null,
+            "fnr": 0.52
+          },
+          "scored": 100,
+          "model_status": {
+            "enabled": 100
+          },
+          "local_status": {
+            "disabled": 100
+          },
+          "blocked": 47,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 21.3309959997423,
+            "p50": 19.415150047279894,
+            "p95": 36.21927999192849,
+            "ollama_mean": null
+          },
+          "ollama_calls": 0,
+          "ollama_call_rate": 0.0
+        },
+        "Ollama Only": {
+          "detection": {
+            "tp": 6,
+            "fp": 0,
+            "fn": 94,
+            "tn": 0,
+            "precision": null,
+            "recall": 0.06,
+            "f1": null,
+            "fpr": null,
+            "fnr": 0.94
+          },
+          "scored": 100,
+          "model_status": {
+            "ollama_only": 100
+          },
+          "local_status": {
+            "completed": 100
+          },
+          "blocked": 92,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 646.7196379997768,
+            "p50": 644.0237499773502,
+            "p95": 779.5321949990466,
+            "ollama_mean": 621.361448992975
+          },
+          "ollama_calls": 100,
+          "ollama_call_rate": 1.0
+        },
+        "Adaptive Hybrid": {
+          "detection": {
+            "tp": 51,
+            "fp": 0,
+            "fn": 49,
+            "tn": 0,
+            "precision": null,
+            "recall": 0.51,
+            "f1": null,
+            "fpr": null,
+            "fnr": 0.49
+          },
+          "scored": 100,
+          "model_status": {
+            "enabled": 100
+          },
+          "local_status": {
+            "skipped": 67,
+            "completed": 33
+          },
+          "blocked": 75,
+          "blocked_upstream_calls": 0,
+          "privacy": null,
+          "latency_ms": {
+            "mean": 240.15615800395608,
+            "p50": 23.856949992477894,
+            "p95": 770.1495899353176,
+            "ollama_mean": 635.8973424049151
+          },
+          "ollama_calls": 33,
+          "ollama_call_rate": 0.33
+        }
+      }
+    },
+    {
+      "dataset": "synthetic_egress",
+      "task": "pii",
+      "requests": 6,
+      "available": 6,
+      "modes": {
+        "Rule Only": {
+          "detection": {
+            "tp": 4,
+            "fp": 0,
+            "fn": 1,
+            "tn": 1,
+            "precision": 1.0,
+            "recall": 0.8,
+            "f1": 0.8888888888888888,
+            "fpr": 0.0,
+            "fnr": 0.2
+          },
+          "scored": 6,
+          "model_status": {
+            "disabled": 6
+          },
+          "local_status": {
+            "disabled": 6
+          },
+          "blocked": 0,
+          "blocked_upstream_calls": 0,
+          "privacy": {
+            "gold_positive_requests": 5,
+            "masked_and_forwarded": 4,
+            "masking_success_rate": 0.75,
+            "masking_failure_rate": 0.25,
+            "pii_transmission_rate": 0.4
+          },
+          "latency_ms": {
+            "mean": 15.634583309292793,
+            "p50": 15.361399971880019,
+            "p95": 17.438775044865906,
+            "ollama_mean": null
+          },
+          "ollama_calls": 0,
+          "ollama_call_rate": 0.0
+        },
+        "Hybrid": {
+          "detection": {
+            "tp": 4,
+            "fp": 0,
+            "fn": 1,
+            "tn": 1,
+            "precision": 1.0,
+            "recall": 0.8,
+            "f1": 0.8888888888888888,
+            "fpr": 0.0,
+            "fnr": 0.2
+          },
+          "scored": 6,
+          "model_status": {
+            "enabled": 6
+          },
+          "local_status": {
+            "disabled": 6
+          },
+          "blocked": 0,
+          "blocked_upstream_calls": 0,
+          "privacy": {
+            "gold_positive_requests": 5,
+            "masked_and_forwarded": 4,
+            "masking_success_rate": 0.75,
+            "masking_failure_rate": 0.25,
+            "pii_transmission_rate": 0.4
+          },
+          "latency_ms": {
+            "mean": 18.73883333367606,
+            "p50": 17.507050069980323,
+            "p95": 23.464824946131557,
+            "ollama_mean": null
+          },
+          "ollama_calls": 0,
+          "ollama_call_rate": 0.0
+        },
+        "Ollama Only": {
+          "detection": {
+            "tp": 5,
+            "fp": 1,
+            "fn": 0,
+            "tn": 0,
+            "precision": 0.8333333333333334,
+            "recall": 1.0,
+            "f1": 0.9090909090909091,
+            "fpr": 1.0,
+            "fnr": 0.0
+          },
+          "scored": 6,
+          "model_status": {
+            "ollama_only": 6
+          },
+          "local_status": {
+            "completed": 6
+          },
+          "blocked": 6,
+          "blocked_upstream_calls": 0,
+          "privacy": {
+            "gold_positive_requests": 5,
+            "masked_and_forwarded": 0,
+            "masking_success_rate": null,
+            "masking_failure_rate": null,
+            "pii_transmission_rate": 0.0
+          },
+          "latency_ms": {
+            "mean": 631.4256833478188,
+            "p50": 638.0967500153929,
+            "p95": 683.5925250197761,
+            "ollama_mean": 607.6268500182778
+          },
+          "ollama_calls": 6,
+          "ollama_call_rate": 1.0
+        },
+        "Adaptive Hybrid": {
+          "detection": {
+            "tp": 5,
+            "fp": 0,
+            "fn": 0,
+            "tn": 1,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "fpr": 0.0,
+            "fnr": 0.0
+          },
+          "scored": 6,
+          "model_status": {
+            "enabled": 6
+          },
+          "local_status": {
+            "skipped": 4,
+            "completed": 2
+          },
+          "blocked": 2,
+          "blocked_upstream_calls": 0,
+          "privacy": {
+            "gold_positive_requests": 5,
+            "masked_and_forwarded": 3,
+            "masking_success_rate": 1.0,
+            "masking_failure_rate": 0.0,
+            "pii_transmission_rate": 0.0
+          },
+          "latency_ms": {
+            "mean": 214.4405833290269,
+            "p50": 30.33590002451092,
+            "p95": 617.7525000530295,
+            "ollama_mean": 544.5223499555141
+          },
+          "ollama_calls": 2,
+          "ollama_call_rate": 0.3333333333333333
+        }
+      }
+    }
+  ]
+}

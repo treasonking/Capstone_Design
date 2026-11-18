@@ -13,6 +13,8 @@ class ReasonCode(str, Enum):
     PII_REQUEST_RRN = "PII_REQUEST_RRN"
     PII_EXFILTRATION_REQUEST = "PII_EXFILTRATION_REQUEST"
     PII_UNMASKABLE_DETECTED = "PII_UNMASKABLE_DETECTED"
+    INJ_LOCAL_LLM_DETECTED = "INJ_LOCAL_LLM_DETECTED"
+    LOCAL_LLM_REVIEW_FAILED = "LOCAL_LLM_REVIEW_FAILED"
     MODEL_PII_RISK = "MODEL_PII_RISK"
     MODEL_DETECTOR_ERROR = "MODEL_DETECTOR_ERROR"
     MODEL_ARTIFACT_MISSING = "MODEL_ARTIFACT_MISSING"
@@ -61,6 +63,8 @@ PRIMARY_REASON_PRIORITY = [
     ReasonCode.PII_REQUEST_RRN.value,
     ReasonCode.PII_EXFILTRATION_REQUEST.value,
     ReasonCode.PII_UNMASKABLE_DETECTED.value,
+    ReasonCode.INJ_LOCAL_LLM_DETECTED.value,
+    ReasonCode.LOCAL_LLM_REVIEW_FAILED.value,
     ReasonCode.PII_RRN_DETECTED.value,
     ReasonCode.PII_PHONE_DETECTED.value,
     ReasonCode.PII_EMAIL_OBFUSCATED.value,
@@ -84,6 +88,8 @@ _REASON_ACTIONS = {
     ReasonCode.PII_REQUEST_RRN.value: PolicyAction.BLOCK.value,
     ReasonCode.PII_EXFILTRATION_REQUEST.value: PolicyAction.BLOCK.value,
     ReasonCode.PII_UNMASKABLE_DETECTED.value: PolicyAction.BLOCK.value,
+    ReasonCode.INJ_LOCAL_LLM_DETECTED.value: PolicyAction.BLOCK.value,
+    ReasonCode.LOCAL_LLM_REVIEW_FAILED.value: PolicyAction.BLOCK.value,
     ReasonCode.MODEL_PII_RISK.value: PolicyAction.WARN.value,
     ReasonCode.MODEL_DETECTOR_ERROR.value: PolicyAction.WARN.value,
     ReasonCode.MODEL_ARTIFACT_MISSING.value: PolicyAction.WARN.value,

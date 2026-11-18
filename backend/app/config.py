@@ -67,3 +67,30 @@ def get_detection_settings() -> DetectionSettings:
         model_detector_threshold=_env_float("MODEL_DETECTOR_THRESHOLD", 0.7),
         model_detector_fail_mode=_env_choice("MODEL_DETECTOR_FAIL_MODE", "warn", _FAIL_MODES),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class OllamaSettings:
+    enabled: bool = False
+    base_url: str = "http://127.0.0.1:11434"
+    model: str = "qwen2.5:1.5b"
+    timeout_seconds: float = 15.0
+    max_input_length: int = 4000
+    threshold_margin: float = 0.10
+
+
+def _bounded_float(name: str, default: float, minimum: float, maximum: float) -> float:
+    value = _env_float(name, default)
+    return value if minimum <= value <= maximum else default
+
+
+def get_ollama_settings() -> OllamaSettings:
+    defaults = OllamaSettings()
+    return OllamaSettings(
+        enabled=_env_bool("OLLAMA_ENABLED", defaults.enabled),
+        base_url=os.getenv("OLLAMA_BASE_URL", defaults.base_url).strip(),
+        model=os.getenv("OLLAMA_MODEL", defaults.model).strip(),
+        timeout_seconds=_bounded_float("OLLAMA_TIMEOUT_SECONDS", defaults.timeout_seconds, 0.01, 300),
+        max_input_length=int(_bounded_float("OLLAMA_MAX_INPUT_LENGTH", defaults.max_input_length, 1, 4000)),
+        threshold_margin=_bounded_float("OLLAMA_THRESHOLD_MARGIN", defaults.threshold_margin, 0, 1),
+    )

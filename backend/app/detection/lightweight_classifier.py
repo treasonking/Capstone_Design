@@ -44,6 +44,11 @@ class LightweightPrediction:
     label: str
     source: str
 
+    @property
+    def risk_type(self) -> DetectorType | None:
+        mapping = _map_label(self.label) if self.source == _SOURCE_MODEL else None
+        return mapping.detector_type if mapping else None
+
 
 class LightweightClassifier:
     def __init__(

@@ -89,7 +89,7 @@ Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/proxy/chat" -Headers 
 
 ## 6. 미구현 Provider 범위
 
-Claude, Gemini, Azure OpenAI, Ollama 또는 다른 로컬 LLM은 구현하지 않았습니다. 요청 JSON의 `model` 값으로 Provider나 URL을 바꿀 수 없고, Registry는 `mock`, `openai`만 허용합니다. 다른 Provider로의 자동 폴백도 구현하지 않았습니다.
+Claude, Gemini, Azure OpenAI는 구현하지 않았습니다. Ollama는 로컬 `/api/chat` adapter로 사용할 수 있습니다. 요청 JSON의 `model` 값으로 Provider나 URL을 바꿀 수 없고, Registry는 `mock`, `openai`, `ollama`만 허용합니다. 다른 Provider로의 자동 폴백도 구현하지 않았습니다.
 
 ## 7. 관리자 API 확인
 

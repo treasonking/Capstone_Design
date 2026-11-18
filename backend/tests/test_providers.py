@@ -189,11 +189,12 @@ def test_openai_provider_maps_sdk_errors_without_exposing_details(sdk_error, exp
     assert "private-source-text" not in serialized
 
 
-def test_registry_allows_only_mock_and_openai() -> None:
+def test_registry_allows_mock_openai_and_ollama() -> None:
     registry = ProviderRegistry()
 
     assert registry.get("mock").name == "mock"
     assert registry.get("openai").name == "openai"
+    assert registry.get("ollama").name == "ollama"
     with pytest.raises(ProviderNotSupportedError) as exc_info:
         registry.get("http://attacker.invalid")
 

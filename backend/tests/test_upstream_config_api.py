@@ -11,6 +11,7 @@ def test_upstream_config_reports_mock_defaults(monkeypatch) -> None:
     monkeypatch.delenv("LLM_PROVIDER", raising=False)
     monkeypatch.delenv("UPSTREAM_LLM_PROVIDER", raising=False)
     monkeypatch.delenv("UPSTREAM_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.delenv("OLLAMA_MODEL", raising=False)
 
     result = asyncio.run(admin_upstream_config("test-admin-token"))
 
@@ -18,10 +19,10 @@ def test_upstream_config_reports_mock_defaults(monkeypatch) -> None:
     assert result.default_timeout_seconds == 10.0
     assert result.default_retry_count == 0
     assert result.automatic_fallback is False
-    assert result.allowed_providers == ["mock", "openai"]
+    assert result.allowed_providers == ["mock", "ollama", "openai"]
     assert result.providers["mock"].enabled is True
+    assert result.providers["ollama"].enabled is False
     assert "azure" not in result.providers
-    assert "ollama" not in result.providers
 
 
 def test_upstream_config_hides_api_keys_and_marks_openai_enabled(monkeypatch) -> None:
@@ -29,10 +30,14 @@ def test_upstream_config_hides_api_keys_and_marks_openai_enabled(monkeypatch) ->
     monkeypatch.setenv("ADMIN_API_TOKEN", "test-admin-token")
     monkeypatch.setenv("OPENAI_API_KEY", "super-secret-key")
     monkeypatch.setenv("OPENAI_MODEL", "configured-test-model")
+    monkeypatch.setenv("OLLAMA_MODEL", "local-test-model")
 
     result = asyncio.run(admin_upstream_config("test-admin-token"))
 
     assert result.providers["openai"].enabled is True
     assert result.providers["openai"].default_model == "configured-test-model"
     assert result.providers["openai"].url.endswith("/v1/responses")
+    assert result.providers["ollama"].enabled is True
+    assert result.providers["ollama"].default_model == "local-test-model"
+    assert result.providers["ollama"].url.endswith("/api/chat")
     assert "secret" not in str(result.model_dump())

@@ -24,7 +24,7 @@
 - Provider 직전 egress guard는 위치가 확인된 PII를 정책 action과 무관하게 마스킹하고, 위치를 알 수 없는 PII 신호는 `PII_UNMASKABLE_DETECTED`로 차단한다. 그러나 탐지기가 PII 자체를 놓친 경우에는 원문 전송 위험이 남는다.
 - 모델별 응답 품질과 Validator 탐지 결과가 달라질 수 있으며 비용, Rate Limit, 네트워크 장애, timeout이 발생할 수 있다. `PROVIDER_AUTH_ERROR`, `PROVIDER_RATE_LIMITED`, `PROVIDER_TIMEOUT`, `PROVIDER_UPSTREAM_ERROR`, `PROVIDER_INVALID_RESPONSE`는 정책 차단과 별도 오류로 기록한다.
 - 자동 Provider 라우팅과 다른 사업자로의 자동 폴백은 구현하지 않았다. 향후 도입하려면 기관 allowlist, 사용자 또는 기관의 명시적 동의, 전송 데이터 분류 재검사, Provider 변경 감사 기록, 최대 시도 횟수가 필요하다.
-- 현재 실제 구현 Provider는 Mock과 OpenAI뿐이다. Claude, Gemini, Azure OpenAI, 로컬 LLM은 공통 인터페이스에 어댑터를 추가해야 하며 현 상태에서 지원한다고 설명하면 안 된다.
+- 현재 실제 구현 Provider는 Mock, OpenAI, Ollama이다. Ollama는 로컬 API 어댑터로 연결되며, 이 어댑터 변경 자체의 자동 검증이나 실제 모델 호출은 이번 작업에서 실행하지 않았다. 실제 모델별 품질·하드웨어 성능은 배포 장비에서 별도 측정해야 한다. Claude, Gemini, Azure OpenAI는 구현되지 않았다.
 - 기본 Docker Compose는 `OPENAI_API_KEY`를 자동 전달하지 않는다. 환경변수 직접 주입은 Compose 설정 출력과 컨테이너 메타데이터에 평문으로 나타날 수 있으므로 운영 배포에는 조직의 secret store 또는 Docker secret 통합이 필요하다.
 
 OpenAI 관련 운영 판단은 공식 [Responses API 안내](https://developers.openai.com/api/docs/guides/migrate-to-responses), [데이터 제어 문서](https://developers.openai.com/api/docs/guides/your-data), [오류 코드 문서](https://developers.openai.com/api/docs/guides/error-codes)의 최신 내용을 기준으로 다시 확인해야 한다.

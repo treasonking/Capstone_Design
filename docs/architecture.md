@@ -21,7 +21,7 @@
 6. action이 `MASK`이면 민감정보를 치환한 안전 입력만 Provider 계층으로 전달한다.
 7. action이 `BLOCK`이면 upstream LLM 호출 없이 차단 응답을 반환한다.
 8. action이 `ALLOW`이면 요청을 Provider 계층으로 전달한다.
-9. 고정 allowlist Registry가 서버 환경변수 `LLM_PROVIDER`에 따라 `mock` 또는 `openai` 어댑터를 선택한다.
+9. 고정 allowlist Registry가 서버 환경변수 `LLM_PROVIDER`에 따라 `mock`, `openai`, `ollama` 어댑터 중 하나를 선택한다.
 10. Provider가 전체 응답을 반환한 뒤 Validator Agent가 최종 사용자 반환 전에 정책 결정 결과와 출력을 재검사한다.
 11. Validator Agent는 핵심 탐지 모델이 아니라, 출력 내 PII 잔존, 시스템 프롬프트 또는 내부 정책 노출, 정책 우회 성공 징후, 마스킹 누락을 확인하는 운영형 확장 요소이다.
 12. 최종 응답 이후 audit log에는 정책과 Provider 메타데이터가 분리 기록되고, Mock signer 기반 integrity signature가 추가된다.
@@ -35,14 +35,17 @@
 | `base.py` | `LLMProvider`, `ProviderRequest`, `ProviderResponse` 공통 계약 |
 | `mock_provider.py` | 기존 로컬 Mock LLM HTTP 호출과 공통 응답 변환 |
 | `openai_provider.py` | 공식 OpenAI SDK의 Responses API 어댑터 |
-| `registry.py` | `mock`, `openai`만 허용하는 고정 Registry |
+| `ollama_provider.py` | 로컬 Ollama `/api/chat` non-streaming 어댑터 |
+| `registry.py` | `mock`, `openai`, `ollama`만 허용하는 고정 Registry |
 | `errors.py` | 인증, Rate Limit, timeout, upstream, invalid response 오류 표준화 |
 
-Provider는 요청 본문이 아니라 서버 환경변수 `LLM_PROVIDER`로 선택한다. 요청의 `model` 값은 기존 API 스키마 호환을 위해 수신하지만 Provider 선택이나 OpenAI 모델 변경에 사용하지 않는다. OpenAI 모델은 `OPENAI_MODEL`에서만 읽고, 사용자가 URL이나 외부 endpoint를 지정하는 경로는 없다. 자동 Provider 라우팅과 다른 사업자로의 자동 폴백은 구현하지 않았다.
+Provider는 요청 본문이 아니라 서버 환경변수 `LLM_PROVIDER`로 선택한다. 요청의 `model` 값은 기존 API 스키마 호환을 위해 수신하지만 Provider 선택이나 모델 변경에 사용하지 않는다. OpenAI 모델은 `OPENAI_MODEL`, Ollama 모델은 `OLLAMA_MODEL`에서만 읽고, endpoint도 서버 환경설정으로만 지정한다. 자동 Provider 라우팅과 다른 Provider로의 자동 폴백은 구현하지 않았다.
 
 Provider 직전 egress guard는 정책의 `MASK` 결과뿐 아니라 위치가 확인된 모든 PII 탐지 span을 다시 마스킹한다. `PII_ACCOUNT_DETECTED=WARN`처럼 정책이 경고인 경우에도 외부 Provider에는 마스킹된 값만 전달한다. 모델 단독 PII 신호처럼 치환 위치를 확정할 수 없으면 `PII_UNMASKABLE_DETECTED`로 fail-closed 차단하고 Provider를 호출하지 않는다.
 
 OpenAI 어댑터는 `AsyncOpenAI.responses.create`에 정책 처리된 입력, 시스템 지시, `store=False`, `max_output_tokens`, 요청별 timeout을 전달한다. SDK 자동 재시도는 0회로 제한한다. 응답 텍스트, Provider, 실제 응답 모델, 지연 시간, 종료 상태, 토큰 사용량, 비민감 응답 ID를 공통 응답으로 변환하지만 원문과 응답 ID는 감사 로그에 저장하지 않는다.
+
+Ollama 어댑터는 정책 처리된 입력과 시스템 지시를 `/api/chat`으로 보내며 `stream=false`로 전체 응답을 받은 뒤 기존 Validator Agent에 전달한다. 모델은 `OLLAMA_MODEL`, 기본 주소는 `OLLAMA_BASE_URL`로 설정한다. Ollama API 주소는 요청에서 받을 수 없고 자동 재시도나 자동 폴백도 하지 않는다. Ollama API를 신뢰되지 않은 네트워크에 노출하지 않는다.
 
 ## Existing Proxy와 Validator Agent의 경계
 

@@ -468,10 +468,11 @@ Detailed artifacts are maintained in `reports/baselines/papillon_comparison.md`,
 |---|---|---|---|---|
 | Mock | 구현 | 검증 | N/A | 기존 로컬 Mock LLM 실행 유지 |
 | OpenAI | Responses API 어댑터 구현 | SDK Stub 검증 | Not verified | 실제 키·모델로 호출하지 않음 |
+| Ollama | 로컬 `/api/chat` 어댑터 구현 | Not run in this change | Not verified | Ollama 설치 모델과 장비별 품질·성능 벤치마크 필요 |
 | Claude | 미구현 | 미실행 | 미실행 | 향후 어댑터 확장 |
 | Gemini | 미구현 | 미실행 | 미실행 | 향후 어댑터 확장 |
 
-다중 Provider 자동 라우팅은 미구현이며, 다른 Provider로의 자동 폴백은 보안상 비활성화되어 있습니다. Provider는 서버 환경변수 `LLM_PROVIDER`의 `mock` 또는 `openai`만 Registry가 허용합니다. 요청 본문의 `model`로 Provider, OpenAI 모델, 외부 URL을 변경할 수 없습니다.
+다중 Provider 자동 라우팅은 미구현이며, 다른 Provider로의 자동 폴백은 보안상 비활성화되어 있습니다. Provider는 서버 환경변수 `LLM_PROVIDER`의 `mock`, `openai`, `ollama`만 Registry가 허용합니다. 요청 본문의 `model`로 Provider, 구성된 모델, endpoint를 변경할 수 없습니다.
 
 Provider 직전 egress guard는 정책 결과가 `WARN`이어도 위치가 확인된 PII span을 마스킹합니다. PII 신호는 있으나 치환 위치를 알 수 없으면 `PII_UNMASKABLE_DETECTED`로 외부 호출 없이 차단합니다.
 
@@ -504,6 +505,7 @@ backend/
       base.py
       errors.py
       mock_provider.py
+      ollama_provider.py
       openai_provider.py
       registry.py
     integrity/
@@ -846,7 +848,28 @@ $env:OPENAI_MAX_OUTPUT_TOKENS = "1000"
 
 OpenAI 어댑터는 `AsyncOpenAI.responses.create`를 사용하고 `store=False`, 요청 timeout, 최대 출력 토큰을 명시하며 SDK 자동 재시도를 0회로 제한합니다. `store=False`만으로 모든 보존이 사라지는 것은 아니므로 기관의 개인정보 처리 기준과 OpenAI 조직의 데이터 제어 설정을 별도 확인해야 합니다.
 
-11. 안전한 요청 검증
+11. 로컬 Ollama 모델 실행과 비교
+
+Ollama에 사용할 모델을 먼저 설치하고 `ollama list`에 표시되는 모델명을 설정합니다. 로컬 실행은 프록시를 동일하게 입력 정책과 출력 Validator에 통과시킵니다.
+
+```powershell
+$env:LLM_PROVIDER = "ollama"
+$env:OLLAMA_BASE_URL = "http://localhost:11434"
+$env:OLLAMA_MODEL = "<ollama-list에 표시된 모델명>"
+$env:OLLAMA_TIMEOUT_SECONDS = "120"
+$env:OLLAMA_MAX_OUTPUT_TOKENS = "1000"
+.\scripts\run_proxy_ollama.ps1
+```
+
+모델 비교는 로컬 Ollama 서비스에 이미 내려받은 모델을 지정해 실행합니다.
+
+```powershell
+.\.venv\Scripts\python.exe evaluation/local_slm_benchmark.py --models "<모델 A>" "<모델 B>" --iterations 3 --warmup 1
+```
+
+벤치마크는 합성 한국어 요청을 기존 프록시 전체 경로로 보내고, 간단한 필수 키워드 일치율, Provider 지연 시간, 프록시 전체 지연 시간, 오류 수를 JSON/CSV로 저장합니다. 키워드 점수는 작은 스모크 신호이며 모델 품질에 대한 사람 평가나 하드웨어 전체 성능 평가를 대신하지 않습니다. 실제 GPU/VRAM 사용량은 별도로 기록해야 합니다. Docker Compose에서 실행할 때는 `OLLAMA_BASE_URL`을 컨테이너에서 접근 가능한 호스트 주소로 설정하고 Ollama API를 신뢰되지 않은 네트워크에 노출하지 마세요.
+
+12. 안전한 요청 검증
 
 먼저 `/auth/login`으로 받은 토큰을 `$env:USER_TOKEN`에 설정합니다. 일반 응답에는 내부 감사 정보가 없으며, `upstream_called` 등 상세 증거는 관리자 검증 콘솔에서 확인합니다.
 
@@ -863,7 +886,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/proxy/chat -Headers $h
 
 기대 결과는 각각 `ALLOW`, `MASK`, `BLOCK`입니다. `MASK`는 마스킹된 입력만 Provider로 전달되고 `BLOCK`은 `upstream_called=false`로 외부 호출을 생략합니다. OpenAI Provider에서 `ALLOW`를 실행하면 문장이 실제 외부 API로 전송되고 비용이 발생할 수 있으므로 공개 가능한 테스트 문장만 사용합니다.
 
-12. 실제 OpenAI API 스모크 테스트(선택)
+13. 실제 OpenAI API 스모크 테스트(선택)
 
 ```powershell
 $env:RUN_LIVE_OPENAI_TESTS = "1"
@@ -872,7 +895,7 @@ $env:RUN_LIVE_OPENAI_TESTS = "1"
 
 `RUN_LIVE_OPENAI_TESTS=1`, `OPENAI_API_KEY`, `OPENAI_MODEL`이 모두 있을 때만 최소 1건을 실행합니다. CI와 일반 테스트에서는 skip하며 응답 원문은 저장소나 감사 로그에 기록하지 않습니다. 현재 상태는 **OpenAI 어댑터 구현, 실제 API 호출 미검증**입니다.
 
-13. 발표용 정적 데모 페이지 실행
+14. 발표용 정적 데모 페이지 실행
 
 ```bash
 python frontend/dev_server.py

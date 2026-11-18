@@ -9,11 +9,12 @@ import httpx
 from .base import LLMProvider
 from .errors import ProviderNotSupportedError
 from .mock_provider import MockProvider
+from .ollama_provider import OllamaProvider
 from .openai_provider import OpenAIProvider
 
 
 DEFAULT_MOCK_ENDPOINT = "http://localhost:8001/v1/chat/completions"
-ALLOWED_PROVIDER_NAMES = frozenset({"mock", "openai"})
+ALLOWED_PROVIDER_NAMES = frozenset({"mock", "ollama", "openai"})
 
 
 class ProviderRegistry:
@@ -37,6 +38,8 @@ class ProviderRegistry:
             )
         if normalized == "openai":
             return OpenAIProvider(client=self._openai_client)
+        if normalized == "ollama":
+            return OllamaProvider()
         raise ProviderNotSupportedError(
             provider=normalized or "unknown",
             model=None,

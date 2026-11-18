@@ -195,7 +195,7 @@ $env:OPENAI_MAX_OUTPUT_TOKENS = "1000"
 
 OpenAI 어댑터는 공식 SDK의 Responses API에 `store=False`를 명시하고 SDK 자동 재시도를 비활성화한다. 이는 Responses application state 저장을 끄기 위한 설정이지만, 조직의 데이터 제어 승인 상태에 따라 abuse monitoring log 등 별도 보존 조건이 남을 수 있다. 공개 가능한 일반 문장으로만 먼저 검증하고 비용, Rate Limit, 기관 개인정보 처리 기준을 확인한다.
 
-Provider 이름은 Registry의 `mock`, `openai`만 허용한다. 요청 JSON의 `model` 값으로 Provider, 모델, URL을 변경할 수 없으며 Claude, Gemini, Azure OpenAI, 로컬 LLM 어댑터와 자동 폴백은 구현하지 않았다.
+Provider 이름은 Registry의 `mock`, `openai`, `ollama`만 허용한다. 요청 JSON의 `model` 값으로 Provider, 모델, URL을 변경할 수 없으며 Claude, Gemini, Azure OpenAI와 자동 폴백은 구현하지 않았다. 로컬 Ollama 모델은 `LLM_PROVIDER=ollama`, `OLLAMA_MODEL`, `OLLAMA_BASE_URL` 환경변수로 설정한다.
 
 ### 8.4 대표 분석 API 재현
 
